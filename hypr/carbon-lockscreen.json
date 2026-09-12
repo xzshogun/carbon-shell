@@ -1,0 +1,8 @@
+{
+  "visualizer": true,
+  "mediaOverlay": true,
+  "clock": true,
+  "heartbeat": true,
+  "batteryPopup": true,
+  "notificationPopup": true
+}

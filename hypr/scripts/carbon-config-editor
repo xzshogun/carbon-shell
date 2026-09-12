@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Carbon Config Editor launcher
+exec /usr/bin/python3 /home/shogun/.config/hypr/scripts/carbon-config-editor.py "$@"

@@ -2,9 +2,10 @@ local vars = require("variables")
 local fn   = require("hyprland.functions")
 
 hl.on("hyprland.start", function()
-    -- Keyring and auth
+    -- Keyring, auth and screen-sharing portal
     hl.exec_cmd("gnome-keyring-daemon --start --components=secrets")
     hl.exec_cmd("/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1")
+    hl.exec_cmd("/home/shogun/.config/hypr/scripts/portal.sh")
 
     -- Clipboard history
     hl.exec_cmd("wl-paste --type text --watch cliphist store")

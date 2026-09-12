@@ -168,6 +168,10 @@ fi
 mkdir -p "${HOME}/.config/fastfetch"
 cp -r "${REPO_DIR}/fastfetch/"* "${HOME}/.config/fastfetch/"
 
+# Deploy xdg-desktop-portal configs for Wayland Screen Casting
+mkdir -p "${HOME}/.config/xdg-desktop-portal"
+cp -r "${REPO_DIR}/xdg-desktop-portal/"* "${HOME}/.config/xdg-desktop-portal/"
+
 # Generate initial theme with theme-mk.py
 echo -e "      Initializing color scheme via Matugen & theme-mk..."
 if [ -f "${HOME}/.config/hypr/scripts/theme-mk.py" ]; then

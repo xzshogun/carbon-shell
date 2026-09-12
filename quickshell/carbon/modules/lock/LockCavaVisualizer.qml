@@ -61,7 +61,7 @@ Item {
     Process {
         id: cavaProc
         command: ["cava", "-p", "/home/shogun/.config/hypr/cava-lock.conf"]
-        running: root.enabledSetting && root.active
+        running: root.enabledSetting && root.active && root.visible
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: line => {
@@ -82,7 +82,7 @@ Item {
         id: smoothTimer
         interval: 16
         repeat: true
-        running: root.showing && root.active
+        running: root.showing && root.active && root.visible
         onTriggered: {
             var targets = root.rawTargetValues
             var cur = root.smoothedValues

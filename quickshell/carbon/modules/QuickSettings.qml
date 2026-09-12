@@ -877,6 +877,7 @@ Item {
                                     amplitudeMultiplier: 0.8 + 1.2 * root.progRatio
                                     frequency: 3 + 7 * root.progRatio
                                     fullLength: Math.max(1, parent.width)
+                                    running: root.open && root.playing
                                 }
 
                                 Rectangle {

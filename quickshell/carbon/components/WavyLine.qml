@@ -19,8 +19,9 @@ Canvas {
     property real fullLength: width
     property bool running: true
 
-    readonly property bool shouldAnimate: root.running && root.visible
-        && root.width > 0 && root.height > 0 && root.opacity > 0
+    readonly property bool isWindowVisible: Window.window ? (Window.window.visible && Window.window.opacity > 0.01) : true
+    readonly property bool shouldAnimate: root.running && root.visible && root.isWindowVisible
+        && root.width > 0 && root.height > 0 && root.opacity > 0.01
 
     onPaint: {
         var ctx = root.getContext("2d")

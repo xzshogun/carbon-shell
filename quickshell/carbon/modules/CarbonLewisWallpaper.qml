@@ -36,10 +36,12 @@ Item {
     implicitWidth: outerOrbitRadius * 2 + 160
     implicitHeight: outerOrbitRadius * 2 + 160
 
+    readonly property bool shouldAnimate: root.visible && (root.opacity > 0.01)
+
     /* ── Ambient Idle Breathing Glow ─────────────────────────────────────── */
     SequentialAnimation {
         id: idleAnim
-        running: true
+        running: root.shouldAnimate
         loops: Animation.Infinite
 
         ParallelAnimation {
@@ -94,7 +96,7 @@ Item {
     Timer {
         id: periodicPulseTimer
         interval: 1850
-        running: true
+        running: root.shouldAnimate
         repeat: true
         onTriggered: periodicPulseAnim.restart()
     }
@@ -195,7 +197,7 @@ Item {
         duration: 5800
         loops: Animation.Infinite
         easing.type: Easing.Linear
-        running: true
+        running: root.shouldAnimate
     }
 
     // Layer 2 (Outer 4 dots): Counter-clockwise rotation at 9.4s period
@@ -208,7 +210,7 @@ Item {
         duration: 9400
         loops: Animation.Infinite
         easing.type: Easing.Linear
-        running: true
+        running: root.shouldAnimate
     }
 
     /* ── Visual Elements ─────────────────────────────────────────────────── */

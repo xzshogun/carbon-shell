@@ -103,7 +103,7 @@ Item {
     }
 
     Timer {
-        interval: 1000
+        interval: 10000
         running: true
         repeat: true
         onTriggered: {
@@ -466,9 +466,14 @@ Item {
         visible: false
         opacity: 0.0
 
-        CarbonLewisWallpaper {
+        Loader {
             anchors.centerIn: parent
-            isLight: root.isLightMode
+            active: carbonLiveBg.visible && carbonLiveBg.opacity > 0.01
+            sourceComponent: Component {
+                CarbonLewisWallpaper {
+                    isLight: root.isLightMode
+                }
+            }
         }
     }
 

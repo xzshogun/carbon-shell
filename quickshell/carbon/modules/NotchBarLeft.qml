@@ -100,7 +100,7 @@ NotchContainer {
     }
 
     Timer {
-        interval: 2000
+        interval: 15000
         repeat: true
         running: true
         triggeredOnStart: true

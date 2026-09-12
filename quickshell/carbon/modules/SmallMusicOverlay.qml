@@ -289,7 +289,7 @@ Item {
                         amplitudeMultiplier: 0.8 + 0.8 * root.displayProgress
                         frequency: 3 + 6 * root.displayProgress
                         fullLength: Math.max(1, parent.width)
-                        running: root.isPlaying || root.isDragging
+                        running: (root.isPlaying || root.isDragging) && (root.open || root.animatingOut)
                     }
 
                     /* Scrubber Knob */

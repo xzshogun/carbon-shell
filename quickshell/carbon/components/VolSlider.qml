@@ -73,6 +73,7 @@ Item {
         amplitudeMultiplier: root.wavyAmp
         frequency: root.wavyFreq
         fullLength: Math.max(1, root.width)
+        running: root.visible && (Window.window ? Window.window.visible : true)
     }
 
     /* Drag handle marking the current level. */

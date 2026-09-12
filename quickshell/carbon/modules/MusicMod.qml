@@ -84,25 +84,27 @@ Item {
     readonly property int clockSpacing: root.clockStyle === "titan" ? -2
                                       : (root.clockStyle === "minimal" ? 0 : 1)
 
-    Process {
-        id: clockCfgProc
-        command: ["sh", "-c", "grep -oP '\"style\"\\s*:\\s*\"\\K[^\"]+' /home/shogun/.config/hypr/carbon-clock-style.json 2>/dev/null || echo titan"]
-        stdout: SplitParser {
-            onRead: (line) => {
-                const s = line.trim()
+    FileView {
+        id: clockCfgFile
+        path: "/home/shogun/.config/hypr/carbon-clock-style.json"
+        watchChanges: true
+        blockLoading: true
+        printErrors: false
+        onLoaded: root.reloadClockStyle()
+        onFileChanged: reload()
+    }
+
+    function reloadClockStyle() {
+        try {
+            const txt = clockCfgFile.text().trim()
+            if (txt.length > 0) {
+                const parsed = JSON.parse(txt)
+                const s = parsed.style
                 if (s === "titan" || s === "minimal" || s === "digital" || s === "pixel") {
                     root.clockStyle = s
                 }
             }
-        }
-    }
-
-    Timer {
-        interval: 1000
-        repeat: true
-        running: true
-        triggeredOnStart: true
-        onTriggered: clockCfgProc.running = true
+        } catch (e) {}
     }
 
     /* ── Track Position & Duration ───────────────────────────────────────── */
@@ -268,6 +270,7 @@ Item {
     onCalMonthChanged: root.rebuildCalendar()
     onCalYearChanged: root.rebuildCalendar()
     Component.onCompleted: {
+        root.reloadClockStyle()
         root.rebuildCalendar()
     }
 

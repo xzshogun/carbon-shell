@@ -106,7 +106,7 @@ Item {
     }
 
     Timer {
-        interval: 2500
+        interval: 30000
         repeat: true
         running: true
         onTriggered: {

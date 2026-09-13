@@ -9,9 +9,9 @@ import "../Singletons"
 /**
  * Carbon Launcher: Niagara Launcher style animated application search & browser.
  * Features:
- * - 2D Interactive Draggable Niagara Alphabet Wave Bar (#, A-Z) with dynamic stretch
+ * - 2D Interactive Draggable Niagara Alphabet Wave Bar (#, A-Z) with dynamic Gaussian stretch
  * - Freely draggable letter bubble chip following pointer anywhere horizontally & vertically
- * - Sinusoidal catenary wave stretching proportionally as the user drags into the screen
+ * - Gaussian liquid wave pulling letters under and around the region into the screen
  * - Spring pop-out launch animation with OutBack overshoot and bezel origin scaling
  * - Clean Niagara section separators (A, B, C...)
  * - Real-time fuzzy app search with keyboard navigation (Up/Down/Enter/Esc)
@@ -607,6 +607,7 @@ Item {
         anchors.rightMargin: root.attachedEdge === "left" ? 6 : 0
         anchors.leftMargin: root.attachedEdge === "right" ? 6 : 0
         width: 26
+        z: 10
         visible: root.mode === "apps"
         opacity: searchField.text.length === 0 ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
@@ -622,9 +623,10 @@ Item {
             width: 52
             height: 52
             radius: 26
-            color: Theme.bg
-            border.color: Theme.accent
+            color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.95)
+            border.color: Theme.accentLit
             border.width: 2
+            z: 20
 
             x: {
                 if (root.attachedEdge === "left") {
@@ -681,11 +683,10 @@ Item {
                     readonly property real itemCenterY: y + height / 2
                     readonly property real dist: Math.abs(itemCenterY - niagaraWaveBar.scrubY)
 
-                    // Wave dynamically broadens and deepens as you pull inward
-                    readonly property real waveRadius: 75.0 + Math.min(niagaraWaveBar.inwardPull * 0.4, 60.0)
-                    readonly property real waveFactor: niagaraWaveBar.isScrubbing ? Math.max(0.0, 1.0 - (dist / waveRadius)) : 0.0
-                    readonly property real waveCurve: Math.sin(waveFactor * Math.PI / 2.0)
-                    readonly property real waveMagnitude: Math.min(22.0 + niagaraWaveBar.inwardPull * 0.55, 140.0)
+                    // Pure Gaussian wave: pulls active letter AND surrounding region in a smooth liquid arc
+                    readonly property real sigma: 38.0 + Math.min(niagaraWaveBar.inwardPull * 0.28, 65.0)
+                    readonly property real waveCurve: niagaraWaveBar.isScrubbing ? Math.exp(- (dist * dist) / (2.0 * sigma * sigma)) : 0.0
+                    readonly property real waveMagnitude: 28.0 + Math.min(niagaraWaveBar.inwardPull * 0.88, 200.0)
 
                     readonly property real xOffset: {
                         var mag = waveCurve * waveMagnitude;
@@ -696,20 +697,20 @@ Item {
                     height: parent.height / root.alphabet.length
 
                     Text {
-                        anchors.centerIn: parent
+                        anchors.verticalCenter: parent.verticalCenter
                         text: letterItem.letterChar
                         font.family: Theme.font
                         font.pixelSize: 10
-                        font.bold: letterItem.hasApps && (letterItem.waveCurve > 0.4)
-                        color: letterItem.waveCurve > 0.4 ? Theme.accentLit : (letterItem.hasApps ? Theme.fg : Theme.fgFaint)
-                        opacity: letterItem.hasApps ? (0.6 + letterItem.waveCurve * 0.4) : (letterItem.waveCurve > 0.3 ? 0.35 : 0.16)
-                        scale: 1.0 + letterItem.waveCurve * (0.85 + Math.min(niagaraWaveBar.inwardPull / 220.0, 0.45))
+                        font.bold: letterItem.hasApps && (letterItem.waveCurve > 0.35)
+                        color: letterItem.waveCurve > 0.35 ? Theme.accentLit : (letterItem.hasApps ? Theme.fg : Theme.fgFaint)
+                        opacity: letterItem.hasApps ? (0.55 + letterItem.waveCurve * 0.45) : (letterItem.waveCurve > 0.25 ? 0.4 : 0.15)
+                        scale: 1.0 + letterItem.waveCurve * (0.95 + Math.min(niagaraWaveBar.inwardPull / 200.0, 0.55))
                         x: (parent.width - width) / 2 + letterItem.xOffset
 
-                        Behavior on scale { NumberAnimation { duration: 60 } }
-                        Behavior on x { NumberAnimation { duration: 50 } }
+                        Behavior on scale { NumberAnimation { duration: 50 } }
+                        Behavior on x { NumberAnimation { duration: 45 } }
                         Behavior on color { ColorAnimation { duration: 60 } }
-                        Behavior on opacity { NumberAnimation { duration: 60 } }
+                        Behavior on opacity { NumberAnimation { duration: 50 } }
                     }
                 }
             }
@@ -734,10 +735,11 @@ Item {
                 var letterH = parent.height / root.alphabet.length
                 var idx = Math.max(0, Math.min(root.alphabet.length - 1, Math.floor(niagaraWaveBar.scrubY / letterH)))
                 var targetLetter = root.alphabet[idx]
-                niagaraWaveBar.activeLetter = targetLetter
-
-                if (root.letterMap[targetLetter] !== undefined) {
-                    resultsList.positionViewAtIndex(root.letterMap[targetLetter], ListView.Beginning)
+                if (niagaraWaveBar.activeLetter !== targetLetter) {
+                    niagaraWaveBar.activeLetter = targetLetter
+                    if (root.letterMap[targetLetter] !== undefined) {
+                        resultsList.positionViewAtIndex(root.letterMap[targetLetter], ListView.Beginning)
+                    }
                 }
             }
 

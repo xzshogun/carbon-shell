@@ -23,12 +23,18 @@ Item {
     property string timeStr: Qt.formatTime(new Date(), "hh:mm")
     property string dayStr: Qt.formatDate(new Date(), "dddd")
     property string dateStr: Qt.formatDate(new Date(), "d MMMM")
+    property string greetingStr: "Good day, Kazu"
 
     function refresh() {
         var d = new Date()
         root.timeStr = Qt.formatTime(d, "hh:mm")
         root.dayStr = Qt.formatDate(d, "dddd")
         root.dateStr = Qt.formatDate(d, "d MMMM")
+        const hour = d.getHours()
+        if (hour >= 5 && hour < 12) root.greetingStr = "Good morning, Kazu"
+        else if (hour >= 12 && hour < 17) root.greetingStr = "Good afternoon, Kazu"
+        else if (hour >= 17 && hour < 22) root.greetingStr = "Good evening, Kazu"
+        else root.greetingStr = "Late night coding, Kazu"
     }
 
     Timer {
@@ -128,6 +134,20 @@ Item {
             font.pixelSize: 68
             font.weight: Font.Bold
             color: "#FFFFFF"
+
+            layer.enabled: true
+            layer.effect: shadowFx
+        }
+
+        // Ambient Cursive Greeting
+        Text {
+            id: greetingText
+            anchors.right: parent.right
+            text: root.greetingStr
+            font.family: "Caveat"
+            font.pixelSize: 24
+            font.weight: Font.Bold
+            color: Theme.accentLit ? Theme.accentLit : (Theme.accent ? Theme.accent : "#00F0FF")
 
             layer.enabled: true
             layer.effect: shadowFx

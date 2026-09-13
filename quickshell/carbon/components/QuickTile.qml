@@ -41,8 +41,14 @@ Item {
     implicitHeight: root.tileSize
 
     z: hov.drag.active ? 100 : 1
-    scale: hov.drag.active ? 1.05 : 1.0
-    Behavior on scale { NumberAnimation { duration: 100 } }
+    scale: hov.pressed ? 0.94 : (hov.drag.active ? 1.06 : (hov.containsMouse ? 1.04 : 1.0))
+    Behavior on scale {
+        NumberAnimation {
+            duration: 180
+            easing.type: Easing.OutBack
+            easing.overshoot: 1.25
+        }
+    }
 
     Behavior on x {
         enabled: root.animReady && !hov.drag.active

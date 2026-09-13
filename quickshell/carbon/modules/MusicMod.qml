@@ -888,6 +888,7 @@ Item {
 
                     VolSlider {
                         Layout.fillWidth: true
+                        active: root.isExpanded
                         interactive: root.totalLength > 0
                         value: root.progress
                         fill: Theme.accent

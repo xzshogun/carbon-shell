@@ -46,7 +46,17 @@ Item {
 
     property bool hover: false
 
+    scale: iconMouse.pressed ? 0.92 : (root.hover ? 1.08 : 1.0)
+    Behavior on scale {
+        NumberAnimation {
+            duration: 180
+            easing.type: Easing.OutBack
+            easing.overshoot: 1.3
+        }
+    }
+
     MouseArea {
+        id: iconMouse
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton

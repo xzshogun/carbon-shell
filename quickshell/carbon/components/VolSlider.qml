@@ -20,6 +20,7 @@ Item {
     property color track: "#40FFFFFF"
     property color knob: "#F6F4F4"
     property bool interactive: true
+    property bool active: true
     property real handleWidth: 4
     property real handleHeight: 18
 
@@ -73,7 +74,7 @@ Item {
         amplitudeMultiplier: root.wavyAmp
         frequency: root.wavyFreq
         fullLength: Math.max(1, root.width)
-        running: root.visible && (Window.window ? Window.window.visible : true)
+        running: root.active && root.visible && (Window.window ? Window.window.visible : true)
     }
 
     /* Drag handle marking the current level. */

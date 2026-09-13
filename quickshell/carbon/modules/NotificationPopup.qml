@@ -56,9 +56,20 @@ Item {
         width: parent.width
         height: parent.height
         radius: 16
-        color: Theme.bg
-        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Theme.outline
+        color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.90)
+        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Qt.rgba(1, 1, 1, 0.12)
         border.width: 1
+
+        /* VisionOS Specular Rim highlight */
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 1
+            radius: card.radius - 1
+            color: "transparent"
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, root.open ? 0.20 : 0.06)
+            z: 99
+        }
 
         opacity: root.open ? 1 : 0
         x: root.open ? 0 : (root.barEdge === "left" ? -28 : (root.barEdge === "right" ? 28 : 0))
@@ -278,20 +289,50 @@ Item {
                         width: listView.width
                         height: contentCol.implicitHeight + 16
                         radius: 10
-                        color: itemMouse.containsMouse ? Theme.bgHover : Theme.bgAlt
-                        border.color: itemMouse.containsMouse ? Theme.accent : Theme.outline
+                        color: itemMouse.containsMouse
+                            ? Qt.rgba(Theme.bgHover.r, Theme.bgHover.g, Theme.bgHover.b, 0.88)
+                            : Qt.rgba(Theme.bgAlt.r, Theme.bgAlt.g, Theme.bgAlt.b, 0.72)
+                        border.color: itemMouse.containsMouse ? Theme.accent : Qt.rgba(1, 1, 1, 0.12)
                         border.width: 1
 
-                        Behavior on color { ColorAnimation { duration: 100 } }
-                        Behavior on border.color { ColorAnimation { duration: 100 } }
+                        /* Specular rim inside card */
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 1
+                            radius: cardItem.radius - 1
+                            color: "transparent"
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, itemMouse.containsMouse ? 0.22 : 0.06)
+                            z: 10
+                        }
+
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on border.color { ColorAnimation { duration: 120 } }
 
                         property bool dying: false
+                        x: dying ? width + 50 : 0
                         opacity: dying ? 0 : 1
-                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                        scale: dying ? 0.85 : (itemMouse.pressed ? 0.96 : (itemMouse.containsMouse ? 1.02 : Math.max(0.96, 1.0 - cardItem.index * 0.015)))
+
+                        Behavior on x {
+                            NumberAnimation {
+                                duration: 200
+                                easing.type: Easing.InBack
+                                easing.overshoot: 1.15
+                            }
+                        }
+                        Behavior on opacity { NumberAnimation { duration: 180 } }
+                        Behavior on scale {
+                            NumberAnimation {
+                                duration: 180
+                                easing.type: Easing.OutBack
+                                easing.overshoot: 1.25
+                            }
+                        }
 
                         Timer {
                             id: exitTimer
-                            interval: 150
+                            interval: 200
                             onTriggered: {
                                 if (cardItem.modelData) cardItem.modelData.dismiss()
                             }

@@ -389,6 +389,7 @@ Item {
 
                         VolSlider {
                             Layout.fillWidth: true
+                            active: root.open
                             interactive: root.pwReady && !!root.defaultSink
                             value: root.defaultSink ? root.defaultSink.audio.volume : 0
                             fill: Theme.accent
@@ -671,6 +672,7 @@ Item {
 
                                 VolSlider {
                                     Layout.preferredWidth: 78
+                                    active: root.open
                                     value: node.audio.volume
                                     fill: Theme.accent
                                     track: Theme.fgFaint
@@ -739,6 +741,7 @@ Item {
 
                         VolSlider {
                             Layout.fillWidth: true
+                            active: root.open
                             interactive: root.pwReady && !!root.defaultSource
                             value: root.defaultSource ? root.defaultSource.audio.volume : 0
                             fill: Theme.accent

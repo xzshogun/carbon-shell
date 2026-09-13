@@ -157,6 +157,7 @@ Item {
             VolSlider {
                 Layout.fillWidth: true
                 interactive: true
+                active: root.open
                 value: root.brightRatio
                 fill: Theme.accent
                 track: Theme.fgFaint

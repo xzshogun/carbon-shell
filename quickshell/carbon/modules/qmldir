@@ -31,3 +31,4 @@ SmallMusicOverlay SmallMusicOverlay.qml
 CalendarPopup CalendarPopup.qml
 CarbonLewisWallpaper CarbonLewisWallpaper.qml
 OverviewMod OverviewMod.qml
+NotchOsd NotchOsd.qml

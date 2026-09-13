@@ -37,7 +37,7 @@ Scope {
 
         LockSurface {
             id: surf
-            lock: sessionLock
+            sessionLock: sessionLock
             notificationServer: root.notificationServer
 
             Connections {

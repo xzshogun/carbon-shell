@@ -56,7 +56,9 @@ Canvas {
         ctx.stroke()
     }
 
-    FrameAnimation {
+    Timer {
+        interval: 33
+        repeat: true
         running: root.shouldAnimate
         onTriggered: root.requestPaint()
     }

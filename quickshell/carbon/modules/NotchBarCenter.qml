@@ -84,10 +84,10 @@ NotchContainer {
         onTriggered: root.activePlayer = root.resolveActivePlayer()
     }
 
-    readonly property string trackTitle: activePlayer ? (activePlayer.trackTitle || "") : ""
+    trackTitle: activePlayer ? (activePlayer.trackTitle || "") : ""
     readonly property string trackArtist: activePlayer ? (activePlayer.trackArtist || "") : ""
     readonly property string artUrl: activePlayer ? (activePlayer.trackArtUrl || "") : ""
-    readonly property bool isPlaying: activePlayer && activePlayer.playbackState === MprisPlaybackState.Playing
+    isPlaying: activePlayer && activePlayer.playbackState === MprisPlaybackState.Playing
     readonly property bool hasTrack: root.activePlayer !== null && root.trackTitle.trim().length > 0
 
     function togglePlayPause() {
@@ -177,7 +177,9 @@ NotchContainer {
                         }
 
                         // Smooth continuous rotation animation when music is playing
-                        NumberAnimation on rotation {
+                        NumberAnimation {
+                            target: vinylDisc
+                            property: "rotation"
                             from: 0
                             to: 360
                             duration: 4000

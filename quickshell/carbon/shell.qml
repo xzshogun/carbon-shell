@@ -2591,4 +2591,37 @@ ShellRoot {
             }
         }
     }
+
+    /* ── Floating Volume & Brightness Notch OSD ─────────────────────────── */
+    Variants {
+        model: Quickshell.screens
+
+        PanelWindow {
+            id: osdWindow
+            required property var modelData
+
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-osd"
+            WlrLayershell.layer: WlrLayer.Overlay
+            exclusionMode: ExclusionMode.Ignore
+
+            anchors {
+                top: true
+                left: true
+                right: true
+            }
+            margins {
+                top: root.mainBarEdge === "bottom" ? 16 : 42
+            }
+
+            implicitHeight: osdItem.implicitHeight
+            visible: osdItem.opacity > 0.001
+
+            NotchOsd {
+                id: osdItem
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+        }
+    }
 }

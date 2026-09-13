@@ -555,15 +555,7 @@ ShellRoot {
      * - Default (top) -> "bottom_right"
      */
     readonly property string controlsCorner: {
-        if (root.barMode === "pill" || root.barMode === "minimal") {
-            return (root.mainBarEdge === "bottom" || root.barEdge === "bottom") ? "top_left" : "bottom_right"
-        } else if (root.barMode === "notch") {
-            if (root.mainBarEdge === "bottom" || root.barEdge === "bottom") return "top_left"
-            if (root.mainBarEdge === "right") return "bottom_left"
-            if (root.mainBarEdge === "left") return "bottom_right"
-            return "bottom_right"
-        }
-        return "bottom_right"
+        return (root.mainBarEdge === "bottom" || root.barEdge === "bottom") ? "top_left" : "bottom_right"
     }
 
     FileView {
@@ -592,7 +584,7 @@ ShellRoot {
             } else if (d.edge) {
                 root.musicBarEdge = (d.edge === "bottom" ? "bottom" : "top")
             }
-            if (root.barMode === "pill") {
+            if (root.barMode === "pill" || root.barMode === "notch") {
                 if (root.mainBarEdge !== "top" && root.mainBarEdge !== "bottom") {
                     root.mainBarEdge = "top"
                     root.barEdge = "top"
@@ -753,6 +745,9 @@ ShellRoot {
                         root.closePower()
                         sessionLock.lock()
                     }
+                    else if (cmd === "unlock") {
+                        sessionLock.locked = false
+                    }
                     else if (cmd === "notifications" || cmd === "notif")
                         root.toggleNotif()
                     else if (cmd === "overview" || cmd === "toggle-overview")
@@ -871,8 +866,8 @@ ShellRoot {
     readonly property bool hasBottomReserve: (root.barMode === "pill" || (root.barMode === "minimal" && root.islandPersistent))
         ? (root.mainBarEdge === "bottom")
         : (root.barMode === "minimal" ? false : (root.mainBarEdge === "bottom" || root.musicBarEdge === "bottom"))
-    readonly property bool hasLeftReserve: root.barMode === "notch" && root.mainBarEdge === "left"
-    readonly property bool hasRightReserve: root.barMode === "notch" && root.mainBarEdge === "right"
+    readonly property bool hasLeftReserve: false
+    readonly property bool hasRightReserve: false
 
     readonly property int topReserveHeight: root.hasTopReserve ? (root.barMode === "notch" ? 38 : (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 38 : 46) : 54)) : 0
     readonly property int bottomReserveHeight: root.hasBottomReserve ? (root.barMode === "notch" ? 38 : (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 38 : 46) : 54)) : 0
@@ -1477,185 +1472,6 @@ ShellRoot {
         }
     }
 
-    /* ── Notch Mode: Left Edge Separated Vertical Bars (Workspaces at Top, Controls at Bottom) ── */
-    /* Workspaces Island at Top-Left */
-    Variants {
-        model: Quickshell.screens
-
-        PanelWindow {
-            id: barLeftVerticalLeftWindow
-            required property var modelData
-
-            screen: modelData
-            color: "transparent"
-            WlrLayershell.namespace: "carbon-bar-vl-left"
-            WlrLayershell.layer: WlrLayer.Top
-            exclusionMode: ExclusionMode.Ignore
-            aboveWindows: true
-            anchors {
-                top: true
-                left: true
-            }
-            margins {
-                top: 14
-                left: root.barMode === "notch" ? 0 : 8
-            }
-
-            implicitWidth: root.barMode === "notch" ? 34 : 38
-            implicitHeight: leftVertItemL.implicitHeight
-            visible: root.barMode === "notch" && root.mainBarEdge === "left"
-
-            BarLeft {
-                id: leftVertItemL
-                showBackground: true
-                vertical: true
-                attachedEdge: root.barMode === "notch" ? "left" : ""
-                onOpenLauncher: root.openLauncher()
-            }
-        }
-    }
-
-    /* Controls Island at Bottom-Left */
-    Variants {
-        model: Quickshell.screens
-
-        PanelWindow {
-            id: barRightVerticalLeftWindow
-            required property var modelData
-
-            screen: modelData
-            color: "transparent"
-            WlrLayershell.namespace: "carbon-bar-vl-right"
-            WlrLayershell.layer: WlrLayer.Top
-            exclusionMode: ExclusionMode.Ignore
-            aboveWindows: true
-            anchors {
-                bottom: true
-                left: true
-            }
-            margins {
-                bottom: 14
-                left: root.barMode === "notch" ? 0 : 8
-            }
-
-            implicitWidth: root.barMode === "notch" ? 34 : 38
-            implicitHeight: rightVertItemL.implicitHeight
-            visible: root.barMode === "notch" && root.mainBarEdge === "left"
-
-            BarRight {
-                id: rightVertItemL
-                showBackground: true
-                vertical: true
-                attachedEdge: root.barMode === "notch" ? "left" : ""
-                anchorWindow: barRightVerticalLeftWindow
-                notifCount: notifItem ? notifItem.total : 0
-                onOpenMixer: root.openMixer()
-                onCloseMixer: mixerLeaveTimer.restart()
-                onToggleMixer: root.toggleMixer()
-                onOpenBrightness: root.openBrightness()
-                onCloseBrightness: brightnessLeaveTimer.restart()
-                onToggleBrightness: root.toggleBrightness()
-                onOpenBattery: root.openBattery()
-                onCloseBattery: batteryLeaveTimer.restart()
-                onToggleBattery: root.toggleBattery()
-                onOpenNotif: root.openNotif()
-                onCloseNotif: notifLeaveTimer.restart()
-                onToggleNotif: root.toggleNotif()
-                onToggleControls: root.toggleControls()
-                onOpenPower: root.openPower()
-            }
-        }
-    }
-
-    /* ── Notch Mode: Right Edge Separated Vertical Bars (Workspaces at Top, Controls at Bottom) ── */
-    /* Workspaces Island at Top-Right */
-    Variants {
-        model: Quickshell.screens
-
-        PanelWindow {
-            id: barLeftVerticalRightWindow
-            required property var modelData
-
-            screen: modelData
-            color: "transparent"
-            WlrLayershell.namespace: "carbon-bar-vr-left"
-            WlrLayershell.layer: WlrLayer.Top
-            exclusionMode: ExclusionMode.Ignore
-            aboveWindows: true
-            anchors {
-                top: true
-                right: true
-            }
-            margins {
-                top: 14
-                right: root.barMode === "notch" ? 0 : 8
-            }
-
-            implicitWidth: root.barMode === "notch" ? 34 : 38
-            implicitHeight: leftVertItemR.implicitHeight
-            visible: root.barMode === "notch" && root.mainBarEdge === "right"
-
-            BarLeft {
-                id: leftVertItemR
-                showBackground: true
-                vertical: true
-                attachedEdge: root.barMode === "notch" ? "right" : ""
-                onOpenLauncher: root.openLauncher()
-            }
-        }
-    }
-
-    /* Controls Island at Bottom-Right */
-    Variants {
-        model: Quickshell.screens
-
-        PanelWindow {
-            id: barRightVerticalRightWindow
-            required property var modelData
-
-            screen: modelData
-            color: "transparent"
-            WlrLayershell.namespace: "carbon-bar-vr-right"
-            WlrLayershell.layer: WlrLayer.Top
-            exclusionMode: ExclusionMode.Ignore
-            aboveWindows: true
-            anchors {
-                bottom: true
-                right: true
-            }
-            margins {
-                bottom: 14
-                right: root.barMode === "notch" ? 0 : 8
-            }
-
-            implicitWidth: root.barMode === "notch" ? 34 : 38
-            implicitHeight: rightVertItemR.implicitHeight
-            visible: root.barMode === "notch" && root.mainBarEdge === "right"
-
-            BarRight {
-                id: rightVertItemR
-                showBackground: true
-                vertical: true
-                attachedEdge: root.barMode === "notch" ? "right" : ""
-                anchorWindow: barRightVerticalRightWindow
-                notifCount: notifItem ? notifItem.total : 0
-                onOpenMixer: root.openMixer()
-                onCloseMixer: mixerLeaveTimer.restart()
-                onToggleMixer: root.toggleMixer()
-                onOpenBrightness: root.openBrightness()
-                onCloseBrightness: brightnessLeaveTimer.restart()
-                onToggleBrightness: root.toggleBrightness()
-                onOpenBattery: root.openBattery()
-                onCloseBattery: batteryLeaveTimer.restart()
-                onToggleBattery: root.toggleBattery()
-                onOpenNotif: root.openNotif()
-                onCloseNotif: notifLeaveTimer.restart()
-                onToggleNotif: root.toggleNotif()
-                onToggleControls: root.toggleControls()
-                onOpenPower: root.openPower()
-            }
-        }
-    }
 
 
     /* Music island: floats top-centre, transparent, independent of the bar.
@@ -1738,7 +1554,7 @@ ShellRoot {
             }
 
             implicitHeight: 34
-            visible: root.barMode === "notch" && root.mainBarEdge !== "left" && root.mainBarEdge !== "right"
+            visible: root.barMode === "notch"
 
             mask: notchMask
             Region {

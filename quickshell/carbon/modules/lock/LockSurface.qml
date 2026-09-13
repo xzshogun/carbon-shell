@@ -21,10 +21,15 @@ import "../../Singletons"
 WlSessionLockSurface {
     id: root
 
+    signal requestUnlock()
     property var sessionLock: null
     property var notificationServer: null
 
     color: "#050508"
+
+    Component.onCompleted: {
+        pwdCard.forceActiveFocus()
+    }
 
     function startUnlock() {
         topVisualizer.active = false
@@ -62,10 +67,17 @@ WlSessionLockSurface {
                 easing.type: Easing.InQuad
             }
             NumberAnimation {
+                target: bgContainer
+                property: "opacity"
+                to: 0.0
+                duration: 280
+                easing.type: Easing.OutQuad
+            }
+            NumberAnimation {
                 target: bgDim
                 property: "opacity"
                 to: 0.0
-                duration: 340
+                duration: 280
                 easing.type: Easing.OutQuad
             }
             NumberAnimation {
@@ -98,10 +110,11 @@ WlSessionLockSurface {
             }
         }
 
-        PropertyAction {
-            target: root.sessionLock ? root.sessionLock : sessionLock
-            property: "locked"
-            value: false
+        ScriptAction {
+            script: {
+                root.requestUnlock()
+                Quickshell.execDetached(["sh", "/home/shogun/.config/hypr/scripts/carbon-ipc.sh", "unlock"])
+            }
         }
     }
 
@@ -209,10 +222,5 @@ WlSessionLockSurface {
         anchors.leftMargin: 36
         anchors.bottomMargin: 14
         anchors.bottom: mediaOverlay.top
-    }
-
-    Component.onCompleted: {
-        pwdCard.revealed = true
-        pwdCard.forceActiveFocus()
     }
 }

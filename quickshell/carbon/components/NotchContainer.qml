@@ -196,46 +196,6 @@ Item {
 
     property bool isPlaying: false
     property string trackTitle: ""
-    property real musicPulseVal: 0.90
-
-    SequentialAnimation {
-        running: root.isPlaying
-        loops: Animation.Infinite
-        NumberAnimation { target: root; property: "musicPulseVal"; to: 1.0; duration: 1400; easing.type: Easing.InOutSine }
-        NumberAnimation { target: root; property: "musicPulseVal"; to: 0.40; duration: 1400; easing.type: Easing.InOutSine }
-    }
-
-    // Track change accent shimmer sweep
-    Rectangle {
-        id: trackShimmer
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        width: 70
-        x: -90
-        z: 3
-        opacity: 0.0
-        gradient: Gradient {
-            orientation: Gradient.Horizontal
-            GradientStop { position: 0.0; color: "transparent" }
-            GradientStop { position: 0.5; color: Qt.alpha(Theme.accent, 0.45) }
-            GradientStop { position: 1.0; color: "transparent" }
-        }
-    }
-
-    SequentialAnimation {
-        id: trackSweepAnim
-        ParallelAnimation {
-            NumberAnimation { target: trackShimmer; property: "opacity"; from: 0.0; to: 0.8; duration: 80; easing.type: Easing.OutQuad }
-            NumberAnimation { target: trackShimmer; property: "x"; from: -90; to: root.width + 40; duration: 420; easing.type: Easing.OutCubic }
-        }
-        NumberAnimation { target: trackShimmer; property: "opacity"; to: 0.0; duration: 140; easing.type: Easing.OutQuad }
-    }
-
-    onTrackTitleChanged: {
-        if (trackTitle.length > 0 && root.isPlaying) {
-            trackSweepAnim.restart()
-        }
-    }
 
     // VisionOS specular glass glow line along bottom rim
     Rectangle {
@@ -248,7 +208,7 @@ Item {
         height: 1.6
         radius: 0.8
         z: 2
-        opacity: root.isPlaying ? root.musicPulseVal : 0.90
+        opacity: 0.90
         gradient: Gradient {
             orientation: Gradient.Horizontal
             GradientStop { position: 0.0; color: "transparent" }

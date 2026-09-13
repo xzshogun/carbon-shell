@@ -50,7 +50,7 @@ Item {
     implicitWidth: 310
     implicitHeight: 52
 
-    property bool revealed: true
+    property bool revealed: false
     opacity: revealed ? 1.0 : 0.0
     scale: revealed ? 1.0 : 0.82
     transform: Translate {
@@ -225,48 +225,29 @@ Item {
         anchors.horizontalCenterOffset: cardRoot.xOffset
         radius: 26
 
-        // VisionOS Specular Refractive Bevel
-        gradient: Gradient {
-            orientation: Gradient.Vertical
-            GradientStop { position: 0.0; color: cardRoot.buffer.length > 0 ? (Theme.accent ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.75) : Qt.rgba(1, 1, 1, 0.65)) : Qt.rgba(1.0, 1.0, 1.0, 0.45) }
-            GradientStop { position: 0.35; color: Qt.alpha(Theme.accent, 0.35) }
-            GradientStop { position: 0.75; color: Qt.rgba(1.0, 1.0, 1.0, 0.15) }
-            GradientStop { position: 1.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.35) }
+        color: Qt.rgba(0.08, 0.08, 0.12, 0.88)
+
+        border.width: 1.5
+        border.color: {
+            if (cardRoot.isSuccess) return Theme.ok ? Theme.ok : "#a6e3a1"
+            if (cardRoot.isError) return Theme.err ? Theme.err : "#f38ba8"
+            if (cardRoot.buffer.length > 0) return Theme.accent ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.75) : Qt.rgba(0, 0.94, 1, 0.75)
+            return Qt.rgba(1, 1, 1, 0.15)
         }
 
+        Behavior on border.color {
+            ColorAnimation { duration: 150 }
+        }
+
+        // Animated border glow ring on keystrokes
         Rectangle {
-            id: cardInnerBody
+            id: borderGlow
             anchors.fill: parent
-            anchors.margins: 1.4
-            radius: parent.radius - 1.4
-            gradient: Gradient {
-                orientation: Gradient.Vertical
-                GradientStop { position: 0.0; color: Qt.rgba(0.10, 0.11, 0.16, 0.75) }
-                GradientStop { position: 0.5; color: Qt.rgba(0.07, 0.08, 0.11, 0.84) }
-                GradientStop { position: 1.0; color: Qt.rgba(0.05, 0.06, 0.08, 0.92) }
-            }
-
-            border.width: (cardRoot.isSuccess || cardRoot.isError) ? 1.5 : 0
-            border.color: {
-                if (cardRoot.isSuccess) return Theme.ok ? Theme.ok : "#a6e3a1"
-                if (cardRoot.isError) return Theme.err ? Theme.err : "#f38ba8"
-                return "transparent"
-            }
-
-            Behavior on border.color {
-                ColorAnimation { duration: 150 }
-            }
-
-            // Animated border glow ring on keystrokes
-            Rectangle {
-                id: borderGlow
-                anchors.fill: parent
-                radius: parent.radius
-                color: "transparent"
-                border.width: 1.8
-                border.color: Theme.accent ? Theme.accent : "#00F0FF"
-                opacity: 0.0
-            }
+            radius: 26
+            color: "transparent"
+            border.width: 2.0
+            border.color: Theme.accent ? Theme.accent : "#00F0FF"
+            opacity: 0.0
         }
 
         // Inner row layout: Lock Icon + Animated Shapes + Submit Arrow

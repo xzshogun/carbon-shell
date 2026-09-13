@@ -37,8 +37,12 @@ Scope {
 
         LockSurface {
             id: surf
-            sessionLock: sessionLock
             notificationServer: root.notificationServer
+
+            onRequestUnlock: {
+                console.log("[LockScreen] Received onRequestUnlock -> unlocking session lock")
+                sessionLock.locked = false
+            }
 
             Connections {
                 target: root

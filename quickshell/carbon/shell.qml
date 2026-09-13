@@ -1001,17 +1001,22 @@ ShellRoot {
                 // VisionOS Refractive Glass Gradient Rim
                 gradient: Gradient {
                     orientation: Gradient.Vertical
-                    GradientStop { position: 0.0; color: Qt.rgba(1.0, 1.0, 1.0, 0.45) }
-                    GradientStop { position: 0.25; color: Qt.alpha(Theme.accent, 0.35) }
-                    GradientStop { position: 0.65; color: Qt.rgba(1.0, 1.0, 1.0, 0.12) }
-                    GradientStop { position: 1.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.35) }
+                    GradientStop { position: 0.0; color: Qt.rgba(1.0, 1.0, 1.0, 0.55) }
+                    GradientStop { position: 0.25; color: Qt.alpha(Theme.accent, 0.45) }
+                    GradientStop { position: 0.70; color: Qt.rgba(1.0, 1.0, 1.0, 0.20) }
+                    GradientStop { position: 1.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.40) }
                 }
 
                 Rectangle {
                     anchors.fill: parent
-                    anchors.margins: 1
+                    anchors.margins: 1.4
                     radius: parent.radius - 1
-                    color: Theme.bg
+                    gradient: Gradient {
+                        orientation: Gradient.Vertical
+                        GradientStop { position: 0.0; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.60) }
+                        GradientStop { position: 0.5; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.72) }
+                        GradientStop { position: 1.0; color: Qt.rgba(Theme.bg.r * 0.75, Theme.bg.g * 0.75, Theme.bg.b * 0.75, 0.82) }
+                    }
 
                     Item {
                         anchors.fill: parent

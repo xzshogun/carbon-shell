@@ -150,16 +150,16 @@ Item {
         layer.enabled: true
         layer.smooth: true
 
-        // Filled background body with VisionOS glass depth
+        // Filled background body with VisionOS frosted glass depth
         ShapePath {
             strokeWidth: 0
             strokeColor: "transparent"
             fillGradient: LinearGradient {
                 x1: 0; y1: root.attachedBottom ? root.height : 0
                 x2: 0; y2: root.attachedBottom ? 0 : root.height
-                GradientStop { position: 0.0; color: Qt.tint(Theme.bg, Qt.rgba(1.0, 1.0, 1.0, 0.07)) }
-                GradientStop { position: 0.6; color: Theme.bg }
-                GradientStop { position: 1.0; color: Qt.darker(Theme.bg, 1.15) }
+                GradientStop { position: 0.0; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.60) }
+                GradientStop { position: 0.45; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.72) }
+                GradientStop { position: 1.0; color: Qt.rgba(Theme.bg.r * 0.75, Theme.bg.g * 0.75, Theme.bg.b * 0.75, 0.82) }
             }
 
             PathSvg {
@@ -167,10 +167,10 @@ Item {
             }
         }
 
-        // Ambient glass outline
+        // VisionOS Specular Rim (Crisp, light-catching frosted glass bevel)
         ShapePath {
-            strokeWidth: 1.2
-            strokeColor: Qt.alpha(Theme.outline, 0.45)
+            strokeWidth: 1.5
+            strokeColor: Qt.rgba(1.0, 1.0, 1.0, 0.45)
             fillColor: "transparent"
             capStyle: ShapePath.RoundCap
             joinStyle: ShapePath.RoundJoin
@@ -180,10 +180,10 @@ Item {
             }
         }
 
-        // VisionOS Specular Highlight Catch (Crisp light catching the bottom curved edge)
+        // Accent refraction rim
         ShapePath {
-            strokeWidth: 0.8
-            strokeColor: Qt.alpha(Theme.fg, 0.32)
+            strokeWidth: 1.0
+            strokeColor: Qt.alpha(Theme.accent, 0.40)
             fillColor: "transparent"
             capStyle: ShapePath.RoundCap
             joinStyle: ShapePath.RoundJoin
@@ -202,16 +202,16 @@ Item {
         anchors.topMargin: root.attachedBottom ? 1 : 0
         anchors.horizontalCenter: parent.horizontalCenter
         width: Math.max(10, root.width - (root.filletRadius * 2 + root.bottomRadius * 2 + 10))
-        height: 1
-        radius: 0.5
+        height: 1.6
+        radius: 0.8
         z: 2
-        opacity: 0.55
+        opacity: 0.90
         gradient: Gradient {
             orientation: Gradient.Horizontal
             GradientStop { position: 0.0; color: "transparent" }
-            GradientStop { position: 0.2; color: Qt.alpha(Theme.accent, 0.4) }
-            GradientStop { position: 0.5; color: Qt.rgba(1.0, 1.0, 1.0, 0.65) }
-            GradientStop { position: 0.8; color: Qt.alpha(Theme.accent, 0.4) }
+            GradientStop { position: 0.15; color: Qt.alpha(Theme.accent, 0.6) }
+            GradientStop { position: 0.5; color: Qt.rgba(1.0, 1.0, 1.0, 0.95) }
+            GradientStop { position: 0.85; color: Qt.alpha(Theme.accent, 0.6) }
             GradientStop { position: 1.0; color: "transparent" }
         }
     }

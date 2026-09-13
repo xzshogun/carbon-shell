@@ -451,17 +451,22 @@ Item {
             radius: 17
             gradient: Gradient {
                 orientation: Gradient.Vertical
-                GradientStop { position: 0.0; color: Qt.rgba(1.0, 1.0, 1.0, 0.42) }
-                GradientStop { position: 0.25; color: Qt.alpha(Theme.accent, 0.32) }
-                GradientStop { position: 0.65; color: Qt.rgba(1.0, 1.0, 1.0, 0.12) }
-                GradientStop { position: 1.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.35) }
+                GradientStop { position: 0.0; color: Qt.rgba(1.0, 1.0, 1.0, 0.55) }
+                GradientStop { position: 0.25; color: Qt.alpha(Theme.accent, 0.45) }
+                GradientStop { position: 0.70; color: Qt.rgba(1.0, 1.0, 1.0, 0.20) }
+                GradientStop { position: 1.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.40) }
             }
 
             Rectangle {
                 anchors.fill: parent
-                anchors.margins: 1
+                anchors.margins: 1.4
                 radius: parent.radius - 1
-                color: Qt.rgba(0.08, 0.09, 0.12, 0.95)
+                gradient: Gradient {
+                    orientation: Gradient.Vertical
+                    GradientStop { position: 0.0; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.60) }
+                    GradientStop { position: 0.5; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.72) }
+                    GradientStop { position: 1.0; color: Qt.rgba(Theme.bg.r * 0.75, Theme.bg.g * 0.75, Theme.bg.b * 0.75, 0.82) }
+                }
             }
         }
 
@@ -481,16 +486,16 @@ Item {
                 fillGradient: LinearGradient {
                     x1: 0; y1: root.attachedBottom ? root.height : 0
                     x2: 0; y2: root.attachedBottom ? 0 : root.height
-                    GradientStop { position: 0.0; color: Qt.rgba(0.12, 0.13, 0.18, 0.98) }
-                    GradientStop { position: 0.6; color: Qt.rgba(0.08, 0.09, 0.12, 0.96) }
-                    GradientStop { position: 1.0; color: Qt.rgba(0.05, 0.06, 0.08, 0.96) }
+                    GradientStop { position: 0.0; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.60) }
+                    GradientStop { position: 0.45; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.72) }
+                    GradientStop { position: 1.0; color: Qt.rgba(Theme.bg.r * 0.75, Theme.bg.g * 0.75, Theme.bg.b * 0.75, 0.82) }
                 }
                 PathSvg { path: root.notchFillPath }
             }
 
             ShapePath {
-                strokeWidth: 1.2
-                strokeColor: Qt.alpha(Theme.outline, 0.45)
+                strokeWidth: 1.5
+                strokeColor: Qt.rgba(1.0, 1.0, 1.0, 0.45)
                 fillColor: "transparent"
                 capStyle: ShapePath.RoundCap
                 joinStyle: ShapePath.RoundJoin
@@ -498,8 +503,8 @@ Item {
             }
 
             ShapePath {
-                strokeWidth: 0.8
-                strokeColor: Qt.alpha(Theme.fg, 0.32)
+                strokeWidth: 1.0
+                strokeColor: Qt.alpha(Theme.accent, 0.40)
                 fillColor: "transparent"
                 capStyle: ShapePath.RoundCap
                 joinStyle: ShapePath.RoundJoin
@@ -515,17 +520,17 @@ Item {
             anchors.topMargin: root.attachedBottom ? 1 : 0
             anchors.horizontalCenter: parent.horizontalCenter
             width: Math.max(10, root.width - (root.filletRadius * 2 + root.bottomRadius * 2 + 10))
-            height: 1
-            radius: 0.5
+            height: 1.6
+            radius: 0.8
             z: 2
-            opacity: 0.55
+            opacity: 0.90
             visible: root.islandStyle === "notch"
             gradient: Gradient {
                 orientation: Gradient.Horizontal
                 GradientStop { position: 0.0; color: "transparent" }
-                GradientStop { position: 0.2; color: Qt.alpha(Theme.accent, 0.4) }
-                GradientStop { position: 0.5; color: Qt.rgba(1.0, 1.0, 1.0, 0.65) }
-                GradientStop { position: 0.8; color: Qt.alpha(Theme.accent, 0.4) }
+                GradientStop { position: 0.15; color: Qt.alpha(Theme.accent, 0.6) }
+                GradientStop { position: 0.5; color: Qt.rgba(1.0, 1.0, 1.0, 0.95) }
+                GradientStop { position: 0.85; color: Qt.alpha(Theme.accent, 0.6) }
                 GradientStop { position: 1.0; color: "transparent" }
             }
         }

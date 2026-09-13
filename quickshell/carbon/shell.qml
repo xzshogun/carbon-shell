@@ -997,12 +997,24 @@ ShellRoot {
                 id: pillFullCapsule
                 anchors.fill: parent
                 radius: 19
-                color: Theme.bg
-                border.color: Theme.outline
-                border.width: 1
 
-                Item {
+                // VisionOS Refractive Glass Gradient Rim
+                gradient: Gradient {
+                    orientation: Gradient.Vertical
+                    GradientStop { position: 0.0; color: Qt.rgba(1.0, 1.0, 1.0, 0.45) }
+                    GradientStop { position: 0.25; color: Qt.alpha(Theme.accent, 0.35) }
+                    GradientStop { position: 0.65; color: Qt.rgba(1.0, 1.0, 1.0, 0.12) }
+                    GradientStop { position: 1.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.35) }
+                }
+
+                Rectangle {
                     anchors.fill: parent
+                    anchors.margins: 1
+                    radius: parent.radius - 1
+                    color: Theme.bg
+
+                    Item {
+                        anchors.fill: parent
                     anchors.leftMargin: 8
                     anchors.rightMargin: 8
 
@@ -1125,6 +1137,7 @@ ShellRoot {
                     }
                 }
             }
+        }
         }
     }
 

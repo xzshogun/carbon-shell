@@ -443,18 +443,29 @@ Item {
             }
         }
 
-        /* ── 1A. Pill Mode Background (Floating Rounded Capsule) ── */
+        /* ── 1A. Pill Mode Background (Floating Rounded Capsule with VisionOS Rim) ── */
         Rectangle {
             id: pillBg
             anchors.fill: parent
             visible: root.islandStyle !== "notch"
             radius: 17
-            color: Qt.rgba(0.08, 0.09, 0.12, 0.94)
-            border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.32)
-            border.width: 1
+            gradient: Gradient {
+                orientation: Gradient.Vertical
+                GradientStop { position: 0.0; color: Qt.rgba(1.0, 1.0, 1.0, 0.42) }
+                GradientStop { position: 0.25; color: Qt.alpha(Theme.accent, 0.32) }
+                GradientStop { position: 0.65; color: Qt.rgba(1.0, 1.0, 1.0, 0.12) }
+                GradientStop { position: 1.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.35) }
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: parent.radius - 1
+                color: Qt.rgba(0.08, 0.09, 0.12, 0.95)
+            }
         }
 
-        /* ── 1B. Notch Mode Background (Screen-Attached Curved Notch) ── */
+        /* ── 1B. Notch Mode Background (Screen-Attached Curved Notch with VisionOS Rim) ── */
         Shape {
             id: notchShape
             anchors.fill: parent
@@ -467,17 +478,55 @@ Item {
             ShapePath {
                 strokeWidth: 0
                 strokeColor: "transparent"
-                fillColor: Qt.rgba(0.08, 0.09, 0.12, 0.96)
+                fillGradient: LinearGradient {
+                    x1: 0; y1: root.attachedBottom ? root.height : 0
+                    x2: 0; y2: root.attachedBottom ? 0 : root.height
+                    GradientStop { position: 0.0; color: Qt.rgba(0.12, 0.13, 0.18, 0.98) }
+                    GradientStop { position: 0.6; color: Qt.rgba(0.08, 0.09, 0.12, 0.96) }
+                    GradientStop { position: 1.0; color: Qt.rgba(0.05, 0.06, 0.08, 0.96) }
+                }
                 PathSvg { path: root.notchFillPath }
             }
 
             ShapePath {
-                strokeWidth: 1
-                strokeColor: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.4)
+                strokeWidth: 1.2
+                strokeColor: Qt.alpha(Theme.outline, 0.45)
                 fillColor: "transparent"
                 capStyle: ShapePath.RoundCap
                 joinStyle: ShapePath.RoundJoin
                 PathSvg { path: root.notchStrokePath }
+            }
+
+            ShapePath {
+                strokeWidth: 0.8
+                strokeColor: Qt.alpha(Theme.fg, 0.32)
+                fillColor: "transparent"
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+                PathSvg { path: root.notchStrokePath }
+            }
+        }
+
+        // Specular glow line on bottom rim of minimal island
+        Rectangle {
+            anchors.bottom: root.attachedBottom ? undefined : parent.bottom
+            anchors.top: root.attachedBottom ? parent.top : undefined
+            anchors.bottomMargin: root.attachedBottom ? 0 : 1
+            anchors.topMargin: root.attachedBottom ? 1 : 0
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: Math.max(10, root.width - (root.filletRadius * 2 + root.bottomRadius * 2 + 10))
+            height: 1
+            radius: 0.5
+            z: 2
+            opacity: 0.55
+            visible: root.islandStyle === "notch"
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: "transparent" }
+                GradientStop { position: 0.2; color: Qt.alpha(Theme.accent, 0.4) }
+                GradientStop { position: 0.5; color: Qt.rgba(1.0, 1.0, 1.0, 0.65) }
+                GradientStop { position: 0.8; color: Qt.alpha(Theme.accent, 0.4) }
+                GradientStop { position: 1.0; color: "transparent" }
             }
         }
 

@@ -2,6 +2,23 @@ local home   = os.getenv("HOME")
 local hypr   = home .. "/.config/hypr"
 package.path = package.path .. ";" .. home .. "/.config/caelestia/?.lua"
 
+-- Invalidate cached modules on each reload to ensure updated configs/keybinds apply live
+package.loaded["variables"] = nil
+package.loaded["hypr-vars"] = nil
+package.loaded["hypr-user"] = nil
+package.loaded["hyprland.env"] = nil
+package.loaded["hyprland.general"] = nil
+package.loaded["hyprland.input"] = nil
+package.loaded["hyprland.misc"] = nil
+package.loaded["hyprland.animations"] = nil
+package.loaded["hyprland.decoration"] = nil
+package.loaded["hyprland.group"] = nil
+package.loaded["hyprland.execs"] = nil
+package.loaded["hyprland.rules"] = nil
+package.loaded["hyprland.gestures"] = nil
+package.loaded["hyprland.keybinds"] = nil
+package.loaded["hyprland-gui"] = nil
+
 -- Create a file if it doesn't exist, optionally with initial content
 local function maybe_create(file, content)
     local f = io.open(file)

@@ -443,34 +443,18 @@ Item {
             }
         }
 
-        /* ── 1A. Pill Mode Background (Floating Rounded Capsule with VisionOS Rim) ── */
+        /* ── 1A. Pill Mode Background (Floating Rounded Capsule) ── */
         Rectangle {
             id: pillBg
             anchors.fill: parent
             visible: root.islandStyle !== "notch"
             radius: 17
-            gradient: Gradient {
-                orientation: Gradient.Vertical
-                GradientStop { position: 0.0; color: Qt.rgba(1.0, 1.0, 1.0, 0.55) }
-                GradientStop { position: 0.25; color: Qt.alpha(Theme.accent, 0.45) }
-                GradientStop { position: 0.70; color: Qt.rgba(1.0, 1.0, 1.0, 0.20) }
-                GradientStop { position: 1.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.40) }
-            }
-
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: 1.4
-                radius: parent.radius - 1
-                gradient: Gradient {
-                    orientation: Gradient.Vertical
-                    GradientStop { position: 0.0; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.60) }
-                    GradientStop { position: 0.5; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.72) }
-                    GradientStop { position: 1.0; color: Qt.rgba(Theme.bg.r * 0.75, Theme.bg.g * 0.75, Theme.bg.b * 0.75, 0.82) }
-                }
-            }
+            color: Theme.bg
+            border.color: Theme.outline
+            border.width: 1
         }
 
-        /* ── 1B. Notch Mode Background (Screen-Attached Curved Notch with VisionOS Rim) ── */
+        /* ── 1B. Notch Mode Background (Screen-Attached Curved Notch) ── */
         Shape {
             id: notchShape
             anchors.fill: parent
@@ -483,55 +467,17 @@ Item {
             ShapePath {
                 strokeWidth: 0
                 strokeColor: "transparent"
-                fillGradient: LinearGradient {
-                    x1: 0; y1: root.attachedBottom ? root.height : 0
-                    x2: 0; y2: root.attachedBottom ? 0 : root.height
-                    GradientStop { position: 0.0; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.60) }
-                    GradientStop { position: 0.45; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.72) }
-                    GradientStop { position: 1.0; color: Qt.rgba(Theme.bg.r * 0.75, Theme.bg.g * 0.75, Theme.bg.b * 0.75, 0.82) }
-                }
+                fillColor: Theme.bg
                 PathSvg { path: root.notchFillPath }
             }
 
             ShapePath {
-                strokeWidth: 1.5
-                strokeColor: Qt.rgba(1.0, 1.0, 1.0, 0.45)
+                strokeWidth: 1.2
+                strokeColor: Qt.alpha(Theme.outline, 0.45)
                 fillColor: "transparent"
                 capStyle: ShapePath.RoundCap
                 joinStyle: ShapePath.RoundJoin
                 PathSvg { path: root.notchStrokePath }
-            }
-
-            ShapePath {
-                strokeWidth: 1.0
-                strokeColor: Qt.alpha(Theme.accent, 0.40)
-                fillColor: "transparent"
-                capStyle: ShapePath.RoundCap
-                joinStyle: ShapePath.RoundJoin
-                PathSvg { path: root.notchStrokePath }
-            }
-        }
-
-        // Specular glow line on bottom rim of minimal island
-        Rectangle {
-            anchors.bottom: root.attachedBottom ? undefined : parent.bottom
-            anchors.top: root.attachedBottom ? parent.top : undefined
-            anchors.bottomMargin: root.attachedBottom ? 0 : 1
-            anchors.topMargin: root.attachedBottom ? 1 : 0
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: Math.max(10, root.width - (root.filletRadius * 2 + root.bottomRadius * 2 + 10))
-            height: 1.6
-            radius: 0.8
-            z: 2
-            opacity: 0.90
-            visible: root.islandStyle === "notch"
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0.0; color: "transparent" }
-                GradientStop { position: 0.15; color: Qt.alpha(Theme.accent, 0.6) }
-                GradientStop { position: 0.5; color: Qt.rgba(1.0, 1.0, 1.0, 0.95) }
-                GradientStop { position: 0.85; color: Qt.alpha(Theme.accent, 0.6) }
-                GradientStop { position: 1.0; color: "transparent" }
             }
         }
 
@@ -1164,17 +1110,17 @@ Item {
                                 color: Theme.dnd ? Theme.fgDim : (notifArea.containsMouse ? Theme.accent : (root.notifCount > 0 ? Theme.accent : Theme.fg))
                             }
 
-                            /* Small indicator dot for unread notifications */
+                            /* Small indicator dot for normal mode */
                             Rectangle {
-                                visible: root.notifCount > 0 && !Theme.dnd
+                                visible: !Theme.dnd
                                 anchors.top: parent.top
                                 anchors.right: parent.right
                                 anchors.topMargin: -1
-                                anchors.rightMargin: -1
+                                anchors.rightMargin: -2
                                 width: 5
                                 height: 5
                                 radius: 2.5
-                                color: Theme.accent
+                                color: root.notifCount > 0 ? Theme.accent : Qt.alpha(Theme.fg, 0.45)
                             }
 
                             /* DND 'z' badge when Do Not Disturb is active */
@@ -1182,8 +1128,8 @@ Item {
                                 visible: Theme.dnd
                                 anchors.top: parent.top
                                 anchors.right: parent.right
-                                anchors.topMargin: -5
-                                anchors.rightMargin: -6
+                                anchors.topMargin: -4
+                                anchors.rightMargin: -4
                                 width: 10
                                 height: 10
 

@@ -150,40 +150,21 @@ Item {
         layer.enabled: true
         layer.smooth: true
 
-        // Filled background body with VisionOS frosted glass depth
+        // Filled background body
         ShapePath {
             strokeWidth: 0
             strokeColor: "transparent"
-            fillGradient: LinearGradient {
-                x1: 0; y1: root.attachedBottom ? root.height : 0
-                x2: 0; y2: root.attachedBottom ? 0 : root.height
-                GradientStop { position: 0.0; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.60) }
-                GradientStop { position: 0.45; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.72) }
-                GradientStop { position: 1.0; color: Qt.rgba(Theme.bg.r * 0.75, Theme.bg.g * 0.75, Theme.bg.b * 0.75, 0.82) }
-            }
+            fillColor: Theme.bg
 
             PathSvg {
                 path: root.fillPath
             }
         }
 
-        // VisionOS Specular Rim (Crisp, light-catching frosted glass bevel)
+        // Clean border outline
         ShapePath {
-            strokeWidth: 1.5
-            strokeColor: Qt.rgba(1.0, 1.0, 1.0, 0.45)
-            fillColor: "transparent"
-            capStyle: ShapePath.RoundCap
-            joinStyle: ShapePath.RoundJoin
-
-            PathSvg {
-                path: root.strokePath
-            }
-        }
-
-        // Accent refraction rim
-        ShapePath {
-            strokeWidth: 1.0
-            strokeColor: Qt.alpha(Theme.accent, 0.40)
+            strokeWidth: 1.2
+            strokeColor: Qt.alpha(Theme.outline, 0.45)
             fillColor: "transparent"
             capStyle: ShapePath.RoundCap
             joinStyle: ShapePath.RoundJoin
@@ -196,28 +177,6 @@ Item {
 
     property bool isPlaying: false
     property string trackTitle: ""
-
-    // VisionOS specular glass glow line along bottom rim
-    Rectangle {
-        anchors.bottom: root.attachedBottom ? undefined : parent.bottom
-        anchors.top: root.attachedBottom ? parent.top : undefined
-        anchors.bottomMargin: root.attachedBottom ? 0 : 1
-        anchors.topMargin: root.attachedBottom ? 1 : 0
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: Math.max(10, root.width - (root.filletRadius * 2 + root.bottomRadius * 2 + 10))
-        height: 1.6
-        radius: 0.8
-        z: 2
-        opacity: 0.90
-        gradient: Gradient {
-            orientation: Gradient.Horizontal
-            GradientStop { position: 0.0; color: "transparent" }
-            GradientStop { position: 0.15; color: Qt.alpha(Theme.accent, 0.6) }
-            GradientStop { position: 0.5; color: Qt.rgba(1.0, 1.0, 1.0, 0.95) }
-            GradientStop { position: 0.85; color: Qt.alpha(Theme.accent, 0.6) }
-            GradientStop { position: 1.0; color: "transparent" }
-        }
-    }
 
     property alias mouseArea: notchMouseArea
 

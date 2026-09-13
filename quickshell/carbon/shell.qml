@@ -992,29 +992,12 @@ ShellRoot {
                 id: pillFullCapsule
                 anchors.fill: parent
                 radius: 19
+                color: Theme.bg
+                border.color: Theme.outline
+                border.width: 1
 
-                // VisionOS Refractive Glass Gradient Rim
-                gradient: Gradient {
-                    orientation: Gradient.Vertical
-                    GradientStop { position: 0.0; color: Qt.rgba(1.0, 1.0, 1.0, 0.55) }
-                    GradientStop { position: 0.25; color: Qt.alpha(Theme.accent, 0.45) }
-                    GradientStop { position: 0.70; color: Qt.rgba(1.0, 1.0, 1.0, 0.20) }
-                    GradientStop { position: 1.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.40) }
-                }
-
-                Rectangle {
+                Item {
                     anchors.fill: parent
-                    anchors.margins: 1.4
-                    radius: parent.radius - 1
-                    gradient: Gradient {
-                        orientation: Gradient.Vertical
-                        GradientStop { position: 0.0; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.60) }
-                        GradientStop { position: 0.5; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.72) }
-                        GradientStop { position: 1.0; color: Qt.rgba(Theme.bg.r * 0.75, Theme.bg.g * 0.75, Theme.bg.b * 0.75, 0.82) }
-                    }
-
-                    Item {
-                        anchors.fill: parent
                     anchors.leftMargin: 8
                     anchors.rightMargin: 8
 
@@ -1137,7 +1120,6 @@ ShellRoot {
                     }
                 }
             }
-        }
         }
     }
 
@@ -1709,6 +1691,7 @@ ShellRoot {
             LauncherMod {
                 id: launcherItem
                 open: root.launcherOpen
+                barEdge: root.mainBarEdge
                 onCloseRequested: root.closeLauncher()
             }
         }

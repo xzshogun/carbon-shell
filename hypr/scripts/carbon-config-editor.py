@@ -688,21 +688,21 @@ def save_variables(updates):
 KEYBIND_META_MAP = {
     # Match patterns in rest/key -> (title, description, category, icon, var_key)
     "exec, $terminal": ("Terminal", "Launch default terminal ($terminal)", "Applications", "utilities-terminal-symbolic", "kbTerminal"),
-    "[float; size 800 550] $terminal": ("Floating Terminal", "Launch terminal in floating window", "Applications", "utilities-terminal-symbolic", None),
+    "[float; size 800 550] $terminal": ("Floating Terminal", "Launch terminal in floating window", "Applications", "utilities-terminal-symbolic", "kbFloatingTerminal"),
     "killactive": ("Close Active Window", "Gracefully close focused window", "Window Management", "window-close-symbolic", "kbCloseWindow"),
     "hyprctl dispatch exit": ("Exit Hyprland", "Log out of current Hyprland session", "System", "system-log-out-symbolic", "kbSession"),
-    "exec, $menu": ("Application Menu", "Open application launcher ($menu)", "Applications", "view-app-grid-symbolic", None),
+    "exec, $menu": ("Application Menu", "Open application launcher ($menu)", "Applications", "view-app-grid-symbolic", "kbMenu"),
     "togglefloating": ("Toggle Window Floating", "Switch between tiled and floating mode", "Window Management", "view-restore-symbolic", "kbToggleWindowFloating"),
-    "pseudo": ("Pseudo Tiling", "Toggle pseudo-tiled window state", "Window Management", "view-paged-symbolic", None),
-    "togglesplit": ("Toggle Dwindle Split", "Toggle horizontal/vertical window split", "Window Management", "view-split-left-symbolic", None),
+    "pseudo": ("Pseudo Tiling", "Toggle pseudo-tiled window state", "Window Management", "view-paged-symbolic", "kbPseudo"),
+    "togglesplit": ("Toggle Dwindle Split", "Toggle horizontal/vertical window split", "Window Management", "view-split-left-symbolic", "kbToggleSplit"),
     "wbrestart.sh": ("Restart Desktop Panel", "Reload and restart desktop panel", "System", "view-refresh-symbolic", None),
     "exec, firefox": ("Web Browser", "Launch Firefox web browser", "Applications", "web-browser-symbolic", "kbBrowser"),
-    "hyprlock.sh": ("Lock Screen", "Lock desktop session with Hyprlock", "System", "system-lock-screen-symbolic", None),
+    "hyprlock.sh": ("Lock Screen", "Lock desktop session with Hyprlock", "System", "system-lock-screen-symbolic", "kbLock"),
     "fullscreen": ("Toggle Fullscreen", "Expand active window to full screen", "Window Management", "view-fullscreen-symbolic", "kbWindowFullscreen"),
-    "screenshot.sh": ("Take Screenshot", "Capture region or full screen snapshot", "Applications", "applets-screenshooter-symbolic", None),
-    "carbon-ipc.sh wallpaper": ("Cycle Wallpaper", "Switch to next desktop wallpaper", "System", "preferences-desktop-wallpaper-symbolic", None),
-    "KillActiveProcess.sh": ("Force Kill Process", "Terminate unresponsive active process immediately", "Window Management", "process-stop-symbolic", None),
-    "hyprpicker": ("Color Picker", "Pick color from screen to clipboard", "Applications", "color-select-symbolic", None),
+    "screenshot.sh": ("Take Screenshot", "Capture region or full screen snapshot", "Applications", "applets-screenshooter-symbolic", "kbScreenshot"),
+    "carbon-ipc.sh wallpaper": ("Cycle Wallpaper", "Switch to next desktop wallpaper", "System", "preferences-desktop-wallpaper-symbolic", "kbWallpaper"),
+    "KillActiveProcess.sh": ("Force Kill Process", "Terminate unresponsive active process immediately", "Window Management", "process-stop-symbolic", "kbKillProcess"),
+    "hyprpicker": ("Color Picker", "Pick color from screen to clipboard", "Applications", "color-select-symbolic", "kbColorPicker"),
     "WaybarStyles.sh": ("Panel Styles", "Open panel preset styles menu", "System", "preferences-desktop-theme-symbolic", None),
     "WaybarLayout.sh": ("Panel Layout", "Open panel layout position menu", "System", "view-grid-symbolic", None),
     "pkill -SIGUSR1 waybar": ("Toggle Panel Visibility", "Show or hide the desktop panel", "System", "view-conceal-symbolic", "kbShowSidebar"),
@@ -896,6 +896,8 @@ def update_keybind_in_conf(line_idx, new_mods, new_key, original_rest=None, var_
         return False
         
     prefix = m.group(1)
+    old_mods = m.group(2).strip()
+    old_key = m.group(3).strip()
     rest = m.group(4)
     if new_mods:
         lines[target_idx] = f"{prefix}{new_mods}, {new_key}, {rest}\n"
@@ -910,15 +912,37 @@ def update_keybind_in_conf(line_idx, new_mods, new_key, original_rest=None, var_
         try:
             with open(VARIABLES_PATH, "r", encoding="utf-8") as f:
                 v_content = f.read()
-            v_content = re.sub(
-                rf'({var_key}\s*=\s*)"[^"]*"',
-                rf'\g<1>"{display_str}"',
-                v_content
-            )
+            if re.search(rf'{var_key}\s*=', v_content):
+                v_content = re.sub(
+                    rf'({var_key}\s*=\s*)"[^"]*"',
+                    rf'\g<1>"{display_str}"',
+                    v_content
+                )
+            else:
+                # Append before closing brace of return table
+                v_content = re.sub(
+                    r'(return\s*\{.*?)(\n\s*\})',
+                    rf'\1    {var_key} = "{display_str}",\2',
+                    v_content,
+                    flags=re.DOTALL
+                )
             with open(VARIABLES_PATH, "w", encoding="utf-8") as f:
                 f.write(v_content)
         except Exception:
             pass
+
+    # If running under Hyprland Lua, unbind old combination so it doesn't conflict
+    try:
+        old_lua_combo = f"{old_mods} + {old_key}" if old_mods else old_key
+        subprocess.run(["hyprctl", "eval", f'hl.unbind("{old_lua_combo}")'], capture_output=True, timeout=1, check=False)
+    except Exception:
+        pass
+
+    # Immediate live reload so Hyprland re-reads configs immediately
+    try:
+        subprocess.run(["hyprctl", "reload"], capture_output=True, timeout=2, check=False)
+    except Exception:
+        pass
 
 class CarbonSplashWidget(Gtk.DrawingArea):
     """

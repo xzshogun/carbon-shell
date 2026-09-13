@@ -145,5 +145,5 @@ hl.layer_rule({ match = { namespace = "launcher" }, animation = "popin 80%", blu
 
 -- Shell
 hl.layer_rule({ match = { namespace = "caelestia-(border-exclusion|area-picker)" }, no_anim = true })
-hl.layer_rule({ match = { namespace = "caelestia-(drawers|background)" }, animation = "fade" })
-hl.layer_rule({ match = { namespace = "carbon-.*" }, blur = true, ignore_alpha = 0.15, no_anim = true })
+hl.layer_rule({ match = { namespace = "carbon-overview" }, blur = true, ignore_alpha = 0.1 })
+hl.layer_rule({ match = { namespace = "carbon-.*" }, no_anim = true })

@@ -178,6 +178,15 @@ if [ -f "${HOME}/.config/hypr/scripts/theme-mk.py" ]; then
     python3 "${HOME}/.config/hypr/scripts/theme-mk.py" >/dev/null 2>&1 || true
 fi
 
+# Configure & unmute ALSA / Realtek ALC audio hardware
+echo -e "      Configuring ALSA / Realtek ALC audio hardware..."
+if [ -f "${HOME}/.config/hypr/scripts/carbon-audio-init.sh" ]; then
+    bash "${HOME}/.config/hypr/scripts/carbon-audio-init.sh" >/dev/null 2>&1 || true
+fi
+
+# Clean up any deprecated config keys (e.g. dwindle.pseudotile, misc.vfr)
+sed -i '/dwindle\.pseudotile/d; /misc\.vfr/d' "${HOME}/.config/hypr/"*.lua "${HOME}/.config/hypr/hyprland/"*.lua 2>/dev/null || true
+
 echo -e "\n${GREEN}==============================================================================${RESET}"
 echo -e "${GREEN}  ✓ Carbon Shell installation completed successfully!${RESET}"
 echo -e "${GREEN}==============================================================================${RESET}\n"

@@ -62,10 +62,20 @@ Item {
     }
 
     function nodeName(n) {
-        if (!n) return "";
-        return String(n.properties["application.name"]
-            || n.properties["application.process.binary"]
-            || n.nickname || n.description || n.name || "?");
+        if (!n) return "Default Audio Output";
+        const props = n.properties || {};
+        const alsaChip = String(props["alsa.name"] || props["alsa.mixer_name"] || props["alsa.card_name"] || "");
+        const desc = String(props["node.description"] || n.description || props["device.description"] || n.nickname || "");
+        if (desc && desc.trim() !== "" && desc !== "?") {
+            if (alsaChip && !desc.toLowerCase().includes(alsaChip.toLowerCase())) {
+                return desc.trim() + " (" + alsaChip.trim() + ")";
+            }
+            return desc.trim();
+        }
+        if (alsaChip) return alsaChip;
+        const app = String(props["application.name"] || props["application.process.binary"] || "");
+        if (app && app.trim() !== "" && app !== "?") return app.trim();
+        return String(n.name || "Analog Stereo Device");
     }
 
     /* ============ Output ports (speakers / headphones ALSA routes) ============ */
@@ -89,31 +99,45 @@ Item {
     }
 
     function parseSinks(text) {
-        const name = root.defaultSink ? root.defaultSink.name : ""
-        if (!name) return
+        const name = root.defaultSink ? String(root.defaultSink.name || "") : ""
+        let foundPorts = []
         for (const block of String(text).split(/\r?\nSink #/)) {
             const nm = /^\tName: (.+)$/m.exec(block)
-            if (!nm || nm[1] !== name) continue
+            if (name && nm && nm[1] !== name) continue
             const port = /^\s*Active Port: (.+)$/m.exec(block)
-            root.activeOutputPort = port ? port[1] : ""
+            if (port) root.activeOutputPort = port[1].trim()
             const portSection = block.split(/\r?\n\tPorts:\r?\n/)[1]
             if (portSection) {
                 const portsText = portSection.split(/\r?\n\tActive Port:/)[0]
-                const re = /^\t\t([a-z0-9][a-z0-9-]*)\s*:\s*(.+?)\s*\(type:\s*(Speaker|Headphones|Lineout|HDMI),?/gmi
-                const out = []
+                const re = /^\t\t([a-z0-9_.-]+)\s*:\s*([^(]+?)(?:\s*\((.*)\))?$/gmi
                 let m
-                while ((m = re.exec(portsText))) out.push({ name: m[1], desc: m[2].trim() })
-                root.outputPorts = out
-            } else {
-                root.outputPorts = []
+                while ((m = re.exec(portsText))) {
+                    const pName = m[1].trim()
+                    let pDesc = m[2].trim()
+                    if (pDesc.length === 0) pDesc = pName
+                    foundPorts.push({ name: pName, desc: pDesc })
+                }
+                if (foundPorts.length > 0) break
             }
-            return
         }
+        if (foundPorts.length === 0 && name.includes("analog")) {
+            foundPorts = [
+                { name: "analog-output-speaker", desc: "Speakers" },
+                { name: "analog-output-headphones", desc: "Headphones" }
+            ]
+        }
+        root.outputPorts = foundPorts
     }
 
     function selectOutputPort(portName) {
         if (!root.defaultSink) return
         Quickshell.execDetached(["pactl", "set-sink-port", root.defaultSink.name, portName])
+        Quickshell.execDetached(["amixer", "-q", "sset", "Master", "unmute"])
+        if (/speaker/i.test(portName)) {
+            Quickshell.execDetached(["amixer", "-q", "sset", "Speaker", "unmute", "100%"])
+        } else if (/headphone/i.test(portName)) {
+            Quickshell.execDetached(["amixer", "-q", "sset", "Headphone", "unmute", "100%"])
+        }
         root.activeOutputPort = portName
         portSettleTimer.restart()
     }
@@ -523,7 +547,7 @@ Item {
 
                         /* Output Devices (Sinks: Built-in, Bluetooth, USB, HDMI) */
                         Text {
-                            visible: root.sinks.length > 1
+                            visible: root.sinks.length > 0
                             width: parent.width
                             text: "Devices"
                             font.family: "Valley Sans"
@@ -534,7 +558,7 @@ Item {
 
                         Column {
                             width: parent.width
-                            visible: root.sinks.length > 1
+                            visible: root.sinks.length > 0
                             spacing: 4
 
                             Repeater {

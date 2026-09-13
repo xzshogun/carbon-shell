@@ -1,4 +1,6 @@
 import QtQuick
+import QtQuick.Layouts
+import QtQuick.Shapes
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
@@ -350,46 +352,95 @@ Item {
         onTriggered: searchField.forceActiveFocus()
     }
 
-    width: root.mode === "wallpapers" ? 640 : 480
-    height: 14 + searchBox.height + 10 + (root.mode === "wallpapers" ? wpStrip.height : resultsList.height) + 14
+    property string barEdge: "top"
+    readonly property string attachedEdge: (root.barEdge === "bottom") ? "right" : "left"
 
-    anchors.horizontalCenter: parent.horizontalCenter
-    y: (root.mode === "wallpapers"
-       ? (parent ? parent.height - height - 32 : 0)
-       : (parent ? (parent.height - height) / 2 : 0)) + (root.open ? 0 : -22)
+    readonly property real filletRadius: 20
+    readonly property real cornerRadius: 16
 
-    opacity: root.open ? 1.0 : 0.0
-    scale: root.open ? 1.0 : 0.92
-    transformOrigin: Item.Center
-
-    Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-    Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-    Behavior on opacity {
-        NumberAnimation {
-            duration: root.open ? 280 : 160
-            easing.type: root.open ? Easing.OutExpo : Easing.InQuad
+    readonly property string notchFillPath: {
+        const w = root.width
+        const h = root.height
+        const rf = root.filletRadius
+        const rc = root.cornerRadius
+        if (root.attachedEdge === "left") {
+            return `M 0 0 A ${rf} ${rf} 0 0 0 ${rf} ${rf} L ${w - rc} ${rf} A ${rc} ${rc} 0 0 1 ${w} ${rf + rc} L ${w} ${h - (rf + rc)} A ${rc} ${rc} 0 0 1 ${w - rc} ${h - rf} L ${rf} ${h - rf} A ${rf} ${rf} 0 0 0 0 ${h} Z`
+        } else {
+            return `M ${w} 0 A ${rf} ${rf} 0 0 1 ${w - rf} ${rf} L ${rc} ${rf} A ${rc} ${rc} 0 0 0 0 ${rf + rc} L 0 ${h - (rf + rc)} A ${rc} ${rc} 0 0 0 ${rc} ${h - rf} L ${w - rf} ${h - rf} A ${rf} ${rf} 0 0 1 ${w} ${h} Z`
         }
     }
-    Behavior on scale {
+
+    readonly property string notchStrokePath: {
+        const w = root.width
+        const h = root.height
+        const rf = root.filletRadius
+        const rc = root.cornerRadius
+        if (root.attachedEdge === "left") {
+            return `M 0 0 A ${rf} ${rf} 0 0 0 ${rf} ${rf} L ${w - rc} ${rf} A ${rc} ${rc} 0 0 1 ${w} ${rf + rc} L ${w} ${h - (rf + rc)} A ${rc} ${rc} 0 0 1 ${w - rc} ${h - rf} L ${rf} ${h - rf} A ${rf} ${rf} 0 0 0 0 ${h}`
+        } else {
+            return `M ${w} 0 A ${rf} ${rf} 0 0 1 ${w - rf} ${rf} L ${rc} ${rf} A ${rc} ${rc} 0 0 0 0 ${rf + rc} L 0 ${h - (rf + rc)} A ${rc} ${rc} 0 0 0 ${rc} ${h - rf} L ${w - rf} ${h - rf} A ${rf} ${rf} 0 0 1 ${w} ${h}`
+        }
+    }
+
+    width: root.mode === "wallpapers" ? 420 : 340
+    height: Math.min(620, parent ? Math.round(parent.height * 0.74) : 620)
+
+    x: {
+        if (!parent) return 0
+        if (root.attachedEdge === "left") {
+            return root.open ? 0 : (-width - 24)
+        } else {
+            return root.open ? (parent.width - width) : (parent.width + 24)
+        }
+    }
+    y: parent ? Math.round((parent.height - height) / 2) : 0
+
+    opacity: root.open ? 1.0 : 0.0
+
+    Behavior on x {
         NumberAnimation {
-            duration: root.open ? 280 : 160
-            easing.type: root.open ? Easing.OutExpo : Easing.InQuad
+            duration: root.open ? 280 : 180
+            easing.type: root.open ? Easing.OutCubic : Easing.InQuad
         }
     }
     Behavior on y {
         NumberAnimation {
-            duration: root.open ? 280 : 160
-            easing.type: root.open ? Easing.OutExpo : Easing.InQuad
+            duration: 220
+            easing.type: Easing.OutCubic
+        }
+    }
+    Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+    Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+    Behavior on opacity {
+        NumberAnimation {
+            duration: root.open ? 220 : 140
+            easing.type: root.open ? Easing.OutQuad : Easing.InQuad
         }
     }
 
-    Rectangle {
+    Shape {
         id: card
         anchors.fill: parent
-        radius: 20
-        color: Theme.bg
-        border.color: Theme.outline
-        border.width: 1
+        preferredRendererType: Shape.CurveRenderer
+        asynchronous: false
+        layer.enabled: true
+        layer.smooth: true
+
+        ShapePath {
+            strokeWidth: 0
+            strokeColor: "transparent"
+            fillColor: Theme.bg
+            PathSvg { path: root.notchFillPath }
+        }
+
+        ShapePath {
+            strokeWidth: 1.2
+            strokeColor: Qt.alpha(Theme.outline, 0.45)
+            fillColor: "transparent"
+            capStyle: ShapePath.RoundCap
+            joinStyle: ShapePath.RoundJoin
+            PathSvg { path: root.notchStrokePath }
+        }
 
         MouseArea {
             anchors.fill: parent
@@ -400,15 +451,15 @@ Item {
     Rectangle {
         id: searchBox
         anchors.top: parent.top
-        anchors.topMargin: 14
+        anchors.topMargin: root.filletRadius + 8
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: 14
-        anchors.rightMargin: 14
+        anchors.leftMargin: root.attachedEdge === "left" ? 14 : 14
+        anchors.rightMargin: root.attachedEdge === "right" ? 14 : 14
         height: 38
         radius: 12
         color: Theme.bgAlt
-        border.color: Theme.outline
+        border.color: searchField.activeFocus ? Theme.accent : Theme.outline
         border.width: 1
 
         Text {
@@ -476,12 +527,13 @@ Item {
     ListView {
         id: resultsList
         anchors.top: searchBox.bottom
-        anchors.topMargin: 10
+        anchors.topMargin: 8
+        anchors.bottom: quickActionsRow.top
+        anchors.bottomMargin: 8
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.leftMargin: 12
         anchors.rightMargin: 12
-        height: Math.min(5, Math.max(1, resultsList.count)) * 44
         clip: true
         visible: root.mode !== "wallpapers"
         model: root.mode === "apps" ? appModel : actionModel
@@ -497,11 +549,22 @@ Item {
 
             width: resultsList.width
             height: 42
-            radius: 10
-            color: resultsList.currentIndex === index ? Theme.bgActive : (rowArea.hovered ? Theme.bgHover : "transparent")
+            radius: 8
+            color: resultsList.currentIndex === index ? Theme.bgActive : (rowArea.containsMouse ? Theme.bgHover : "transparent")
 
             Behavior on color {
                 ColorAnimation { duration: 90 }
+            }
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.margins: 6
+                width: 3
+                radius: 1.5
+                color: Theme.accent
+                visible: resultsList.currentIndex === index
             }
 
             Rectangle {
@@ -511,7 +574,7 @@ Item {
                 radius: 7
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
-                anchors.leftMargin: 8
+                anchors.leftMargin: 12
                 color: Theme.bgAlt
 
                 Image {
@@ -545,9 +608,10 @@ Item {
                 anchors.right: parent.right
                 anchors.rightMargin: 10
                 text: row.isAction ? (row.action ? row.action.name : "") : (row.entry ? row.entry.name : "")
-                color: row.isAction ? Theme.accentLit : Theme.fg
+                color: row.isAction ? Theme.accentLit : (resultsList.currentIndex === index ? Theme.fg : Theme.fgDim)
                 font.family: Theme.font
                 font.pixelSize: 13
+                font.weight: resultsList.currentIndex === index ? Font.DemiBold : Font.Normal
                 elide: Text.ElideRight
             }
 
@@ -562,7 +626,7 @@ Item {
                 text: row.isAction
                     ? (row.action ? row.action.desc : "")
                     : (row.entry ? (row.entry.comment || row.entry.genericName || "") : "")
-                color: Theme.fgDim
+                color: Theme.fgFaint
                 font.family: Theme.font
                 font.pixelSize: 10
                 elide: Text.ElideRight
@@ -580,6 +644,126 @@ Item {
                     else
                         root.launchEntry(entry);
                 }
+            }
+        }
+    }
+
+    /* ── Bottom Quick Actions Row ── */
+    Rectangle {
+        id: quickActionsRow
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: root.filletRadius + 6
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
+        height: 32
+        radius: 8
+        color: Theme.bgAlt
+        border.color: Qt.alpha(Theme.outline, 0.3)
+        border.width: 1
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 8
+            anchors.rightMargin: 8
+            spacing: 8
+
+            Item {
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 20
+                Text {
+                    anchors.centerIn: parent
+                    text: "\uf120"
+                    font.family: Theme.font
+                    font.pixelSize: 12
+                    color: termHov.containsMouse ? Theme.accent : Theme.fgDim
+                }
+                MouseArea {
+                    id: termHov
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        Quickshell.execDetached(["foot"])
+                        root.closeRequested()
+                    }
+                }
+            }
+
+            Item {
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 20
+                Text {
+                    anchors.centerIn: parent
+                    text: "\uf013"
+                    font.family: Theme.font
+                    font.pixelSize: 12
+                    color: cfgHov.containsMouse ? Theme.accent : Theme.fgDim
+                }
+                MouseArea {
+                    id: cfgHov
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        Quickshell.execDetached(["/home/shogun/.config/hypr/scripts/carbon-config-editor"])
+                        root.closeRequested()
+                    }
+                }
+            }
+
+            Item {
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 20
+                Text {
+                    anchors.centerIn: parent
+                    text: "\uf023"
+                    font.family: Theme.font
+                    font.pixelSize: 12
+                    color: lockHov.containsMouse ? Theme.accent : Theme.fgDim
+                }
+                MouseArea {
+                    id: lockHov
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        Quickshell.execDetached(["/home/shogun/.config/hypr/scripts/hyprlock.sh"])
+                        root.closeRequested()
+                    }
+                }
+            }
+
+            Item {
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 20
+                Text {
+                    anchors.centerIn: parent
+                    text: "\uf03e"
+                    font.family: Theme.font
+                    font.pixelSize: 12
+                    color: wpHov.containsMouse ? Theme.accent : Theme.fgDim
+                }
+                MouseArea {
+                    id: wpHov
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        root.wallpaperPickerOpen = !root.wallpaperPickerOpen
+                    }
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Text {
+                text: root.mode === "actions" ? "Commands" : (resultsList.count + " apps")
+                font.family: "Valley Sans"
+                font.pixelSize: 10
+                font.weight: Font.DemiBold
+                color: Theme.fgFaint
             }
         }
     }

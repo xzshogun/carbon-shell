@@ -72,6 +72,7 @@ Singleton {
     property color warn:      "#f9e2af"
     property color err:       "#f38ba8"
     property bool isDark:     true
+    property bool dnd:        false
 
     /* Bar geometry */
     readonly property real barWidth: 56

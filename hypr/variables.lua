@@ -102,4 +102,10 @@ return {
     kbShowPanels               = "SUPER + K",
     kbLock                     = "SUPER + L",
     kbRestoreLock              = "SUPER + ALT + L",
+    kbMenu                     = "SUPER + Space",
+    kbScreenshot               = "SUPER + Print",
+    kbWallpaper                = "SUPER + W",
+    kbKillProcess              = "CTRL + ALT + K",
+    kbColorPicker              = "SUPER + SHIFT + C",
+    kbFloatingTerminal         = "SUPER + ALT + Return",
 }

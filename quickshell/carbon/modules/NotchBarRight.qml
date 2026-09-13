@@ -282,41 +282,11 @@ NotchContainer {
             anchors.verticalCenter: parent.verticalCenter
             readonly property bool isHovered: notifMouse.containsMouse
 
-            scale: isHovered ? 1.18 : 1.0
-            y: isHovered ? -2 : 0
-            Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.4 } }
-            Behavior on y { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.4 } }
-
-            // Ambient glowing halo morphing into unique Clover4Leaf shape
-            MaterialShape {
-                anchors.centerIn: parent
-                width: parent.width + 8
-                height: parent.height + 8
-                shape: notifBadge.isHovered ? MaterialShape.Clover4Leaf : MaterialShape.Circle
-                animationDuration: 260
-                animationEasing: Easing.OutBack
-                color: notifBadge.isHovered ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.25) : "transparent"
-                scale: notifBadge.isHovered ? 1.12 : 0.6
-                opacity: notifBadge.isHovered ? 1.0 : 0.0
-                rotation: notifBadge.isHovered ? -10 : 0
-                Behavior on opacity { NumberAnimation { duration: 180 } }
-                Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
-            }
-
-            // Tactile highlight chip morphing into unique Clover4Leaf shape
-            MaterialShape {
+            Rectangle {
                 anchors.fill: parent
-                shape: notifBadge.isHovered ? MaterialShape.Clover4Leaf : MaterialShape.Circle
-                animationDuration: 260
-                animationEasing: Easing.OutBack
+                radius: 6
                 color: notifBadge.isHovered ? Theme.bgHover : "transparent"
-                strokeColor: notifBadge.isHovered ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.40) : "transparent"
-                strokeWidth: 1.2
-                rotation: notifBadge.isHovered ? -10 : 0
-                Behavior on color { ColorAnimation { duration: 120 } }
-                Behavior on strokeColor { ColorAnimation { duration: 120 } }
-                Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
+                Behavior on color { ColorAnimation { duration: Motion.fast } }
             }
 
             Item {
@@ -324,30 +294,26 @@ NotchContainer {
                 anchors.centerIn: parent
                 width: 14
                 height: 14
-                rotation: notifBadge.isHovered ? -12 : 0
-                scale: notifBadge.isHovered ? 1.12 : 1.0
-                Behavior on rotation { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.8 } }
-                Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
 
                 Text {
                     anchors.centerIn: parent
                     text: "\uf0f3"
                     font.family: Theme.font
                     font.pixelSize: 12
-                    color: Theme.dnd ? Theme.fgDim : (notifBadge.isHovered ? Theme.accent : (root.notifCount > 0 ? Theme.accent : Theme.fg))
+                    color: Theme.dnd ? Theme.fgDim : (notifBadge.isHovered ? Theme.accent : Theme.fg)
                 }
 
-                /* Small indicator dot for unread notifications */
+                /* Small indicator dot for normal mode */
                 Rectangle {
-                    visible: root.notifCount > 0 && !Theme.dnd
+                    visible: !Theme.dnd
                     anchors.top: parent.top
                     anchors.right: parent.right
                     anchors.topMargin: -1
-                    anchors.rightMargin: -1
+                    anchors.rightMargin: -2
                     width: 5
                     height: 5
                     radius: 2.5
-                    color: Theme.accent
+                    color: root.notifCount > 0 ? Theme.accent : Qt.alpha(Theme.fg, 0.45)
                 }
 
                 /* DND 'z' badge when Do Not Disturb is active */
@@ -355,8 +321,8 @@ NotchContainer {
                     visible: Theme.dnd
                     anchors.top: parent.top
                     anchors.right: parent.right
-                    anchors.topMargin: -5
-                    anchors.rightMargin: -6
+                    anchors.topMargin: -4
+                    anchors.rightMargin: -4
                     width: 10
                     height: 10
 

@@ -7,15 +7,15 @@ import Quickshell.Io
 import "../Singletons"
 
 /**
- * Carbon launcher: search apps from the system desktop entries. Prefix the
- * query with ">" to run built-in actions (wallpaper, lock, suspend, logout)
- * — exactly the caelestia-style command popup. Enter launches/activates,
- * Up/Down navigate, Esc closes. Typing ">wallpaper" (or pressing Super+W, or
- * the dock's wallpaper button) morphs the card into the caelestia/ukishima
- * style filmstrip: the focused tile sits large and fully lit in the middle,
- * neighbours shrink, dim and desaturate as they slide under it. Up/Down
- * (and Left/Right, or the wheel) surf; the desktop wallpaper previews live;
- * Enter or a click on the focused tile applies wallpaper + theme.
+ * Carbon Launcher: Niagara Launcher style animated application search & browser.
+ * Features:
+ * - Fluid Alphabetical Niagara Wave Bar (#, A-Z) with sinusoidal kinetic bulging
+ * - Large pop-out letter bubble chip tracking the scrub pointer
+ * - Instant section jump & smooth kinetic scrolling
+ * - Clean Niagara section separators (A, B, C...)
+ * - Real-time fuzzy app search with keyboard navigation (Up/Down/Enter/Esc)
+ * - Built-in command mode (prefixed with ">")
+ * - Seamless edge notch connection docking against the screen bezel
  */
 Item {
     id: root
@@ -26,140 +26,22 @@ Item {
     readonly property var cardItem: card
     readonly property bool animatingOut: !root.open && root.opacity > 0.001
 
-    readonly property int maxShown: 10
-    readonly property string wallpaperDir: "/home/shogun/Pictures/Wallpapers"
-    readonly property string wpThumbDir: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/carbon/wp-thumbs"
-    readonly property string thumbsScript: "/home/shogun/.config/hypr/scripts/carbon-wp-thumbs.sh"
-    readonly property string stateFile: "/home/shogun/.config/hypr/current_wallpaper"
-
     property string mode: "apps"
     property var allApps: []
-    property bool wallpaperPickerOpen: false
+    property var letterMap: ({})
+    property var activeLettersSet: ({})
 
-    onWallpaperPickerOpenChanged: {
-        if (root.wallpaperPickerOpen)
-            root.openWallpaperPicker()
-        else
-            root.resetToApps()
-    }
+    readonly property var alphabet: [
+        "#", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
+        "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
+    ]
 
-    /* ====== Wallpaper model (thumb + newest-first listing, ukishima-style) ====== */
-    property var wpEntries: []
-    property bool wpLoading: false
-    property int focusIndex: 0
-    property real pos: 0
-    property string currentPath: ""
-
-    /* Filmstrip slot geometry — identical to the caelestia/ukishima strip */
-    readonly property var slotW:      [196, 126, 104, 88, 74]
-    readonly property var slotH:      [110, 71, 59, 50, 42]
-    readonly property var slotCX:     [0, 143, 244, 326, 393]
-    readonly property var slotBright: [1, 0.56, 0.42, 0.30, 0.22]
-    readonly property var slotSat:    [1, 0.65, 0.55, 0.45, 0.40]
-
-    function slotLerp(arr, ao) {
-        if (ao >= 4)
-            return arr[4]
-        var i = Math.floor(ao)
-        var f = ao - i
-        return arr[i] + (arr[i + 1] - arr[i]) * f
-    }
-
-    function offsetX(off) {
-        var ao = Math.abs(off)
-        var cx = ao <= 4 ? root.slotLerp(root.slotCX, ao) : root.slotCX[4] + (ao - 4) * 60
-        return (off < 0 ? -cx : cx)
-    }
-
-    function moveWallpaper(delta) {
-        if (root.wpEntries.length === 0)
-            return
-        root.focusIndex = Math.max(0, Math.min(root.wpEntries.length - 1, root.focusIndex + delta))
-    }
-
-    FrameAnimation {
-        running: root.visible && root.pos !== root.focusIndex
-        onTriggered: {
-            var k = 1 - Math.exp(-frameTime / 0.07)
-            var next = root.pos + (root.focusIndex - root.pos) * k
-            root.pos = Math.abs(next - root.focusIndex) < 0.001 ? root.focusIndex : next
-        }
-    }
-
-    FileView {
-        id: linkFile
-        path: root.stateFile
-        blockLoading: true
-        watchChanges: true
-        printErrors: false
-        onLoaded: root.currentPath = linkFile.text().trim()
-        onFileChanged: reload()
-        onLoadFailed: root.currentPath = ""
-    }
-
-    function warmWallpapers() {
-        if (root.wpLoading)
-            return
-        if (root.wpEntries.length === 0) {
-            root.wpLoading = true
-            thumbProc.running = true
-            return
-        }
-        probeProc.command = ["sh", "-c", "[ -s \"$1\" ]", "_", root.wpThumbDir + "/" + String(root.wpEntries[0].name).replace(/\./g, "_") + ".png"]
-        probeProc.running = true
-    }
-
-    Process {
-        id: probeProc
-        onExited: function(exitCode) {
-            if (exitCode !== 0) {
-                root.wpLoading = true
-                thumbProc.running = true
-            }
-        }
-    }
-
-    Process {
-        id: thumbProc
-        command: ["sh", root.thumbsScript]
-        onExited: listProc.running = true
-    }
-
-    Process {
-        id: listProc
-        command: ["sh", "-c",
-            "find \"$1\" -maxdepth 1 -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.webp' \\) -printf '%T@\\t%p\\n' | sort -rn",
-            "_", root.wallpaperDir]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                var lines = this.text.split("\n")
-                var out = []
-                for (var i = 0; i < lines.length; i++) {
-                    var t1 = lines[i].indexOf("\t")
-                    if (t1 < 1)
-                        continue
-                    var path = lines[i].substring(t1 + 1)
-                    if (path.length === 0)
-                        continue
-                    var name = path.substring(path.lastIndexOf("/") + 1)
-                    out.push({ path: path, name: name, mtime: parseFloat(lines[i].substring(0, t1)) })
-                }
-                root.wpEntries = out
-                root.wpLoading = false
-                if (root.focusIndex >= out.length)
-                    root.focusIndex = Math.max(0, out.length - 1)
-                if (root.mode === "wallpapers")
-                    root.centerWallpapersOnCurrent()
-            }
-        }
-    }
-
-    /* ====== Actions ====== */
+    /* ====== Actions (Command Mode ">") ====== */
     readonly property var actions: [
         {
             "id": "wallpaper",
-            "name": "Change wallpaper",
-            "desc": "Open the wallpaper picker",
+            "name": "Change Wallpaper",
+            "desc": "Open the Carbon Wallpaper Picker",
             "glyph": "\uf03e",
             "run": () => {
                 root.closeRequested()
@@ -167,25 +49,54 @@ Item {
             }
         },
         {
+            "id": "config",
+            "name": "Carbon Settings",
+            "desc": "Open Carbon Config & Keybind Editor",
+            "glyph": "\uf013",
+            "run": () => {
+                root.closeRequested()
+                Quickshell.execDetached(["python3", "/home/shogun/.config/hypr/scripts/carbon-config-editor.py"])
+            }
+        },
+        {
+            "id": "terminal",
+            "name": "Open Terminal",
+            "desc": "Launch default terminal emulator",
+            "glyph": "\uf120",
+            "run": () => {
+                root.closeRequested()
+                Quickshell.execDetached(["kitty"])
+            }
+        },
+        {
             "id": "lock",
-            "name": "Lock screen",
-            "desc": "Lock the screen with Carbon lock",
+            "name": "Lock Screen",
+            "desc": "Lock the desktop session with Carbon Lock",
             "glyph": "\uf023",
-            "run": () => Quickshell.execDetached(["sh", "/home/shogun/.config/hypr/scripts/carbon-ipc.sh", "lock"])
+            "run": () => {
+                root.closeRequested()
+                Quickshell.execDetached(["sh", "/home/shogun/.config/hypr/scripts/carbon-ipc.sh", "lock"])
+            }
         },
         {
             "id": "suspend",
-            "name": "Suspend",
-            "desc": "Suspend the system",
+            "name": "Suspend System",
+            "desc": "Suspend the computer to sleep",
             "glyph": "\uf2dc",
-            "run": () => Quickshell.execDetached(["systemctl", "suspend"])
+            "run": () => {
+                root.closeRequested()
+                Quickshell.execDetached(["systemctl", "suspend"])
+            }
         },
         {
             "id": "logout",
-            "name": "Log out",
-            "desc": "Log out of the session",
+            "name": "Log Out",
+            "desc": "Exit current desktop session",
             "glyph": "\uf2f5",
-            "run": () => Quickshell.execDetached(["sh", "-c", "command -v wlogout >/dev/null && wlogout"])
+            "run": () => {
+                root.closeRequested()
+                Quickshell.execDetached(["sh", "-c", "command -v wlogout >/dev/null && wlogout || hyprctl dispatch exit"])
+            }
         }
     ]
 
@@ -198,33 +109,70 @@ Item {
     }
 
     function refresh() {
-        if (root.mode === "wallpapers") return;
         const raw = searchField.text.trim();
         if (raw.startsWith(">")) {
             root.mode = "actions";
             const needle = raw.slice(1).trim().toLowerCase();
             actionModel.clear();
-            for (const a of root.actions)
-                if (!needle || a.name.toLowerCase().includes(needle) || a.id.includes(needle))
+            for (const a of root.actions) {
+                if (!needle || a.name.toLowerCase().includes(needle) || a.id.includes(needle)) {
                     actionModel.append({ "action": a });
+                }
+            }
             resultsList.currentIndex = actionModel.count > 0 ? 0 : -1;
         } else {
             root.mode = "apps";
             const needle = raw.toLowerCase();
-            const matched = [];
-            for (const e of root.allApps) {
-                const name = (e.name || "").toLowerCase();
-                let score = -1;
-                if (needle.length === 0 || name.startsWith(needle)) score = 0;
-                else if (name.includes(needle)) score = 1;
-                else if ((e.genericName || "").toLowerCase().includes(needle)) score = 2;
-                else if ((e.comment || "").toLowerCase().includes(needle)) score = 3;
-                if (score >= 0) matched.push({ "e": e, "score": score });
-            }
-            matched.sort((a, b) => a.score - b.score || a.e.name.localeCompare(b.e.name));
             appModel.clear();
-            for (const m of matched.slice(0, root.maxShown))
-                appModel.append({ "entry": m.e });
+
+            if (needle.length === 0) {
+                // Niagara full alphabetical listing
+                let lastLetter = "";
+                const newLetterMap = {};
+                const newActiveSet = {};
+
+                for (let i = 0; i < root.allApps.length; i++) {
+                    const e = root.allApps[i];
+                    const rawChar = (e.name || "").trim().charAt(0).toUpperCase();
+                    const letter = (rawChar >= 'A' && rawChar <= 'Z') ? rawChar : "#";
+                    const isFirst = (letter !== lastLetter);
+
+                    if (isFirst) {
+                        lastLetter = letter;
+                        newLetterMap[letter] = i;
+                        newActiveSet[letter] = true;
+                    }
+
+                    appModel.append({
+                        "entry": e,
+                        "firstLetter": letter,
+                        "isFirstOfLetter": isFirst
+                    });
+                }
+                root.letterMap = newLetterMap;
+                root.activeLettersSet = newActiveSet;
+            } else {
+                // Filtered search results
+                const matched = [];
+                for (const e of root.allApps) {
+                    const name = (e.name || "").toLowerCase();
+                    let score = -1;
+                    if (name.startsWith(needle)) score = 0;
+                    else if (name.includes(needle)) score = 1;
+                    else if ((e.genericName || "").toLowerCase().includes(needle)) score = 2;
+                    else if ((e.comment || "").toLowerCase().includes(needle)) score = 3;
+                    if (score >= 0) matched.push({ "e": e, "score": score });
+                }
+                matched.sort((a, b) => a.score - b.score || a.e.name.localeCompare(b.e.name));
+
+                for (let i = 0; i < matched.length; i++) {
+                    appModel.append({
+                        "entry": matched[i].e,
+                        "firstLetter": "",
+                        "isFirstOfLetter": false
+                    });
+                }
+            }
             resultsList.currentIndex = appModel.count > 0 ? 0 : -1;
         }
     }
@@ -251,83 +199,21 @@ Item {
         root.refresh();
     }
 
-    function centerWallpapersOnCurrent() {
-        var idx = 0
-        for (var i = 0; i < root.wpEntries.length; i++)
-            if (root.wpEntries[i].path === root.currentPath) {
-                idx = i
-                break
-            }
-        root.focusIndex = idx
-        root.pos = idx
-    }
-
-    function openWallpaperPicker() {
-        root.mode = "wallpapers";
-        searchField.text = "";
-        root._previewPath = root.currentPath || "";
-        if (root.wpEntries.length > 0)
-            root.centerWallpapersOnCurrent()
-        else {
-            root.focusIndex = 0
-            root.pos = 0
-        }
-        root.warmWallpapers();
-        searchField.forceActiveFocus();
-    }
-
-    /* Leave the filmstrip: any plain launcher open should land on apps. */
     function resetToApps() {
-        if (root.mode === "wallpapers") {
-            root.mode = "apps"
-            searchField.text = ""
-            root.focusIndex = 0
-            root.pos = 0
-        }
-    }
-
-    function wallpaperAt(index) {
-        if (index < 0 || index >= root.wpEntries.length) return "";
-        return root.wpEntries[index].path;
-    }
-
-    function previewAt(index) {
-        const p = root.wallpaperAt(index);
-        if (p && p !== root._previewPath) {
-            root._previewPath = p;
-            Quickshell.execDetached(["sh", "/home/shogun/.config/hypr/scripts/wp-preview.sh", p]);
-        }
-    }
-
-    function applyWallpaper(index) {
-        const p = root.wallpaperAt(index);
-        if (p)
-            Quickshell.execDetached(["sh", "/home/shogun/.config/hypr/scripts/wp-apply.sh", p]);
-        root.closeRequested();
-    }
-
-    property string _previewPath: ""
-
-    onFocusIndexChanged: {
-        if (root.mode === "wallpapers")
-            previewTimer.restart();
-    }
-
-    Timer {
-        id: previewTimer
-        interval: 250
-        onTriggered: root.previewAt(root.focusIndex)
+        root.mode = "apps";
+        searchField.text = "";
+        root.refresh();
     }
 
     Connections {
         target: DesktopEntries
         function onApplicationsChanged() {
-            root.loadApps()
+            root.loadApps();
         }
     }
 
     Component.onCompleted: {
-        root.loadApps()
+        root.loadApps();
     }
 
     onOpenChanged: {
@@ -348,10 +234,11 @@ Item {
 
     Timer {
         id: openTimer
-        interval: 120
+        interval: 100
         onTriggered: searchField.forceActiveFocus()
     }
 
+    /* Edge docking & notch geometry */
     property string barEdge: "top"
     readonly property string attachedEdge: (root.barEdge === "bottom") ? "right" : "left"
 
@@ -382,8 +269,8 @@ Item {
         }
     }
 
-    width: root.mode === "wallpapers" ? 420 : 340
-    height: Math.min(620, parent ? Math.round(parent.height * 0.74) : 620)
+    width: 340
+    height: Math.min(640, parent ? Math.round(parent.height * 0.76) : 640)
 
     x: {
         if (!parent) return 0
@@ -399,25 +286,24 @@ Item {
 
     Behavior on x {
         NumberAnimation {
-            duration: root.open ? 280 : 180
+            duration: root.open ? 260 : 180
             easing.type: root.open ? Easing.OutCubic : Easing.InQuad
         }
     }
     Behavior on y {
         NumberAnimation {
-            duration: 220
+            duration: 200
             easing.type: Easing.OutCubic
         }
     }
-    Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-    Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
     Behavior on opacity {
         NumberAnimation {
-            duration: root.open ? 220 : 140
+            duration: root.open ? 200 : 140
             easing.type: root.open ? Easing.OutQuad : Easing.InQuad
         }
     }
 
+    /* Background Card with Bezel Concave Fillet */
     Shape {
         id: card
         anchors.fill: parent
@@ -448,14 +334,15 @@ Item {
         }
     }
 
+    /* Top Search Input Box */
     Rectangle {
         id: searchBox
         anchors.top: parent.top
         anchors.topMargin: root.filletRadius + 8
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: root.attachedEdge === "left" ? 14 : 14
-        anchors.rightMargin: root.attachedEdge === "right" ? 14 : 14
+        anchors.leftMargin: 14
+        anchors.rightMargin: 14
         height: 38
         radius: 12
         color: Theme.bgAlt
@@ -464,12 +351,22 @@ Item {
 
         Text {
             anchors.left: parent.left
-            anchors.leftMargin: 14
+            anchors.leftMargin: 12
             anchors.verticalCenter: parent.verticalCenter
-            text: root.mode === "wallpapers" ? "Search wallpapers — Arrow keys surf, Enter to apply" : "Search apps — type \">\" for commands"
-            color: Theme.fgFaint
+            text: "\uf002"
             font.family: Theme.font
             font.pixelSize: 13
+            color: searchField.activeFocus ? Theme.accent : Theme.fgDim
+        }
+
+        Text {
+            anchors.left: parent.left
+            anchors.leftMargin: 34
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Search apps — type \">\" for commands"
+            color: Theme.fgFaint
+            font.family: Theme.font
+            font.pixelSize: 12
             visible: searchField.text.length === 0
         }
 
@@ -478,8 +375,8 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            anchors.leftMargin: 14
-            anchors.rightMargin: 14
+            anchors.leftMargin: 34
+            anchors.rightMargin: 12
             color: Theme.fg
             clip: true
             font.family: Theme.font
@@ -487,10 +384,6 @@ Item {
             selectByMouse: true
             onTextChanged: root.refresh()
             onAccepted: {
-                if (root.mode === "wallpapers") {
-                    root.applyWallpaper(root.focusIndex);
-                    return;
-                }
                 const it = resultsList.currentItem;
                 if (!it) return;
                 if (root.mode === "actions")
@@ -498,32 +391,18 @@ Item {
                 else
                     root.launchEntry(it.entry);
             }
-            Keys.onDownPressed: {
-                if (root.mode === "wallpapers") {
-                    root.moveWallpaper(1);
-                } else {
-                    resultsList.incrementCurrentIndex();
-                }
+            Keys.onDownPressed: resultsList.incrementCurrentIndex()
+            Keys.onUpPressed: resultsList.decrementCurrentIndex()
+            Keys.onEscapePressed: {
+                if (searchField.text.length > 0)
+                    searchField.text = ""
+                else
+                    root.closeRequested()
             }
-            Keys.onUpPressed: {
-                if (root.mode === "wallpapers") {
-                    root.moveWallpaper(-1);
-                } else {
-                    resultsList.decrementCurrentIndex();
-                }
-            }
-            Keys.onRightPressed: {
-                if (root.mode === "wallpapers")
-                    root.moveWallpaper(1);
-            }
-            Keys.onLeftPressed: {
-                if (root.mode === "wallpapers")
-                    root.moveWallpaper(-1);
-            }
-            Keys.onEscapePressed: root.closeRequested()
         }
     }
 
+    /* Application & Command Results List */
     ListView {
         id: resultsList
         anchors.top: searchBox.bottom
@@ -532,143 +411,309 @@ Item {
         anchors.bottomMargin: 8
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: 12
-        anchors.rightMargin: 12
+        anchors.leftMargin: root.attachedEdge === "right" ? (searchField.text.length === 0 ? 34 : 12) : 12
+        anchors.rightMargin: root.attachedEdge === "left" ? (searchField.text.length === 0 ? 34 : 12) : 12
         clip: true
-        visible: root.mode !== "wallpapers"
         model: root.mode === "apps" ? appModel : actionModel
         boundsBehavior: Flickable.StopAtBounds
         highlightFollowsCurrentItem: true
 
-        delegate: Rectangle {
-            id: row
+        Behavior on anchors.leftMargin { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+        Behavior on anchors.rightMargin { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+
+        delegate: Item {
+            id: rowItem
+            width: resultsList.width
             property var entry: model.entry ?? null
             property var action: model.action ?? null
-
             readonly property bool isAction: root.mode === "actions"
+            readonly property bool showSectionHeader: (root.mode === "apps" && searchField.text.length === 0 && model.isFirstOfLetter)
+            height: showSectionHeader ? 72 : 44
 
-            width: resultsList.width
-            height: 42
-            radius: 8
-            color: resultsList.currentIndex === index ? Theme.bgActive : (rowArea.containsMouse ? Theme.bgHover : "transparent")
-
-            Behavior on color {
-                ColorAnimation { duration: 90 }
-            }
-
-            Rectangle {
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.margins: 6
-                width: 3
-                radius: 1.5
-                color: Theme.accent
-                visible: resultsList.currentIndex === index
-            }
-
-            Rectangle {
-                id: iconTile
-                width: 28
-                height: 28
-                radius: 7
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: 12
-                color: Theme.bgAlt
-
-                Image {
-                    anchors.centerIn: parent
-                    visible: !row.isAction
-                    width: 20
-                    height: 20
-                    source: row.entry && row.entry.icon
-                        ? Quickshell.iconPath(row.entry.icon, "image-missing")
-                        : ""
-                    sourceSize: Qt.size(40, 40)
-                    fillMode: Image.PreserveAspectFit
-                }
-
-                Text {
-                    anchors.centerIn: parent
-                    visible: row.isAction
-                    text: row.action ? row.action.glyph : ""
-                    color: Theme.accentLit
-                    font.family: Theme.font
-                    font.pixelSize: 14
-                }
-            }
-
-            Text {
-                id: rowName
-                anchors.top: parent.top
-                anchors.topMargin: 5
-                anchors.left: iconTile.right
-                anchors.leftMargin: 10
-                anchors.right: parent.right
-                anchors.rightMargin: 10
-                text: row.isAction ? (row.action ? row.action.name : "") : (row.entry ? row.entry.name : "")
-                color: row.isAction ? Theme.accentLit : (resultsList.currentIndex === index ? Theme.fg : Theme.fgDim)
-                font.family: Theme.font
-                font.pixelSize: 13
-                font.weight: resultsList.currentIndex === index ? Font.DemiBold : Font.Normal
-                elide: Text.ElideRight
-            }
-
-            Text {
-                id: rowDesc
-                anchors.top: rowName.bottom
-                anchors.topMargin: 2
-                anchors.left: iconTile.right
-                anchors.leftMargin: 10
-                anchors.right: parent.right
-                anchors.rightMargin: 10
-                text: row.isAction
-                    ? (row.action ? row.action.desc : "")
-                    : (row.entry ? (row.entry.comment || row.entry.genericName || "") : "")
-                color: Theme.fgFaint
-                font.family: Theme.font
-                font.pixelSize: 10
-                elide: Text.ElideRight
-            }
-
-            MouseArea {
-                id: rowArea
+            Column {
                 anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    resultsList.currentIndex = index;
-                    if (root.mode === "actions")
-                        action.run();
-                    else
-                        root.launchEntry(entry);
+
+                /* Niagara Alphabet Section Header */
+                Item {
+                    id: sectionHeader
+                    width: parent.width
+                    height: 28
+                    visible: rowItem.showSectionHeader
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: model.firstLetter ?? ""
+                        font.family: Theme.font
+                        font.pixelSize: 13
+                        font.bold: true
+                        color: Theme.accent
+                    }
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 30
+                        anchors.right: parent.right
+                        anchors.rightMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 1
+                        color: Qt.alpha(Theme.outline, 0.35)
+                    }
+                }
+
+                /* App Row Card */
+                Rectangle {
+                    id: rowCard
+                    width: parent.width
+                    height: 44
+                    radius: 9
+                    color: resultsList.currentIndex === index ? Theme.bgActive : (rowArea.containsMouse ? Theme.bgHover : "transparent")
+
+                    Behavior on color { ColorAnimation { duration: 90 } }
+
+                    /* Active indicator pill */
+                    Rectangle {
+                        anchors.left: root.attachedEdge === "left" ? parent.left : undefined
+                        anchors.right: root.attachedEdge === "right" ? parent.right : undefined
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        anchors.margins: 7
+                        width: 3
+                        radius: 1.5
+                        color: Theme.accent
+                        visible: resultsList.currentIndex === index
+                    }
+
+                    /* Icon Tile */
+                    Rectangle {
+                        id: iconTile
+                        width: 30
+                        height: 30
+                        radius: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left
+                        anchors.leftMargin: 10
+                        color: Theme.bgAlt
+                        scale: rowArea.containsMouse ? 1.08 : 1.0
+                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+
+                        Image {
+                            anchors.centerIn: parent
+                            visible: !rowItem.isAction
+                            width: 20
+                            height: 20
+                            source: rowItem.entry && rowItem.entry.icon
+                                ? Quickshell.iconPath(rowItem.entry.icon, "image-missing")
+                                : ""
+                            sourceSize: Qt.size(40, 40)
+                            fillMode: Image.PreserveAspectFit
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            visible: rowItem.isAction
+                            text: rowItem.action ? rowItem.action.glyph : ""
+                            color: Theme.accentLit
+                            font.family: Theme.font
+                            font.pixelSize: 14
+                        }
+                    }
+
+                    /* App Name */
+                    Text {
+                        id: rowName
+                        anchors.top: parent.top
+                        anchors.topMargin: 5
+                        anchors.left: iconTile.right
+                        anchors.leftMargin: 10
+                        anchors.right: parent.right
+                        anchors.rightMargin: 8
+                        text: rowItem.isAction ? (rowItem.action ? rowItem.action.name : "") : (rowItem.entry ? rowItem.entry.name : "")
+                        color: rowItem.isAction ? Theme.accentLit : (resultsList.currentIndex === index ? Theme.fg : Theme.fgDim)
+                        font.family: Theme.font
+                        font.pixelSize: 13
+                        font.weight: resultsList.currentIndex === index ? Font.DemiBold : Font.Normal
+                        elide: Text.ElideRight
+                    }
+
+                    /* Description / generic name */
+                    Text {
+                        id: rowDesc
+                        anchors.top: rowName.bottom
+                        anchors.topMargin: 2
+                        anchors.left: iconTile.right
+                        anchors.leftMargin: 10
+                        anchors.right: parent.right
+                        anchors.rightMargin: 8
+                        text: rowItem.isAction
+                            ? (rowItem.action ? rowItem.action.desc : "")
+                            : (rowItem.entry ? (rowItem.entry.comment || rowItem.entry.genericName || "") : "")
+                        color: Theme.fgFaint
+                        font.family: Theme.font
+                        font.pixelSize: 10
+                        elide: Text.ElideRight
+                    }
+
+                    MouseArea {
+                        id: rowArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            resultsList.currentIndex = index;
+                            if (rowItem.isAction)
+                                rowItem.action.run();
+                            else
+                                root.launchEntry(rowItem.entry);
+                        }
+                    }
                 }
             }
         }
     }
 
-    /* ── Bottom Quick Actions Row ── */
+    /* ── Niagara Alphabet Wave Bar (#, A-Z) ── */
+    Item {
+        id: niagaraWaveBar
+        anchors.top: resultsList.top
+        anchors.bottom: resultsList.bottom
+        anchors.right: root.attachedEdge === "left" ? parent.right : undefined
+        anchors.left: root.attachedEdge === "right" ? parent.left : undefined
+        anchors.rightMargin: root.attachedEdge === "left" ? 6 : 0
+        anchors.leftMargin: root.attachedEdge === "right" ? 6 : 0
+        width: 24
+        visible: root.mode === "apps"
+        opacity: searchField.text.length === 0 ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+
+        property bool isScrubbing: false
+        property real scrubY: 0
+        property string activeLetter: ""
+
+        /* Floating Niagara Pop-out Bubble Chip */
+        Rectangle {
+            id: letterBubble
+            width: 44
+            height: 44
+            radius: 22
+            color: Theme.bg
+            border.color: Theme.accent
+            border.width: 1.5
+            anchors.right: root.attachedEdge === "left" ? parent.left : undefined
+            anchors.left: root.attachedEdge === "right" ? parent.right : undefined
+            anchors.rightMargin: root.attachedEdge === "left" ? 14 : 0
+            anchors.leftMargin: root.attachedEdge === "right" ? 14 : 0
+            y: Math.max(0, Math.min(parent.height - height, niagaraWaveBar.scrubY - height / 2))
+            visible: niagaraWaveBar.isScrubbing && niagaraWaveBar.activeLetter !== ""
+            opacity: visible ? 1.0 : 0.0
+            scale: visible ? 1.0 : 0.6
+            Behavior on opacity { NumberAnimation { duration: 100 } }
+            Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack } }
+
+            Text {
+                anchors.centerIn: parent
+                text: niagaraWaveBar.activeLetter
+                font.family: Theme.font
+                font.pixelSize: 20
+                font.bold: true
+                color: Theme.accentLit
+            }
+        }
+
+        Column {
+            id: lettersCol
+            anchors.fill: parent
+
+            Repeater {
+                id: letterRepeater
+                model: root.alphabet
+
+                Item {
+                    id: letterItem
+                    readonly property string letterChar: modelData
+                    readonly property bool hasApps: root.activeLettersSet[letterChar] === true
+                    readonly property real itemCenterY: y + height / 2
+                    readonly property real dist: Math.abs(itemCenterY - niagaraWaveBar.scrubY)
+                    readonly property real waveRadius: 75.0
+                    readonly property real waveFactor: niagaraWaveBar.isScrubbing ? Math.max(0.0, 1.0 - (dist / waveRadius)) : 0.0
+                    readonly property real waveCurve: Math.sin(waveFactor * Math.PI / 2.0)
+                    readonly property real xOffset: {
+                        var mag = waveCurve * 20.0;
+                        return root.attachedEdge === "left" ? -mag : mag;
+                    }
+
+                    width: parent.width
+                    height: parent.height / root.alphabet.length
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: letterItem.letterChar
+                        font.family: Theme.font
+                        font.pixelSize: 10
+                        font.bold: letterItem.hasApps && (letterItem.waveCurve > 0.4)
+                        color: letterItem.waveCurve > 0.4 ? Theme.accentLit : (letterItem.hasApps ? Theme.fg : Theme.fgFaint)
+                        opacity: letterItem.hasApps ? (0.6 + letterItem.waveCurve * 0.4) : (letterItem.waveCurve > 0.3 ? 0.35 : 0.16)
+                        scale: 1.0 + letterItem.waveCurve * 0.85
+                        x: (parent.width - width) / 2 + letterItem.xOffset
+
+                        Behavior on scale { NumberAnimation { duration: 70 } }
+                        Behavior on x { NumberAnimation { duration: 50 } }
+                        Behavior on color { ColorAnimation { duration: 70 } }
+                        Behavior on opacity { NumberAnimation { duration: 70 } }
+                    }
+                }
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            preventStealing: true
+
+            function updateScrub(mouseY) {
+                niagaraWaveBar.isScrubbing = true
+                niagaraWaveBar.scrubY = mouseY
+                var letterH = parent.height / root.alphabet.length
+                var idx = Math.max(0, Math.min(root.alphabet.length - 1, Math.floor(mouseY / letterH)))
+                var targetLetter = root.alphabet[idx]
+                niagaraWaveBar.activeLetter = targetLetter
+                if (root.letterMap[targetLetter] !== undefined) {
+                    resultsList.positionViewAtIndex(root.letterMap[targetLetter], ListView.Beginning)
+                }
+            }
+
+            onPositionChanged: (mouse) => updateScrub(mouse.y)
+            onPressed: (mouse) => updateScrub(mouse.y)
+            onReleased: {
+                niagaraWaveBar.isScrubbing = false
+            }
+            onExited: {
+                niagaraWaveBar.isScrubbing = false
+            }
+        }
+    }
+
+    /* Bottom Quick Action Bar */
     Rectangle {
         id: quickActionsRow
         anchors.bottom: parent.bottom
         anchors.bottomMargin: root.filletRadius + 6
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: 12
-        anchors.rightMargin: 12
+        anchors.leftMargin: 14
+        anchors.rightMargin: 14
         height: 32
-        radius: 8
+        radius: 10
         color: Theme.bgAlt
-        border.color: Qt.alpha(Theme.outline, 0.3)
-        border.width: 1
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 8
-            anchors.rightMargin: 8
-            spacing: 8
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 12
 
+            /* Terminal */
             Item {
                 Layout.preferredWidth: 20
                 Layout.preferredHeight: 20
@@ -685,12 +730,13 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        Quickshell.execDetached(["foot"])
                         root.closeRequested()
+                        Quickshell.execDetached(["kitty"])
                     }
                 }
             }
 
+            /* Settings */
             Item {
                 Layout.preferredWidth: 20
                 Layout.preferredHeight: 20
@@ -707,12 +753,13 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        Quickshell.execDetached(["/home/shogun/.config/hypr/scripts/carbon-config-editor"])
                         root.closeRequested()
+                        Quickshell.execDetached(["python3", "/home/shogun/.config/hypr/scripts/carbon-config-editor.py"])
                     }
                 }
             }
 
+            /* Lock */
             Item {
                 Layout.preferredWidth: 20
                 Layout.preferredHeight: 20
@@ -729,12 +776,13 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        Quickshell.execDetached(["/home/shogun/.config/hypr/scripts/hyprlock.sh"])
                         root.closeRequested()
+                        Quickshell.execDetached(["sh", "/home/shogun/.config/hypr/scripts/carbon-ipc.sh", "lock"])
                     }
                 }
             }
 
+            /* Wallpaper Picker */
             Item {
                 Layout.preferredWidth: 20
                 Layout.preferredHeight: 20
@@ -751,7 +799,8 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        root.wallpaperPickerOpen = !root.wallpaperPickerOpen
+                        root.closeRequested()
+                        Quickshell.execDetached(["sh", "/home/shogun/.config/hypr/scripts/carbon-ipc.sh", "wallpaper"])
                     }
                 }
             }
@@ -759,194 +808,12 @@ Item {
             Item { Layout.fillWidth: true }
 
             Text {
-                text: root.mode === "actions" ? "Commands" : (resultsList.count + " apps")
+                text: root.mode === "actions" ? "Commands" : (root.allApps.length + " apps")
                 font.family: "Valley Sans"
                 font.pixelSize: 10
                 font.weight: Font.DemiBold
                 color: Theme.fgFaint
             }
-        }
-    }
-
-    /* ====== Wallpaper filmstrip (caelestia/ukishima style) ====== */
-    Item {
-        id: wpStrip
-        visible: root.mode === "wallpapers"
-        anchors.top: searchBox.bottom
-        anchors.topMargin: 10
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.leftMargin: 14
-        anchors.rightMargin: 14
-        height: 168
-        clip: true
-
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.NoButton
-            onWheel: (wheel) => {
-                if (root.mode === "wallpapers" && root.wpEntries.length > 0)
-                    root.moveWallpaper(wheel.angleDelta.y > 0 ? -1 : 1)
-            }
-        }
-
-        Repeater {
-            model: root.mode === "wallpapers" ? root.wpEntries : null
-
-            delegate: Item {
-                id: tile
-
-                required property int index
-                required property var modelData
-
-                readonly property string nameUnd: String(modelData.name).replace(/\./g, "_")
-                readonly property string thumbSource: "file://" + root.wpThumbDir + "/" + tile.nameUnd + ".png?v=" + Math.round(modelData.mtime)
-                readonly property string path: modelData.path
-                readonly property bool isCurrent: root.currentPath === tile.path
-
-                readonly property real off: tile.index - root.pos
-                readonly property real ao: Math.abs(tile.off)
-                readonly property bool focused: tile.index === root.focusIndex
-                readonly property real bright: root.slotLerp(root.slotBright, tile.ao)
-                readonly property real sat: root.slotLerp(root.slotSat, tile.ao)
-                readonly property real corner: 8 + 2 * Math.max(0, 1 - tile.ao)
-
-                readonly property real edgeFade: {
-                    var soft = 70
-                    var gap = Math.min(tile.x, parent.width - (tile.x + tile.width))
-                    return Math.max(0, Math.min(1, gap / soft))
-                }
-
-                width: root.slotLerp(root.slotW, tile.ao)
-                height: root.slotLerp(root.slotH, tile.ao)
-                x: parent.width / 2 + root.offsetX(tile.off) - tile.width / 2
-                y: (parent.height - tile.height) / 2 - 8
-                z: 10 - tile.ao
-                visible: tile.ao <= 5
-                opacity: tile.edgeFade * (tile.ao <= 4 ? 1 : Math.max(0, 5 - tile.ao))
-
-                Rectangle {
-                    id: tcard
-                    anchors.fill: parent
-                    radius: tile.corner
-                    color: Theme.bgAlt
-
-                    layer.enabled: true
-                    layer.effect: MultiEffect {
-                        saturation: tile.sat - 1
-                        shadowEnabled: tile.focused
-                        shadowColor: "#000000"
-                        shadowOpacity: 0.45
-                        shadowBlur: 0.7
-                        shadowVerticalOffset: 4
-                        maskEnabled: true
-                        maskSource: tcardMask
-                    }
-
-                    Item {
-                        id: tcardMask
-                        anchors.fill: parent
-                        visible: false
-                        layer.enabled: true
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: tile.corner
-                            color: "#FFFFFFFF"
-                        }
-                    }
-
-                    Image {
-                        id: timg
-                        anchors.fill: parent
-                        source: tile.ao <= 5 ? tile.thumbSource : ""
-                        sourceSize: Qt.size(512, 220)
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                        smooth: true
-                        cache: true
-                    }
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: Theme.bgAlt
-                        visible: timg.status === Image.Error
-                    }
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: "#000000"
-                        opacity: 1 - tile.bright
-                    }
-                }
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: tile.corner
-                    color: "transparent"
-                    border.width: 1
-                    border.color: tile.focused ? Theme.accentLit : "transparent"
-                    Behavior on border.color { ColorAnimation { duration: 90 } }
-                }
-
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.bottom: parent.bottom
-                    anchors.margins: 6
-                    width: 7
-                    height: 7
-                    radius: 4
-                    visible: tile.isCurrent
-                    color: Theme.accentLit
-                    border.width: 1
-                    border.color: "#000000"
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onEntered: {
-                        if (root.mode === "wallpapers" && !tile.focused) {
-                            root.focusIndex = tile.index
-                        }
-                    }
-                    onClicked: {
-                        if (tile.focused)
-                            root.applyWallpaper(tile.index)
-                        else
-                            root.focusIndex = tile.index
-                    }
-                }
-            }
-        }
-
-        Text {
-            anchors.centerIn: parent
-            visible: root.wpLoading
-            text: "Scanning wallpapers…"
-            color: Theme.fgDim
-            font.family: Theme.font
-            font.pixelSize: 13
-        }
-
-        Text {
-            anchors.centerIn: parent
-            visible: !root.wpLoading && root.wpEntries.length === 0
-            text: "No wallpapers found in " + root.wallpaperDir
-            color: Theme.fgDim
-            font.family: Theme.font
-            font.pixelSize: 13
-        }
-
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 2
-            visible: !root.wpLoading && root.wpEntries.length > 0
-            text: "↑↓ / ◀▶ browse   ·   Enter or click to set"
-            color: Theme.fgFaint
-            font.family: Theme.font
-            font.pixelSize: 11
         }
     }
 }

@@ -405,12 +405,18 @@ ShellRoot {
         }
     }
 
-    function openLauncher() { root.launcherOpen = true }
+    function openLauncher() {
+        root.closeWallpaperPicker()
+        root.launcherOpen = true
+    }
     function closeLauncher() { root.launcherOpen = false }
     function toggleLauncher() { if (root.launcherOpen) closeLauncher(); else openLauncher() }
-    function openWallpaperPicker() { console.log("DEBUG: openWallpaperPicker called!"); root.wallpaperPickerOpen = true }
-    function closeWallpaperPicker() { console.log("DEBUG: closeWallpaperPicker called!"); root.wallpaperPickerOpen = false }
-    function toggleWallpaperPicker() { console.log("DEBUG: toggleWallpaperPicker called! current:", root.wallpaperPickerOpen); if (root.wallpaperPickerOpen) closeWallpaperPicker(); else openWallpaperPicker() }
+    function openWallpaperPicker() {
+        root.closeLauncher()
+        root.wallpaperPickerOpen = true
+    }
+    function closeWallpaperPicker() { root.wallpaperPickerOpen = false }
+    function toggleWallpaperPicker() { if (root.wallpaperPickerOpen) closeWallpaperPicker(); else openWallpaperPicker() }
     onLauncherOpenChanged: {
         if (!root.launcherOpen && root.launcherItem)
             root.launcherItem.resetToApps()
@@ -1673,7 +1679,6 @@ ShellRoot {
 
             aboveWindows: true
             visible: root.launcherOpen || (launcherItem && launcherItem.animatingOut)
-            mask: Region { item: root.launcherOpen ? launcherItem.cardItem : null }
 
             MouseArea {
                 anchors.fill: parent
@@ -1715,7 +1720,6 @@ ShellRoot {
 
             aboveWindows: true
             visible: root.wallpaperPickerOpen || (wpItem && wpItem.animatingOut)
-            mask: Region { item: root.wallpaperPickerOpen ? wpItem.cardItem : null }
 
             /* Backdrop click dismisses wallpaper picker */
             MouseArea {

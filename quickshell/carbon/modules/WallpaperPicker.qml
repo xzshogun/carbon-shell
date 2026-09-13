@@ -610,6 +610,7 @@ Item {
                                 searchDebounce.stop()
                                 root.fetchWallpapers()
                             }
+                            Keys.onEscapePressed: root.closeRequested()
                         }
 
                         /* Clear button */

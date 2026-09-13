@@ -10,7 +10,7 @@ hl.bind(vars.kbScreenshot or "SUPER + Print", hl.dsp.exec_cmd("~/.config/hypr/sc
 hl.bind("Print", hl.dsp.exec_cmd("~/.config/hypr/scripts/screenshot.sh"))
 
 -- Wallpaper
-hl.bind(vars.kbWallpaper or "SUPER + W", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh wallpaper"))
+hl.bind(vars.kbWallpaper or "SUPER + W", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh wallpaper"), { release = true })
 
 -- Misc
 hl.bind(vars.kbSession, hl.dsp.global("caelestia:session"))
@@ -150,7 +150,6 @@ hl.bind(vars.kbFileExplorer, hl.dsp.exec_cmd(vars.fileExplorer))
 hl.bind("SUPER + H", hl.dsp.exec_cmd("discord"))
 hl.bind("SUPER + E", hl.dsp.exec_cmd("rofi -show drun"))
 hl.bind("CTRL + ALT + V", hl.dsp.exec_cmd(vars.audioSettings))
-hl.bind("SUPER + W", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh wallpaper"))
 hl.bind("SUPER + Tab", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh toggle-overview"))
 
 -- Utilities

@@ -409,14 +409,27 @@ ShellRoot {
         root.closeWallpaperPicker()
         root.launcherOpen = true
     }
+    property real lastLauncherToggleTime: 0
     function closeLauncher() { root.launcherOpen = false }
-    function toggleLauncher() { if (root.launcherOpen) closeLauncher(); else openLauncher() }
+    function toggleLauncher() {
+        var now = Date.now()
+        if (now - root.lastLauncherToggleTime < 280) return
+        root.lastLauncherToggleTime = now
+        if (root.launcherOpen) closeLauncher(); else openLauncher()
+    }
+
+    property real lastWpToggleTime: 0
     function openWallpaperPicker() {
         root.closeLauncher()
         root.wallpaperPickerOpen = true
     }
     function closeWallpaperPicker() { root.wallpaperPickerOpen = false }
-    function toggleWallpaperPicker() { if (root.wallpaperPickerOpen) closeWallpaperPicker(); else openWallpaperPicker() }
+    function toggleWallpaperPicker() {
+        var now = Date.now()
+        if (now - root.lastWpToggleTime < 280) return
+        root.lastWpToggleTime = now
+        if (root.wallpaperPickerOpen) closeWallpaperPicker(); else openWallpaperPicker()
+    }
     onLauncherOpenChanged: {
         if (!root.launcherOpen && root.launcherItem)
             root.launcherItem.resetToApps()

@@ -9,9 +9,10 @@ import "../Singletons"
 /**
  * Carbon Launcher: Niagara Launcher style animated application search & browser.
  * Features:
- * - Fluid Alphabetical Niagara Wave Bar (#, A-Z) with sinusoidal kinetic bulging
- * - Large pop-out letter bubble chip tracking the scrub pointer
- * - Instant section jump & smooth kinetic scrolling
+ * - 2D Interactive Draggable Niagara Alphabet Wave Bar (#, A-Z) with dynamic stretch
+ * - Freely draggable letter bubble chip following pointer anywhere horizontally & vertically
+ * - Sinusoidal catenary wave stretching proportionally as the user drags into the screen
+ * - Spring pop-out launch animation with OutBack overshoot and bezel origin scaling
  * - Clean Niagara section separators (A, B, C...)
  * - Real-time fuzzy app search with keyboard navigation (Up/Down/Enter/Esc)
  * - Built-in command mode (prefixed with ">")
@@ -30,6 +31,7 @@ Item {
     property var allApps: []
     property var letterMap: ({})
     property var activeLettersSet: ({})
+    property var letterCounts: ({})
 
     readonly property var alphabet: [
         "#", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
@@ -130,6 +132,7 @@ Item {
                 let lastLetter = "";
                 const newLetterMap = {};
                 const newActiveSet = {};
+                const newCounts = {};
 
                 for (let i = 0; i < root.allApps.length; i++) {
                     const e = root.allApps[i];
@@ -143,6 +146,8 @@ Item {
                         newActiveSet[letter] = true;
                     }
 
+                    newCounts[letter] = (newCounts[letter] || 0) + 1;
+
                     appModel.append({
                         "entry": e,
                         "firstLetter": letter,
@@ -151,6 +156,7 @@ Item {
                 }
                 root.letterMap = newLetterMap;
                 root.activeLettersSet = newActiveSet;
+                root.letterCounts = newCounts;
             } else {
                 // Filtered search results
                 const matched = [];
@@ -234,7 +240,7 @@ Item {
 
     Timer {
         id: openTimer
-        interval: 100
+        interval: 110
         onTriggered: searchField.forceActiveFocus()
     }
 
@@ -275,19 +281,29 @@ Item {
     x: {
         if (!parent) return 0
         if (root.attachedEdge === "left") {
-            return root.open ? 0 : (-width - 24)
+            return root.open ? 0 : (-width - 32)
         } else {
-            return root.open ? (parent.width - width) : (parent.width + 24)
+            return root.open ? (parent.width - width) : (parent.width + 32)
         }
     }
     y: parent ? Math.round((parent.height - height) / 2) : 0
 
+    scale: root.open ? 1.0 : 0.88
+    transformOrigin: root.attachedEdge === "left" ? Item.Left : Item.Right
     opacity: root.open ? 1.0 : 0.0
 
     Behavior on x {
         NumberAnimation {
-            duration: root.open ? 260 : 180
-            easing.type: root.open ? Easing.OutCubic : Easing.InQuad
+            duration: root.open ? 340 : 200
+            easing.type: root.open ? Easing.OutBack : Easing.InQuad
+            easing.overshoot: root.open ? 1.35 : 1.0
+        }
+    }
+    Behavior on scale {
+        NumberAnimation {
+            duration: root.open ? 340 : 180
+            easing.type: root.open ? Easing.OutBack : Easing.InQuad
+            easing.overshoot: root.open ? 1.35 : 1.0
         }
     }
     Behavior on y {
@@ -298,7 +314,7 @@ Item {
     }
     Behavior on opacity {
         NumberAnimation {
-            duration: root.open ? 200 : 140
+            duration: root.open ? 220 : 140
             easing.type: root.open ? Easing.OutQuad : Easing.InQuad
         }
     }
@@ -334,11 +350,11 @@ Item {
         }
     }
 
-    /* Top Search Input Box */
+    /* Top Search Input Box with bounce animation */
     Rectangle {
         id: searchBox
         anchors.top: parent.top
-        anchors.topMargin: root.filletRadius + 8
+        anchors.topMargin: root.filletRadius + (root.open ? 8 : 0)
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.leftMargin: 14
@@ -348,6 +364,12 @@ Item {
         color: Theme.bgAlt
         border.color: searchField.activeFocus ? Theme.accent : Theme.outline
         border.width: 1
+        scale: root.open ? 1.0 : 0.92
+        opacity: root.open ? 1.0 : 0.0
+
+        Behavior on anchors.topMargin { NumberAnimation { duration: 320; easing.type: Easing.OutBack; easing.overshoot: 1.25 } }
+        Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutBack; easing.overshoot: 1.25 } }
+        Behavior on opacity { NumberAnimation { duration: 220 } }
 
         Text {
             anchors.left: parent.left
@@ -411,13 +433,15 @@ Item {
         anchors.bottomMargin: 8
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: root.attachedEdge === "right" ? (searchField.text.length === 0 ? 34 : 12) : 12
-        anchors.rightMargin: root.attachedEdge === "left" ? (searchField.text.length === 0 ? 34 : 12) : 12
+        anchors.leftMargin: root.attachedEdge === "right" ? (searchField.text.length === 0 ? 36 : 12) : 12
+        anchors.rightMargin: root.attachedEdge === "left" ? (searchField.text.length === 0 ? 36 : 12) : 12
         clip: true
         model: root.mode === "apps" ? appModel : actionModel
         boundsBehavior: Flickable.StopAtBounds
         highlightFollowsCurrentItem: true
+        scale: root.open ? 1.0 : 0.95
 
+        Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
         Behavior on anchors.leftMargin { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
         Behavior on anchors.rightMargin { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
 
@@ -573,7 +597,7 @@ Item {
         }
     }
 
-    /* ── Niagara Alphabet Wave Bar (#, A-Z) ── */
+    /* ── Niagara 2D Interactive Draggable Alphabet Wave Bar (#, A-Z) ── */
     Item {
         id: niagaraWaveBar
         anchors.top: resultsList.top
@@ -582,42 +606,63 @@ Item {
         anchors.left: root.attachedEdge === "right" ? parent.left : undefined
         anchors.rightMargin: root.attachedEdge === "left" ? 6 : 0
         anchors.leftMargin: root.attachedEdge === "right" ? 6 : 0
-        width: 24
+        width: 26
         visible: root.mode === "apps"
         opacity: searchField.text.length === 0 ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
         property bool isScrubbing: false
         property real scrubY: 0
+        property real inwardPull: 0
         property string activeLetter: ""
 
-        /* Floating Niagara Pop-out Bubble Chip */
+        /* Floating Niagara Pop-out Bubble Chip with 2D Drag Tracking */
         Rectangle {
             id: letterBubble
-            width: 44
-            height: 44
-            radius: 22
+            width: 52
+            height: 52
+            radius: 26
             color: Theme.bg
             border.color: Theme.accent
-            border.width: 1.5
-            anchors.right: root.attachedEdge === "left" ? parent.left : undefined
-            anchors.left: root.attachedEdge === "right" ? parent.right : undefined
-            anchors.rightMargin: root.attachedEdge === "left" ? 14 : 0
-            anchors.leftMargin: root.attachedEdge === "right" ? 14 : 0
+            border.width: 2
+
+            x: {
+                if (root.attachedEdge === "left") {
+                    return niagaraWaveBar.isScrubbing ? (-niagaraWaveBar.inwardPull - width - 12) : -60
+                } else {
+                    return niagaraWaveBar.isScrubbing ? (niagaraWaveBar.width + niagaraWaveBar.inwardPull + 12) : 34
+                }
+            }
             y: Math.max(0, Math.min(parent.height - height, niagaraWaveBar.scrubY - height / 2))
             visible: niagaraWaveBar.isScrubbing && niagaraWaveBar.activeLetter !== ""
             opacity: visible ? 1.0 : 0.0
-            scale: visible ? 1.0 : 0.6
-            Behavior on opacity { NumberAnimation { duration: 100 } }
-            Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack } }
+            scale: visible ? 1.0 : 0.4
 
-            Text {
+            Behavior on opacity { NumberAnimation { duration: 100 } }
+            Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack; easing.overshoot: 1.4 } }
+
+            Column {
                 anchors.centerIn: parent
-                text: niagaraWaveBar.activeLetter
-                font.family: Theme.font
-                font.pixelSize: 20
-                font.bold: true
-                color: Theme.accentLit
+                spacing: 1
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: niagaraWaveBar.activeLetter
+                    font.family: Theme.font
+                    font.pixelSize: 22
+                    font.bold: true
+                    color: Theme.accentLit
+                }
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: (root.letterCounts[niagaraWaveBar.activeLetter] || 0) > 0 ? (root.letterCounts[niagaraWaveBar.activeLetter] + " apps") : ""
+                    font.family: "Valley Sans"
+                    font.pixelSize: 8
+                    font.weight: Font.Medium
+                    color: Theme.fgFaint
+                    visible: text.length > 0
+                }
             }
         }
 
@@ -635,11 +680,15 @@ Item {
                     readonly property bool hasApps: root.activeLettersSet[letterChar] === true
                     readonly property real itemCenterY: y + height / 2
                     readonly property real dist: Math.abs(itemCenterY - niagaraWaveBar.scrubY)
-                    readonly property real waveRadius: 75.0
+
+                    // Wave dynamically broadens and deepens as you pull inward
+                    readonly property real waveRadius: 75.0 + Math.min(niagaraWaveBar.inwardPull * 0.4, 60.0)
                     readonly property real waveFactor: niagaraWaveBar.isScrubbing ? Math.max(0.0, 1.0 - (dist / waveRadius)) : 0.0
                     readonly property real waveCurve: Math.sin(waveFactor * Math.PI / 2.0)
+                    readonly property real waveMagnitude: Math.min(22.0 + niagaraWaveBar.inwardPull * 0.55, 140.0)
+
                     readonly property real xOffset: {
-                        var mag = waveCurve * 20.0;
+                        var mag = waveCurve * waveMagnitude;
                         return root.attachedEdge === "left" ? -mag : mag;
                     }
 
@@ -654,13 +703,13 @@ Item {
                         font.bold: letterItem.hasApps && (letterItem.waveCurve > 0.4)
                         color: letterItem.waveCurve > 0.4 ? Theme.accentLit : (letterItem.hasApps ? Theme.fg : Theme.fgFaint)
                         opacity: letterItem.hasApps ? (0.6 + letterItem.waveCurve * 0.4) : (letterItem.waveCurve > 0.3 ? 0.35 : 0.16)
-                        scale: 1.0 + letterItem.waveCurve * 0.85
+                        scale: 1.0 + letterItem.waveCurve * (0.85 + Math.min(niagaraWaveBar.inwardPull / 220.0, 0.45))
                         x: (parent.width - width) / 2 + letterItem.xOffset
 
-                        Behavior on scale { NumberAnimation { duration: 70 } }
+                        Behavior on scale { NumberAnimation { duration: 60 } }
                         Behavior on x { NumberAnimation { duration: 50 } }
-                        Behavior on color { ColorAnimation { duration: 70 } }
-                        Behavior on opacity { NumberAnimation { duration: 70 } }
+                        Behavior on color { ColorAnimation { duration: 60 } }
+                        Behavior on opacity { NumberAnimation { duration: 60 } }
                     }
                 }
             }
@@ -671,34 +720,47 @@ Item {
             hoverEnabled: true
             preventStealing: true
 
-            function updateScrub(mouseY) {
+            function updateScrub(mouseX, mouseY) {
                 niagaraWaveBar.isScrubbing = true
-                niagaraWaveBar.scrubY = mouseY
+                niagaraWaveBar.scrubY = Math.max(0, Math.min(parent.height, mouseY))
+
+                // Track horizontal drag across the screen
+                if (root.attachedEdge === "left") {
+                    niagaraWaveBar.inwardPull = Math.max(0, Math.min(240, -mouseX))
+                } else {
+                    niagaraWaveBar.inwardPull = Math.max(0, Math.min(240, mouseX - parent.width))
+                }
+
                 var letterH = parent.height / root.alphabet.length
-                var idx = Math.max(0, Math.min(root.alphabet.length - 1, Math.floor(mouseY / letterH)))
+                var idx = Math.max(0, Math.min(root.alphabet.length - 1, Math.floor(niagaraWaveBar.scrubY / letterH)))
                 var targetLetter = root.alphabet[idx]
                 niagaraWaveBar.activeLetter = targetLetter
+
                 if (root.letterMap[targetLetter] !== undefined) {
                     resultsList.positionViewAtIndex(root.letterMap[targetLetter], ListView.Beginning)
                 }
             }
 
-            onPositionChanged: (mouse) => updateScrub(mouse.y)
-            onPressed: (mouse) => updateScrub(mouse.y)
+            onPositionChanged: (mouse) => updateScrub(mouse.x, mouse.y)
+            onPressed: (mouse) => updateScrub(mouse.x, mouse.y)
             onReleased: {
                 niagaraWaveBar.isScrubbing = false
+                niagaraWaveBar.inwardPull = 0
             }
             onExited: {
-                niagaraWaveBar.isScrubbing = false
+                if (!pressed) {
+                    niagaraWaveBar.isScrubbing = false
+                    niagaraWaveBar.inwardPull = 0
+                }
             }
         }
     }
 
-    /* Bottom Quick Action Bar */
+    /* Bottom Quick Action Bar with bounce */
     Rectangle {
         id: quickActionsRow
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: root.filletRadius + 6
+        anchors.bottomMargin: root.filletRadius + (root.open ? 6 : -14)
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.leftMargin: 14
@@ -706,6 +768,10 @@ Item {
         height: 32
         radius: 10
         color: Theme.bgAlt
+        opacity: root.open ? 1.0 : 0.0
+
+        Behavior on anchors.bottomMargin { NumberAnimation { duration: 340; easing.type: Easing.OutBack; easing.overshoot: 1.3 } }
+        Behavior on opacity { NumberAnimation { duration: 240 } }
 
         RowLayout {
             anchors.fill: parent

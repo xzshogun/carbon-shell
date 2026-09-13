@@ -28,8 +28,8 @@ NotchContainer {
     mouseArea.hoverEnabled: true
     mouseArea.cursorShape: Qt.PointingHandCursor
     mouseArea.acceptedButtons: Qt.LeftButton | Qt.RightButton
-    mouseArea.onEntered: root.openMusicHover()
-    mouseArea.onExited: root.closeMusicHover()
+    // mouseArea.onEntered: root.openMusicHover()
+    // mouseArea.onExited: root.closeMusicHover()
     mouseArea.onClicked: (mouse) => {
         if (mouse.button === Qt.RightButton) {
             root.togglePlayPause()

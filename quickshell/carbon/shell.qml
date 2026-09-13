@@ -1105,11 +1105,12 @@ ShellRoot {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: root.toggleMusic()
-                            onEntered: root.openMusic()
-                            onExited: {
-                                root.musicHovered = false
-                                musicLeaveTimer.restart()
-                            }
+                            // Temporarily disabled music hover
+                            // onEntered: root.openMusic()
+                            // onExited: {
+                            //     root.musicHovered = false
+                            //     musicLeaveTimer.restart()
+                            // }
                         }
                     }
 
@@ -1601,11 +1602,8 @@ ShellRoot {
                 anchors.horizontalCenter: parent.horizontalCenter
                 leftFillet: true
                 rightFillet: true
-                onOpenMusicHover: root.openMusic()
-                onCloseMusicHover: {
-                    root.musicHovered = false
-                    musicLeaveTimer.restart()
-                }
+                onOpenMusicHover: {}
+                onCloseMusicHover: {}
                 onToggleMusic: root.toggleMusic()
                 onOpenMusic: root.toggleMusic()
             }
@@ -1663,11 +1661,8 @@ ShellRoot {
                 barContent: root.musicBarContent
                 attachedBottom: root.musicBarEdge === "bottom"
                 anchors.fill: parent
-                onOpenMusicHover: root.openMusic()
-                onCloseMusicHover: {
-                    root.musicHovered = false
-                    musicLeaveTimer.restart()
-                }
+                onOpenMusicHover: {}
+                onCloseMusicHover: {}
                 onToggleMusic: root.toggleMusic()
                 onOpenMusic: root.toggleMusic()
             }

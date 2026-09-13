@@ -1261,12 +1261,9 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             z: 5
-                            onEntered: {
-                                capsule.musicHovered = true
-                            }
-                            onExited: {
-                                capsule.musicHovered = false
-                            }
+                            // Temporarily disabled music hover
+                            // onEntered: { capsule.musicHovered = true }
+                            // onExited: { capsule.musicHovered = false }
                             onClicked: root.clickPopup("smallMusic")
                             onWheel: wheel => root.handleWheel(wheel)
                         }

@@ -31,7 +31,7 @@ Item {
 
     // Heartbeat pulse configuration
     property bool heartbeatEnabled: true
-    readonly property string configPath: "/home/shogun/.config/hypr/carbon-lockscreen.json"
+    readonly property string configPath: (Quickshell.env("HOME") || "") + "/.config/hypr/carbon-lockscreen.json"
 
     FileView {
         id: cfgFile

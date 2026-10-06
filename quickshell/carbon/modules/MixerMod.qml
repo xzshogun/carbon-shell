@@ -300,14 +300,13 @@ Item {
 
                     Text {
                         anchors.centerIn: parent
-                        anchors.horizontalCenterOffset: -3
-                        text: "\uf028"
-                        font.family: Theme.font
-                        font.pixelSize: 13
+                        text: "volume_up"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 14
                         color: parent.active ? "#0e0e12" : Theme.fgDim
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
-                        Behavior on color { ColorAnimation { duration: Motion.fast } }
+                        Behavior on color { ColorAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingStandard } }
                     }
 
                     MouseArea {
@@ -332,13 +331,13 @@ Item {
 
                     Text {
                         anchors.centerIn: parent
-                        text: "\uf130"
-                        font.family: Theme.font
-                        font.pixelSize: 13
+                        text: "mic"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 14
                         color: parent.active ? "#0e0e12" : Theme.fgDim
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
-                        Behavior on color { ColorAnimation { duration: Motion.fast } }
+                        Behavior on color { ColorAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingStandard } }
                     }
 
                     MouseArea {
@@ -352,7 +351,7 @@ Item {
 
                 IconButton {
                     id: closeBtn
-                    glyph: "\uf00d"
+                    glyph: "close"
                     tip: "Close"
                     size: 14
                     color: Theme.fgDim
@@ -382,7 +381,7 @@ Item {
 
                     IconButton {
                         id: masterMute
-                        glyph: root.defaultSink && root.defaultSink.audio.muted ? "\uf026" : "\uf028"
+                        glyph: root.defaultSink && root.defaultSink.audio.muted ? "volume_off" : "volume_up"
                         tip: "Mute system sound"
                         size: 14
                         color: Theme.fg
@@ -506,9 +505,9 @@ Item {
 
                                         Text {
                                             Layout.alignment: Qt.AlignVCenter
-                                            text: /headphone|headset/i.test(modelData.desc || modelData.name) ? "\uf025" : "\uf028"
-                                            font.family: Theme.font
-                                            font.pixelSize: 11
+                                            text: /headphone|headset/i.test(modelData.desc || modelData.name) ? "headphones" : "volume_up"
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: 14
                                             color: isActive ? Theme.accent : Theme.fgDim
                                         }
 
@@ -525,9 +524,9 @@ Item {
 
                                         Text {
                                             visible: isActive
-                                            text: "\uf00c"
-                                            font.family: Theme.font
-                                            font.pixelSize: 10
+                                            text: "check"
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: 13
                                             color: Theme.accent
                                         }
                                     }
@@ -607,13 +606,13 @@ Item {
                                             Layout.alignment: Qt.AlignVCenter
                                             text: {
                                                 const nm = (node.name || "") + (node.description || "")
-                                                if (/bluez|bluetooth/i.test(nm)) return "\uf293"
-                                                if (/hdmi/i.test(nm)) return "\uf008"
-                                                if (/headphone|headset/i.test(nm)) return "\uf025"
-                                                return "\uf028"
+                                                if (/bluez|bluetooth/i.test(nm)) return "bluetooth_audio"
+                                                if (/hdmi/i.test(nm)) return "tv"
+                                                if (/headphone|headset/i.test(nm)) return "headphones"
+                                                return "volume_up"
                                             }
-                                            font.family: Theme.font
-                                            font.pixelSize: 11
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: 14
                                             color: isCurDefault ? Theme.accent : Theme.fgDim
                                         }
 
@@ -630,9 +629,9 @@ Item {
 
                                         Text {
                                             visible: isCurDefault
-                                            text: "\uf00c"
-                                            font.family: Theme.font
-                                            font.pixelSize: 10
+                                            text: "check"
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: 13
                                             color: Theme.accent
                                         }
                                     }
@@ -675,9 +674,9 @@ Item {
 
                                 IconButton {
                                     id: sMute
-                                    glyph: node.audio.muted ? "\uf026" : "\uf027"
+                                    glyph: node.audio.muted ? "volume_off" : "volume_down"
                                     tip: "Mute app"
-                                    size: 12
+                                    size: 14
                                     color: Theme.fg
                                     pointer: true
                                     onClicked: node.audio.muted = !node.audio.muted
@@ -734,7 +733,7 @@ Item {
 
                     IconButton {
                         id: srcMute
-                        glyph: root.defaultSource && root.defaultSource.audio.muted ? "\uf131" : "\uf130"
+                        glyph: root.defaultSource && root.defaultSource.audio.muted ? "mic_off" : "mic"
                         tip: "Mute microphone"
                         size: 14
                         color: Theme.fg
@@ -858,9 +857,9 @@ Item {
 
                                         Text {
                                             Layout.alignment: Qt.AlignVCenter
-                                            text: /headset|headphone/i.test(modelData.desc || modelData.name) ? "\uf025" : "\uf130"
-                                            font.family: Theme.font
-                                            font.pixelSize: 11
+                                            text: /headset|headphone/i.test(modelData.desc || modelData.name) ? "headphones" : "mic"
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: 14
                                             color: isActive ? Theme.accent : Theme.fgDim
                                         }
 
@@ -877,9 +876,9 @@ Item {
 
                                         Text {
                                             visible: isActive
-                                            text: "\uf00c"
-                                            font.family: Theme.font
-                                            font.pixelSize: 10
+                                            text: "check"
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: 13
                                             color: Theme.accent
                                         }
                                     }
@@ -957,12 +956,12 @@ Item {
                                             Layout.alignment: Qt.AlignVCenter
                                             text: {
                                                 const nm = (node.name || "") + (node.description || "")
-                                                if (/bluez|bluetooth/i.test(nm)) return "\uf293"
-                                                if (/headset|headphone/i.test(nm)) return "\uf025"
-                                                return "\uf130"
+                                                if (/bluez|bluetooth/i.test(nm)) return "bluetooth_audio"
+                                                if (/headset|headphone/i.test(nm)) return "headphones"
+                                                return "mic"
                                             }
-                                            font.family: Theme.font
-                                            font.pixelSize: 11
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: 14
                                             color: isCurDefault ? Theme.accent : Theme.fgDim
                                         }
 
@@ -979,9 +978,9 @@ Item {
 
                                         Text {
                                             visible: isCurDefault
-                                            text: "\uf00c"
-                                            font.family: Theme.font
-                                            font.pixelSize: 10
+                                            text: "check"
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: 13
                                             color: Theme.accent
                                         }
                                     }
@@ -1025,7 +1024,7 @@ Item {
             /* ============ Footer: open the full sound settings ============ */
             IconButton {
                 Layout.alignment: Qt.AlignLeft
-                glyph: "\uf013"
+                glyph: "settings"
                 tip: "Open full sound settings"
                 size: 14
                 color: Theme.fgDim

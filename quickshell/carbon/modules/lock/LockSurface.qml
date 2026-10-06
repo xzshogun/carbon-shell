@@ -24,6 +24,7 @@ WlSessionLockSurface {
     signal requestUnlock()
     property var sessionLock: null
     property var notificationServer: null
+    readonly property string home: Quickshell.env("HOME") || ""
 
     color: "#050508"
 
@@ -113,7 +114,7 @@ WlSessionLockSurface {
         ScriptAction {
             script: {
                 root.requestUnlock()
-                Quickshell.execDetached(["sh", "/home/shogun/.config/hypr/scripts/carbon-ipc.sh", "unlock"])
+                Quickshell.execDetached(["sh", root.home + "/.config/hypr/scripts/carbon-ipc.sh", "unlock"])
             }
         }
     }
@@ -135,7 +136,7 @@ WlSessionLockSurface {
         Image {
             id: bgWallpaper
             anchors.fill: parent
-            source: "file:///home/shogun/.cache/carbon/wallpaper_scaled.jpg"
+            source: "file://" + root.home + "/.cache/carbon/wallpaper_scaled.jpg"
             fillMode: Image.PreserveAspectCrop
             cache: false
         }

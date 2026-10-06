@@ -26,6 +26,13 @@ Item {
                    + (rightFillet ? filletRadius : 0) 
                    + (horizontalPadding * 2))
     width: implicitWidth
+
+    Behavior on width {
+        NumberAnimation {
+            duration: 280
+            easing.type: Easing.OutCubic
+        }
+    }
     height: implicitHeight
 
     property bool attachedBottom: false

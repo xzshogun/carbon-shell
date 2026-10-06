@@ -25,23 +25,25 @@ Item {
     implicitWidth: size + 12
     implicitHeight: size + 12
 
+    property string fontFamily: Theme.fontIcon
+
     Rectangle {
         id: chip
         anchors.fill: parent
         radius: (parent.width + parent.height) / 8
         color: root.bg
-        Behavior on color { ColorAnimation { duration: Motion.fast } }
+        Behavior on color { ColorAnimation { duration: Theme.motionDurationShort3 } }
     }
 
     Text {
         anchors.centerIn: parent
         text: root.glyph
-        font.family: Theme.font
+        font.family: root.fontFamily
         font.pixelSize: root.size
         color: root.hover ? root.hoverColor : root.color
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        Behavior on color { ColorAnimation { duration: Motion.fast } }
+        Behavior on color { ColorAnimation { duration: Theme.motionDurationShort3 } }
     }
 
     property bool hover: false

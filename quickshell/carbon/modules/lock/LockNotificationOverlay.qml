@@ -25,7 +25,7 @@ Item {
     height: 234
 
     /* ── Read Lock Screen Configuration ───────────────────────────────────── */
-    readonly property string configPath: "/home/shogun/.config/hypr/carbon-lockscreen.json"
+    readonly property string configPath: (Quickshell.env("HOME") || "") + "/.config/hypr/carbon-lockscreen.json"
 
     FileView {
         id: cfgFile
@@ -228,9 +228,9 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "\uf0f3" // bell
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 15
+                    text: "notifications"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 18
                     color: Theme.accent ? Theme.accent : "#00F0FF"
                 }
             }
@@ -295,9 +295,9 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "\uf00d" // times / close
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 11
+                    text: "close"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 14
                     color: "#99FFFFFF"
                 }
 
@@ -358,9 +358,9 @@ Item {
                 spacing: 7
 
                 Text {
-                    text: "\uf0f3"
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 13
+                    text: "notifications"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 16
                     color: Theme.accent ? Theme.accent : "#00F0FF"
                 }
 
@@ -428,9 +428,9 @@ Item {
 
                     Text {
                         Layout.alignment: Qt.AlignHCenter
-                        text: "\uf00c" // Checkmark
-                        font.family: "JetBrainsMono Nerd Font"
-                        font.pixelSize: 22
+                        text: "check"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 24
                         color: "#44FFFFFF"
                     }
 
@@ -537,9 +537,9 @@ Item {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: "\uf00d"
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 9
+                                text: "close"
+                                font.family: Theme.fontIcon
+                                font.pixelSize: 13
                                 color: "#A0FFFFFF"
                             }
 

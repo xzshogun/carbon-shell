@@ -129,9 +129,9 @@ Item {
                 Behavior on opacity { NumberAnimation { duration: 200 } }
 
                 Text {
-                    text: "\uf185"
-                    font.family: Theme.font
-                    font.pixelSize: 14
+                    text: "light_mode"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 18
                     color: Theme.accentLit
                 }
 

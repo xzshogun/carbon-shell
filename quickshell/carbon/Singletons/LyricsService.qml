@@ -89,7 +89,7 @@ Singleton {
 
         lyricsProc.command = [
             "python3",
-            "/home/shogun/.config/hypr/scripts/carbon-lyrics.py",
+            (Quickshell.env("HOME") || "") + "/.config/hypr/scripts/carbon-lyrics.py",
             "--title", root.trackTitle,
             "--artist", root.trackArtist,
             "--duration", String(root.totalLength)
@@ -229,6 +229,22 @@ Singleton {
             root.activePlayer.togglePlaying()
         } else {
             Quickshell.execDetached(["playerctl", "play-pause"])
+        }
+    }
+
+    function seekTo(sec) {
+        if (root.activePlayer) {
+            try { root.activePlayer.position = sec } catch (e) {}
+        }
+        Quickshell.execDetached(["playerctl", "position", String(Math.floor(sec))])
+        if (root.activePlayer && root.activePlayer.positionSupported) {
+            root.activePlayer.positionChanged()
+        }
+    }
+
+    function seekFraction(frac) {
+        if (root.totalLength > 0) {
+            root.seekTo(Math.max(0, Math.min(1.0, frac)) * root.totalLength)
         }
     }
 

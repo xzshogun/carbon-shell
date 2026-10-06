@@ -37,6 +37,7 @@ KEYBINDS_CONF_PATH = os.path.expanduser("~/.config/hypr/configs/keybinds.conf")
 GESTURES_LUA_PATH = os.path.expanduser("~/.config/hypr/hyprland/gestures.lua")
 INPUT_CONF_PATH = os.path.expanduser("~/.config/hypr/configs/input.conf")
 CUSTOM_GESTURES_PATH = os.path.expanduser("~/.config/hypr/carbon-custom-gestures.json")
+SCREENSHOT_FULL_CMD = os.path.expanduser("~/.config/hypr/scripts/carbon-screenshot-full.sh")
 
 CONFIG_FILES = {
     "Bar Mode (carbon-bar-mode.json)": BAR_MODE_PATH,
@@ -468,7 +469,7 @@ def save_gesture_setting(key, value):
 def read_custom_gestures():
     defaults = {
         "three_finger_swipe_up": "Workspaces & Windows Overview (sh ~/.config/hypr/scripts/carbon-ipc.sh toggle-overview)",
-        "three_finger_swipe_down": "Take Full Screen Screenshot (/home/shogun/.local/bin/carbon-screenshot-full.sh)",
+        "three_finger_swipe_down": f"Take Full Screen Screenshot ({SCREENSHOT_FULL_CMD})",
         "three_finger_swipe_left": "Switch Workspace Backward (-1)",
         "three_finger_swipe_right": "Switch Workspace Forward (+1)",
         "four_finger_swipe_horizontal": "Continuous Workspace Swipe (Trackpad Desktop Paging)",
@@ -495,7 +496,7 @@ def save_custom_gesture(key, val):
         if key == "three_finger_swipe_down":
             cmd_to_run = str(val).strip()
             if not cmd_to_run or "Screenshot" in cmd_to_run:
-                cmd_to_run = "/home/shogun/.local/bin/carbon-screenshot-full.sh"
+                cmd_to_run = f"sh {SCREENSHOT_FULL_CMD}"
             if os.path.isfile(GESTURES_LUA_PATH):
                 with open(GESTURES_LUA_PATH, "r", encoding="utf-8") as f:
                     lua_c = f.read()
@@ -735,6 +736,10 @@ KEYBIND_META_MAP = {
     "mouse:273": ("Resize Window (Drag)", "Hold modifier and drag RMB to resize window", "Mouse Bindings", "input-mouse-symbolic", "kbResizeWindow"),
     
     # Media & Hardware
+    "XF86MonBrightnessUp": ("Increase Brightness (Hardware Fn)", "Hardware Fn key to increase brightness", "Media and Audio", "display-brightness-symbolic", None),
+    "XF86MonBrightnessDown": ("Decrease Brightness (Hardware Fn)", "Hardware Fn key to decrease brightness", "Media and Audio", "display-brightness-symbolic", None),
+    "brightnessctl -q set 5%+": ("Increase Brightness", "Increase screen brightness (Fn + F12)", "Media and Audio", "display-brightness-symbolic", "kbBrightnessUp"),
+    "brightnessctl -q set 5%-": ("Decrease Brightness", "Decrease screen brightness (Fn + F11)", "Media and Audio", "display-brightness-symbolic", "kbBrightnessDown"),
     "wpctl set-mute": ("Mute Microphone", "Toggle default microphone input mute", "Media and Audio", "audio-input-microphone-symbolic", None),
     "playerctl next": ("Next Media Track", "Skip to next music/video track", "Media and Audio", "media-skip-forward-symbolic", None),
     "playerctl play-pause": ("Play / Pause Media", "Play or pause current media track", "Media and Audio", "media-playback-start-symbolic", None),
@@ -956,6 +961,7 @@ class CarbonSplashWidget(Gtk.DrawingArea):
         super().__init__()
         self.set_hexpand(True)
         self.set_vexpand(True)
+        self.set_can_target(False)
         self.on_finish = on_finish
         self.start_time = None
         self.current_elapsed = 0.0
@@ -984,14 +990,16 @@ class CarbonSplashWidget(Gtk.DrawingArea):
         self.connect("map", self.on_map)
 
     def on_map(self, widget):
-        self.start()
+        if not self.is_finished:
+            self.start()
 
     def start(self):
+        if self.is_finished:
+            return
         self.start_time = None
         self.current_elapsed = 0.0
-        self.is_finished = False
         self.set_visible(True)
-        if not self.tick_id:
+        if self.tick_id is None:
             self.tick_id = self.add_tick_callback(self.on_tick)
 
     def on_tick(self, widget, frame_clock):
@@ -1005,6 +1013,7 @@ class CarbonSplashWidget(Gtk.DrawingArea):
 
         if elapsed >= 0.70:
             self.is_finished = True
+            self.tick_id = None
             self.set_visible(False)
             if self.on_finish:
                 self.on_finish()
@@ -1652,6 +1661,8 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             self.root_overlay.remove_overlay(self.splash_widget)
         except Exception:
             pass
+        self.splash_widget.set_visible(False)
+        self.splash_widget.set_can_target(False)
         if getattr(self, "initial_page", None):
             self.navigate_to_page(self.initial_page)
         # Incrementally build remaining pages during idle time AFTER splash finishes
@@ -2489,6 +2500,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
                         btn_dc.add_css_class("destructive-action")
                         btn_dc.connect("clicked", lambda b, s=net["ssid"]: disconnect_network(s))
                         row.add_suffix(btn_dc)
+                        row.set_activatable_widget(btn_dc)
                     else:
                         btn_c = Gtk.Button(label="Connect")
                         btn_c.set_valign(Gtk.Align.CENTER)
@@ -2504,9 +2516,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
                             btn_forget.connect("clicked", lambda b, s=net["ssid"]: forget_network(s))
                             row.add_suffix(btn_forget)
 
-                    row.set_activatable(not net["in_use"])
-                    if not net["in_use"]:
-                        row.connect("activated", lambda r, s=net["ssid"], sec=net["security"], sav=is_saved: connect_to_network(s, sec, sav))
+                        row.set_activatable_widget(btn_c)
 
                     grp_networks.add(row)
                     self.wifi_rows.append(row)
@@ -2518,14 +2528,13 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             hidden_img = Gtk.Image.new_from_icon_name("list-add-symbolic")
             hidden_img.set_pixel_size(18)
             hidden_row.add_prefix(hidden_img)
-            hidden_row.set_activatable(True)
-            hidden_row.connect("activated", lambda r: connect_hidden_network())
 
             btn_add = Gtk.Button(label="Add")
             btn_add.set_valign(Gtk.Align.CENTER)
             btn_add.add_css_class("flat")
             btn_add.connect("clicked", lambda b: connect_hidden_network())
             hidden_row.add_suffix(btn_add)
+            hidden_row.set_activatable_widget(btn_add)
 
             grp_networks.add(hidden_row)
             self.wifi_rows.append(hidden_row)
@@ -2755,8 +2764,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
                     btn_forget.connect("clicked", lambda b, m=dev["mac"], n=dev["name"]: remove_bt_device(m, n))
                     row.add_suffix(btn_forget)
 
-                    row.set_activatable(True)
-                    row.connect("activated", lambda r, m=dev["mac"], c=dev["connected"]: toggle_bt_connect(m, c))
+                    row.set_activatable_widget(btn_dc if dev["connected"] else btn_c)
 
                     grp_paired.add(row)
                     self.bt_paired_rows.append(row)
@@ -2783,9 +2791,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
                     btn_pair.add_css_class("suggested-action")
                     btn_pair.connect("clicked", lambda b, m=dev["mac"], n=dev["name"]: pair_bt_device(m, n, b))
                     row.add_suffix(btn_pair)
-
-                    row.set_activatable(True)
-                    row.connect("activated", lambda r, m=dev["mac"], n=dev["name"], b=btn_pair: pair_bt_device(m, n, b))
+                    row.set_activatable_widget(btn_pair)
 
                     grp_nearby.add(row)
                     self.bt_nearby_rows.append(row)
@@ -3347,7 +3353,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         btn_test_shot = Gtk.Button(label="Test Screenshot")
         btn_test_shot.set_valign(Gtk.Align.CENTER)
         btn_test_shot.add_css_class("pill")
-        btn_test_shot.connect("clicked", lambda b: subprocess.Popen(["/home/shogun/.local/bin/carbon-screenshot-full.sh"]))
+        btn_test_shot.connect("clicked", lambda b: subprocess.Popen(["sh", SCREENSHOT_FULL_CMD]))
         row_down.add_suffix(btn_test_shot)
         grp_actions.add(row_down)
 

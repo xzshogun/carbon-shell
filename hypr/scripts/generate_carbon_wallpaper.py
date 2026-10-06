@@ -314,13 +314,16 @@ def render_frame(t):
 
 if __name__ == "__main__":
     import sys
+    home_dir = os.path.expanduser("~")
     if len(sys.argv) > 1 and sys.argv[1] == "--test":
         print("Rendering preview frame at t=1.2s...")
         preview = render_frame(1.2)
-        cv2.imwrite("/home/shogun/.cache/carbon/carbon_preview.png", preview)
-        print("Saved preview to /home/shogun/.cache/carbon/carbon_preview.png")
+        preview_path = os.path.join(home_dir, ".cache/carbon/carbon_preview.png")
+        os.makedirs(os.path.dirname(preview_path), exist_ok=True)
+        cv2.imwrite(preview_path, preview)
+        print(f"Saved preview to {preview_path}")
     else:
-        out_path = "/home/shogun/Pictures/Wallpapers/carbon-quantum-dark.mp4"
+        out_path = os.path.join(home_dir, "Pictures/Wallpapers/carbon-quantum-dark.mp4")
         print(f"Rendering {TOTAL_FRAMES} frames ({DURATION}s @ {FPS}fps) to {out_path}...")
         
         ffmpeg_cmd = [

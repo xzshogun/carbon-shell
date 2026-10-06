@@ -148,20 +148,19 @@ Item {
                 // Dynamic Icon
                 Text {
                     Layout.alignment: Qt.AlignVCenter
-                    font.family: Theme.font
-                    font.pixelSize: 14
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 16
                     color: {
                         if (root.kind === "volume" && root.muted) return Theme.err ? Theme.err : "#f38ba8"
                         return Theme.accent ? Theme.accent : "#00F0FF"
                     }
                     text: {
                         if (root.kind === "brightness") {
-                            return "\uf185" // Sun
+                            return "light_mode"
                         } else {
-                            if (root.muted || root.value <= 0.01) return "\uf6a9" // Muted
-                            if (root.value < 0.35) return "\uf026" // Low volume
-                            if (root.value < 0.70) return "\uf027" // Med volume
-                            return "\uf028" // High volume
+                            if (root.muted || root.value <= 0.01) return "volume_off"
+                            if (root.value < 0.50) return "volume_down"
+                            return "volume_up"
                         }
                     }
                 }

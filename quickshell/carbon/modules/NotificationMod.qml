@@ -122,9 +122,9 @@ Item {
                         spacing: 5
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "\uf1f6"
-                            font.family: Theme.font
-                            font.pixelSize: 10
+                            text: "do_not_disturb_on"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 13
                             color: Theme.warn
                         }
                         Text {
@@ -148,8 +148,8 @@ Item {
                     color: clearHov.hovered ? Theme.bgHover : Theme.bgAlt
                     border.color: clearHov.hovered ? Theme.accent : Theme.outline
                     border.width: 1
-                    Behavior on color { ColorAnimation { duration: 120 } }
-                    Behavior on border.color { ColorAnimation { duration: 120 } }
+                    Behavior on color { ColorAnimation { duration: Theme.motionDurationShort3 } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.motionDurationShort3 } }
 
                     Row {
                         id: clearRow
@@ -157,9 +157,9 @@ Item {
                         spacing: 6
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "\uf2ed"
-                            font.family: Theme.font
-                            font.pixelSize: 11
+                            text: "delete_sweep"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 14
                             color: clearHov.hovered ? Theme.accent : Theme.fgDim
                         }
                         Text {

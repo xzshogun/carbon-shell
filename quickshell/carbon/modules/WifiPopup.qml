@@ -48,12 +48,22 @@ Item {
 
     /* --------------------------- list backend --------------------------- */
     ListModel { id: networkModel }
+    property var savedConns: ({})
+
+    onPwVisibleChanged: {
+        if (root.pwVisible) {
+            Qt.callLater(() => {
+                pwField.text = ""
+                pwField.forceActiveFocus()
+            })
+        }
+    }
 
     Process {
         id: listProc
-        command: ["sh", "-c", "nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY,BSSID dev wifi list 2>/dev/null"]
+        command: ["sh", "-c", "echo '===SAVED==='; nmcli -t -f NAME,TYPE con show 2>/dev/null | grep -E ':802-11-wireless|:wifi'; echo '===WIFI==='; nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY,BSSID dev wifi list 2>/dev/null"]
         stdout: StdioCollector { id: listC; waitForEnd: true }
-        onExited: root.applyList(String(listC.text))
+        onExited: root.applyCombinedList(String(listC.text))
     }
 
     Process {
@@ -84,8 +94,14 @@ Item {
                 delayRelist.restart()
             } else {
                 var err = String(connE.text).trim()
-                root.status = root.pwVisible && root.pwField.text.length === 0
-                    ? "Enter a network key" : err
+                if (err.indexOf("Secrets were required") >= 0 || err.indexOf("no-secrets") >= 0 || err.indexOf("password") >= 0) {
+                    root.pwVisible = true
+                    pwField.text = ""
+                    Qt.callLater(() => pwField.forceActiveFocus())
+                    root.status = "Enter password for " + root.pwSsid
+                } else {
+                    root.status = err.length > 0 ? err : "Connection failed"
+                }
                 listTimer.restart()
             }
         }
@@ -104,53 +120,100 @@ Item {
         rescanProc.running = true
     }
 
-    function requestConnect(bssid, secured, ssid) {
+    function requestConnect(bssid, secured, ssid, isSaved) {
         if (root.connecting) return
         root.pwSsid = ssid
         root.pwBssid = bssid
-        root.status = "Connecting to " + ssid + "…"
-        if (secured) {
-            root.pwVisible = true
-            root.pwField.text = ""
-            pwField.forceActiveFocus()
+        if (isSaved) {
+            root.pwVisible = false
+            root.doConnect(ssid, bssid, "")
             return
         }
-        root.doConnect(bssid, "")
+        if (secured) {
+            root.pwVisible = true
+            Qt.callLater(() => {
+                pwField.text = ""
+                pwField.forceActiveFocus()
+            })
+            root.status = "Enter password for " + ssid
+            return
+        }
+        root.doConnect(ssid, bssid, "")
     }
 
-    function doConnect(bssid, pw) {
-        root.status = "Connecting to " + root.pwSsid + "…"
+    function doConnect(ssid, bssid, pw) {
+        root.status = "Connecting to " + (ssid || root.pwSsid) + "…"
         root.connecting = true
-        connectProc.command = ["sh", "-c",
-            "nmcli dev wifi connect " + root.shellQuote(bssid) +
-            (pw.length > 0 ? " password " + root.shellQuote(pw) : "")]
+        var targetSsid = ssid || root.pwSsid
+        var targetBssid = bssid || root.pwBssid
+        var cmd = ""
+        if (pw && pw.length > 0) {
+            cmd = "nmcli con delete id " + root.shellQuote(targetSsid) + " >/dev/null 2>&1; " +
+                  "nmcli dev wifi connect " + root.shellQuote(targetSsid) + " password " + root.shellQuote(pw)
+            if (targetBssid && targetBssid.length > 0) {
+                cmd += " bssid " + root.shellQuote(targetBssid)
+            }
+        } else {
+            cmd = "nmcli con up id " + root.shellQuote(targetSsid) + " 2>/dev/null || nmcli dev wifi connect " + root.shellQuote(targetSsid)
+        }
+        connectProc.command = ["sh", "-c", cmd]
         connectProc.running = true
     }
 
-    function applyList(text) {
+    function applyCombinedList(text) {
         networkModel.clear()
+        var saved = {}
         var seen = {}
         var lines = String(text).split("\n")
+        var inSavedSection = false
+        var inWifiSection = false
+
         for (var i = 0; i < lines.length; i++) {
-            var l = lines[i]
+            var l = lines[i].trim()
             if (!l) continue
-            l = l.replace(/\\:/g, "\u0000")
-            var p = l.split(":")
-            if (p.length < 5) continue
-            var ssid = p[1].replace(/\u0000/g, ":").trim()
-            if (!ssid) continue
-            var sig = parseInt(p[2], 10) || 0
-            var sec = p[3].replace(/\u0000/g, ":")
-            var inUse = p[0] === "*" || p[0] === "yes"
-            var cur = seen[ssid]
-            if (!cur || inUse || sig > cur.sig)
-                seen[ssid] = { ssid: ssid, sig: sig, sec: sec,
-                               bssid: p[4].replace(/\u0000/g, ":"), inUse: inUse }
+            if (l === "===SAVED===") {
+                inSavedSection = true
+                inWifiSection = false
+                continue
+            } else if (l === "===WIFI===") {
+                inSavedSection = false
+                inWifiSection = true
+                continue
+            }
+
+            if (inSavedSection) {
+                var pSaved = l.split(":")
+                if (pSaved.length >= 1 && pSaved[0]) {
+                    saved[pSaved[0]] = true
+                }
+            } else if (inWifiSection || (!inSavedSection && text.indexOf("===SAVED===") === -1)) {
+                var rawL = lines[i].replace(/\\:/g, "\u0000")
+                var p = rawL.split(":")
+                if (p.length < 5) continue
+                var ssid = p[1].replace(/\u0000/g, ":").trim()
+                if (!ssid) continue
+                var sig = parseInt(p[2], 10) || 0
+                var sec = p[3].replace(/\u0000/g, ":")
+                var inUse = p[0] === "*" || p[0] === "yes"
+                var cur = seen[ssid]
+                if (!cur || inUse || sig > cur.sig) {
+                    seen[ssid] = {
+                        ssid: ssid,
+                        sig: sig,
+                        sec: sec,
+                        bssid: p[4].replace(/\u0000/g, ":"),
+                        inUse: inUse,
+                        isSaved: !!saved[ssid]
+                    }
+                }
+            }
         }
+        root.savedConns = saved
         var rows = []
         for (var k in seen) rows.push(seen[k])
         rows.sort(function(a, b) {
             if (a.inUse !== b.inUse) return a.inUse ? -1 : 1
+            if (a.isSaved !== b.isSaved) return a.isSaved ? -1 : 1
             return b.sig - a.sig
         })
         for (var j = 0; j < rows.length; j++) networkModel.append(rows[j])
@@ -163,18 +226,31 @@ Item {
         width: parent.width
         height: parent.height
         radius: 18
-        color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.90)
+        color: Theme.isDark ? "#101116" : "#ffffff"
         border.width: 1
-        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Qt.rgba(1, 1, 1, 0.12)
+        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.65) : Qt.rgba(1, 1, 1, 0.12)
 
-        /* VisionOS Specular Rim highlight */
+        /* Subtle glowing halo border like app window border */
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -1
+            radius: sheet.radius + 1
+            color: "transparent"
+            border.width: 1.5
+            border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.40) : "transparent"
+            z: -1
+            opacity: root.open ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 200 } }
+        }
+
+        /* Specular Rim highlight */
         Rectangle {
             anchors.fill: parent
             anchors.margins: 1
             radius: sheet.radius - 1
             color: "transparent"
             border.width: 1
-            border.color: Qt.rgba(1, 1, 1, root.open ? 0.20 : 0.06)
+            border.color: Qt.rgba(1, 1, 1, root.open ? 0.14 : 0.04)
             z: 99
         }
 
@@ -217,9 +293,9 @@ Item {
             spacing: 8
 
             Text {
-                text: "\uf1eb"
-                font.family: Theme.font
-                font.pixelSize: 15
+                text: "wifi"
+                font.family: Theme.fontIcon
+                font.pixelSize: 18
                 color: Theme.accentLit
             }
             Text {
@@ -257,13 +333,13 @@ Item {
                     color: root.powerOn ? "#0e0e12" : Theme.fgDim
                     anchors.verticalCenter: parent.verticalCenter
                     x: root.powerOn ? parent.width - width - 3 : 3
-                    Behavior on x { NumberAnimation { duration: Motion.fast } }
+                    Behavior on x { NumberAnimation { duration: Theme.motionDurationShort3 } }
                 }
             }
             Text {
-                text: "\uf00d"
-                font.family: Theme.font
-                font.pixelSize: 13
+                text: "close"
+                font.family: Theme.fontIcon
+                font.pixelSize: 16
                 color: Theme.fgDim
                 MouseArea {
                     anchors.fill: parent
@@ -322,11 +398,11 @@ Item {
                     spacing: 8
 
                     Text {
-                        text: model.inUse ? "\uf00c" : (model.sec ? "\uf023" : "")
-                        font.family: Theme.font
-                        font.pixelSize: 12
+                        text: model.inUse ? "check" : (model.sec ? "lock" : "")
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 13
                         color: model.inUse ? Theme.accentLit : Theme.fgFaint
-                        Layout.preferredWidth: 12
+                        Layout.preferredWidth: 14
                     }
 
                     ColumnLayout {
@@ -343,9 +419,9 @@ Item {
                         }
                         Text {
                             Layout.fillWidth: true
-                            visible: model.inUse
+                            visible: model.inUse || model.isSaved
                             elide: Text.ElideRight
-                            text: "Connected"
+                            text: model.inUse ? "Connected" : (model.isSaved ? "Saved" : "")
                             font.family: "Valley Sans"
                             font.pixelSize: 11
                             color: Theme.fgDim
@@ -365,7 +441,7 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.requestConnect(model.bssid, !!model.sec, model.ssid)
+                    onClicked: root.requestConnect(model.bssid, !!model.sec, model.ssid, !!model.isSaved)
                 }
             }
         }
@@ -391,10 +467,16 @@ Item {
                 visible: !root.pwVisible
 
                 Text {
-                    text: root.connecting ? "" : (root.scanning ? "\uf6be" : "\uf002")
-                    font.family: Theme.font
-                    font.pixelSize: 14
+                    text: root.connecting ? "" : (root.scanning ? "sync" : "search")
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 15
                     color: Theme.fgDim
+
+                    NumberAnimation on rotation {
+                        from: 0; to: 360; duration: 900
+                        loops: Animation.Infinite
+                        running: root.scanning
+                    }
                 }
 
                 Text {
@@ -424,9 +506,9 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 12
-                spacing: 8
+                anchors.leftMargin: 10
+                anchors.rightMargin: 10
+                spacing: 6
                 visible: root.pwVisible
 
                 Text {
@@ -435,7 +517,7 @@ Item {
                     font.family: "Valley Sans"
                     font.pixelSize: 12
                     color: Theme.fgDim
-                    Layout.maximumWidth: 90
+                    Layout.maximumWidth: 80
                 }
 
                 Rectangle {
@@ -458,7 +540,7 @@ Item {
                         color: Theme.fg
                         echoMode: TextInput.Password
                         focus: root.pwVisible
-                        onAccepted: root.doConnect(root.pwBssid, root.pwField.text)
+                        onAccepted: root.doConnect(root.pwSsid, root.pwBssid, pwField.text)
                     }
                 }
 
@@ -472,7 +554,23 @@ Item {
                         anchors.fill: parent
                         anchors.margins: -6
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: root.doConnect(root.pwBssid, root.pwField.text)
+                        onClicked: root.doConnect(root.pwSsid, root.pwBssid, pwField.text)
+                    }
+                }
+
+                Text {
+                    text: "close"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 14
+                    color: Theme.fgDim
+                    MouseArea {
+                        anchors.fill: parent
+                        anchors.margins: -6
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            root.pwVisible = false
+                            root.status = ""
+                        }
                     }
                 }
             }

@@ -119,11 +119,11 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: root.on ? "\uf00c" : ""
-                    font.family: Theme.font
-                    font.pixelSize: 9
+                    text: root.on ? "check" : ""
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 11
                     color: root.on ? Theme.accent : "transparent"
-                    Behavior on color { ColorAnimation { duration: Motion.fast } }
+                    Behavior on color { ColorAnimation { duration: Theme.motionDurationShort2 } }
                 }
             }
         }

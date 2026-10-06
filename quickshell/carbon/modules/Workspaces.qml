@@ -24,7 +24,7 @@ Item {
             case 1: return MaterialShape.Clover4Leaf
             case 2: return MaterialShape.Sunny
             case 3: return MaterialShape.Flower
-            case 4: return MaterialShape.Heart
+            case 4: return MaterialShape.Cookie12Sided
             case 5: return MaterialShape.Gem
             case 6: return MaterialShape.Diamond
             case 7: return MaterialShape.Cookie4Sided

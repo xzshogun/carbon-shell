@@ -86,7 +86,7 @@ Item {
 
     FileView {
         id: clockCfgFile
-        path: "/home/shogun/.config/hypr/carbon-clock-style.json"
+        path: (Quickshell.env("HOME") || "") + "/.config/hypr/carbon-clock-style.json"
         watchChanges: true
         blockLoading: true
         printErrors: false
@@ -387,9 +387,9 @@ Item {
                         /* Fallback music icon when no artwork and paused */
                         Text {
                             anchors.centerIn: parent
-                            text: "\uf001"
-                            font.family: Theme.font
-                            font.pixelSize: 8
+                            text: "music_note"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 12
                             color: Theme.fgDim
                             visible: root.artUrl === "" && !root.isPlaying
                             horizontalAlignment: Text.AlignHCenter
@@ -922,9 +922,9 @@ Item {
                     IconButton {
                         Layout.preferredWidth: 28
                         Layout.preferredHeight: 28
-                        glyph: "\uf074"
+                        glyph: "shuffle"
                         tip: "Shuffle"
-                        size: 13
+                        size: 14
                         color: Theme.fgDim
                         pointer: true
                         onClicked: (mouse) => root.toggleShuffle()
@@ -933,9 +933,9 @@ Item {
                     IconButton {
                         Layout.preferredWidth: 32
                         Layout.preferredHeight: 32
-                        glyph: "\uf048"
+                        glyph: "skip_previous"
                         tip: "Previous"
-                        size: 15
+                        size: 18
                         color: Theme.fg
                         pointer: true
                         onClicked: (mouse) => root.playPrev()
@@ -951,9 +951,9 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: root.isPlaying ? "\uf04c" : "\uf04b"
-                            font.family: Theme.font
-                            font.pixelSize: 14
+                            text: root.isPlaying ? "pause" : "play_arrow"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 18
                             color: Theme.bg
                         }
 
@@ -967,9 +967,9 @@ Item {
                     IconButton {
                         Layout.preferredWidth: 32
                         Layout.preferredHeight: 32
-                        glyph: "\uf051"
+                        glyph: "skip_next"
                         tip: "Next"
-                        size: 15
+                        size: 18
                         color: Theme.fg
                         pointer: true
                         onClicked: (mouse) => root.playNext()
@@ -978,9 +978,9 @@ Item {
                     IconButton {
                         Layout.preferredWidth: 28
                         Layout.preferredHeight: 28
-                        glyph: "\uf01e"
+                        glyph: "repeat"
                         tip: "Repeat"
-                        size: 13
+                        size: 14
                         color: Theme.fgDim
                         pointer: true
                         onClicked: (mouse) => root.toggleRepeat()

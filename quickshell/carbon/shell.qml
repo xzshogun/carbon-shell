@@ -25,20 +25,37 @@ import "modules/lock"
 ShellRoot {
     id: root
 
+    readonly property string home: Quickshell.env("HOME") || ""
     property bool launcherOpen: false
     property bool wallpaperPickerOpen: false
     property string wallpaperSource: "local"
 
+    property bool spotlightOpen: false
+    function openSpotlight() {
+        root.closeAllPopupsExcept("spotlight")
+        root.spotlightOpen = true
+    }
+    function closeSpotlight() {
+        root.spotlightOpen = false
+    }
+    function toggleSpotlight() {
+        if (root.spotlightOpen) root.closeSpotlight()
+        else root.openSpotlight()
+    }
+
     function closeAllPopupsExcept(keep) {
+        if (keep !== "spotlight") { root.spotlightOpen = false }
         if (keep !== "mixer") { root.mixerOpen = false; root.mixerPinned = false }
         if (keep !== "brightness") { root.brightnessOpen = false; root.brightnessPinned = false }
         if (keep !== "battery") { root.batteryOpen = false; root.batteryPinned = false }
-        if (keep !== "notif") { root.notifOpen = false; root.notifPinned = false }
+        if (keep !== "tray") { root.trayOpen = false; root.trayPinned = false }
         if (keep !== "music") { root.musicOpen = false; root.musicPinned = false; root.musicHovered = false }
         if (keep !== "smallMusic") { root.smallMusicOpen = false; root.smallMusicPinned = false; root.smallMusicHovered = false }
         if (keep !== "wifi") { root.wifiOpen = false; root.wifiPinned = false }
         if (keep !== "bt") { root.btOpen = false; root.btPinned = false }
         if (keep !== "calendar") { root.calendarOpen = false; root.calendarPinned = false }
+        if (keep !== "centerDashboard") { root.centerDashboardOpen = false; root.centerDashboardPinned = false }
+        if (keep !== "controls") { root.controlsVisible = false; root.controlsPinned = false }
     }
 
     property bool smallMusicOpen: false
@@ -70,18 +87,17 @@ ShellRoot {
     /* Calendar popup state */
     property bool calendarOpen: false
     property bool calendarPinned: false
-    property bool calendarHovered: false
-    property bool calendarHidden: true
-
+    property bool centerDashboardAwaitingHover: false
     function openCalendar() {
-        root.closeAllPopupsExcept("calendar")
-        root.calendarOpen = true
+        centerDashboardLeaveTimer.stop()
+        root.centerDashboardPinned = false
+        root.centerDashboardAwaitingHover = true
+        root.openCenterDashboard()
+        centerDashboardLeaveTimer.interval = 1000
+        centerDashboardLeaveTimer.restart()
     }
-    function closeCalendar() { root.calendarOpen = false; root.calendarPinned = false }
-    function toggleCalendar() {
-        if (root.calendarOpen) { root.closeCalendar() }
-        else { root.closeAllPopupsExcept("calendar"); root.calendarPinned = true; root.calendarOpen = true }
-    }
+    function closeCalendar() { root.closeCenterDashboard() }
+    function toggleCalendar() { root.toggleCenterDashboard() }
 
     onCalendarOpenChanged: {
         if (root.calendarOpen) { calendarOutTimer.stop(); root.calendarHidden = false }
@@ -90,7 +106,7 @@ ShellRoot {
 
     Timer {
         id: calendarLeaveTimer
-        interval: 350
+        interval: 400
         onTriggered: {
             if (!root.calendarPinned && !root.calendarHovered) root.closeCalendar()
         }
@@ -100,6 +116,60 @@ ShellRoot {
         id: calendarOutTimer
         interval: 90
         onTriggered: root.calendarHidden = true
+    }
+
+    /* Center Dashboard (Top-Center Calendar, Time & Weather) State */
+    property bool centerDashboardOpen: false
+    property bool centerDashboardPinned: false
+    property bool centerDashboardHovered: false
+    property bool centerDashboardHidden: true
+
+    function openCenterDashboard() {
+        centerDashboardLeaveTimer.stop()
+        root.closeAllPopupsExcept("centerDashboard")
+        root.centerDashboardOpen = true
+    }
+    function closeCenterDashboard(force) {
+        if (force || !root.centerDashboardPinned) {
+            root.centerDashboardPinned = false
+            root.centerDashboardOpen = false
+        }
+    }
+    function toggleCenterDashboard() {
+        if (root.centerDashboardOpen && root.centerDashboardPinned) {
+            root.centerDashboardPinned = false
+            root.centerDashboardOpen = false
+        } else {
+            root.closeAllPopupsExcept("centerDashboard")
+            root.centerDashboardPinned = true
+            root.centerDashboardOpen = true
+        }
+    }
+
+    onCenterDashboardOpenChanged: {
+        if (root.centerDashboardOpen) {
+            centerDashboardOutTimer.stop()
+            root.centerDashboardHidden = false
+        } else {
+            centerDashboardOutTimer.restart()
+        }
+    }
+
+    Timer {
+        id: centerDashboardLeaveTimer
+        interval: 450
+        onTriggered: {
+            if (!root.centerDashboardPinned && !root.centerDashboardHovered) {
+                root.centerDashboardAwaitingHover = false
+                root.closeCenterDashboard()
+            }
+        }
+    }
+
+    Timer {
+        id: centerDashboardOutTimer
+        interval: 180
+        onTriggered: root.centerDashboardHidden = true
     }
 
     /* Mixer popup state: open/pinned (click) or hover-release behaviour. */
@@ -219,44 +289,47 @@ ShellRoot {
         onTriggered: root.batteryHidden = true
     }
 
-    /* Notification popup state */
-    property bool notifOpen: false
-    property bool notifPinned: false
-    property bool notifHovered: false
-    property bool notifHidden: true
+    /* Notification compatibility forwarders (integrated in QuickSettings/Controls) */
+    function openNotif() { root.openControls() }
+    function closeNotif() { root.closeControls() }
+    function toggleNotif() { root.toggleControls() }
+    property bool trayOpen: false
+    property bool trayPinned: false
+    property bool trayHovered: false
+    property bool trayHidden: true
 
-    function openNotif() {
-        root.closeAllPopupsExcept("notif")
-        root.notifOpen = true
+    function openTray() {
+        root.closeAllPopupsExcept("tray")
+        root.trayOpen = true
     }
-    function closeNotif() { root.notifOpen = false; root.notifPinned = false }
-    function toggleNotif() {
-        if (root.notifOpen && root.notifPinned) {
-            root.closeNotif()
+    function closeTray() { root.trayOpen = false; root.trayPinned = false }
+    function toggleTray() {
+        if (root.trayOpen) {
+            root.closeTray()
         } else {
-            root.closeAllPopupsExcept("notif")
-            root.notifPinned = true
-            root.notifOpen = true
+            root.closeAllPopupsExcept("tray")
+            root.trayPinned = true
+            root.trayOpen = true
         }
     }
 
-    onNotifOpenChanged: {
-        if (root.notifOpen) { notifOutTimer.stop(); root.notifHidden = false }
-        else { notifOutTimer.restart() }
+    onTrayOpenChanged: {
+        if (root.trayOpen) { trayOutTimer.stop(); root.trayHidden = false }
+        else { trayOutTimer.restart() }
     }
 
     Timer {
-        id: notifLeaveTimer
+        id: trayLeaveTimer
         interval: 350
         onTriggered: {
-            if (!root.notifPinned && !root.notifHovered) root.closeNotif()
+            if (!root.trayPinned && !root.trayHovered) root.closeTray()
         }
     }
 
     Timer {
-        id: notifOutTimer
+        id: trayOutTimer
         interval: 90
-        onTriggered: root.notifHidden = true
+        onTriggered: root.trayHidden = true
     }
 
     /* Wifi popup state */
@@ -397,8 +470,26 @@ ShellRoot {
     function openOverview() { root.overviewOpen = true }
     function closeOverview() { root.overviewOpen = false }
     function toggleOverview() { root.overviewOpen = !root.overviewOpen }
-    onOverviewOpenChanged: {
-        if (root.overviewOpen) {
+
+    /* Fullscreen Wallpaper Transition (0:13 video reference) */
+    property bool wallpaperTransitionOpen: false
+    property bool wallpaperTransitionPendingFinish: false
+    property string wallpaperTransitionText: "Applying Wallpaper"
+
+    function startWallpaperTransition(name) {
+        root.wallpaperTransitionText = "Applying Wallpaper"
+        root.wallpaperTransitionPendingFinish = false
+        root.wallpaperTransitionOpen = true
+    }
+
+    function finishWallpaperTransition() {
+        root.wallpaperTransitionPendingFinish = true
+    }
+
+    /* Dynamic Hyprland Blur Activation for Overlays */
+    readonly property bool needsBlur: root.overviewOpen || root.powerOpen || root.wallpaperTransitionOpen
+    onNeedsBlurChanged: {
+        if (root.needsBlur) {
             Quickshell.execDetached(["hyprctl", "eval", "hl.config({ decoration = { blur = { enabled = true, passes = 2, size = 5 } } })"])
         } else {
             Quickshell.execDetached(["hyprctl", "eval", "hl.config({ decoration = { blur = { enabled = false } } })"])
@@ -410,7 +501,11 @@ ShellRoot {
         root.launcherOpen = true
     }
     property real lastLauncherToggleTime: 0
-    function closeLauncher() { root.launcherOpen = false }
+    function closeLauncher() {
+        root.launcherOpen = false
+        // Preserve active workspace so Hyprland does not revert to old workspace where launcher opened
+        Quickshell.execDetached(["sh", "-c", "ws=$(hyprctl activeworkspace -j | jq -r .id 2>/dev/null); [ -n \"$ws\" ] && (sleep 0.05 && hyprctl dispatch workspace \"$ws\")"])
+    }
     function toggleLauncher() {
         var now = Date.now()
         if (now - root.lastLauncherToggleTime < 280) return
@@ -493,7 +588,7 @@ ShellRoot {
 
     FileView {
         id: barModeFile
-        path: "/home/shogun/.config/hypr/carbon-bar-mode.json"
+        path: root.home + "/.config/hypr/carbon-bar-mode.json"
         watchChanges: true
         blockLoading: true
         printErrors: false
@@ -505,7 +600,7 @@ ShellRoot {
     property int islandPage: 0
     property bool islandPersistent: true
     property bool islandHovered: false
-    readonly property bool islandRevealed: islandPersistent || islandHovered || mixerOpen || notifOpen || brightnessOpen || batteryOpen || wifiOpen || btOpen || calendarOpen || smallMusicOpen
+    readonly property bool islandRevealed: islandPersistent || islandHovered || mixerOpen || trayOpen || brightnessOpen || batteryOpen || wifiOpen || btOpen || calendarOpen || centerDashboardOpen || smallMusicOpen
 
     function reloadBarMode() {
         try {
@@ -579,7 +674,7 @@ ShellRoot {
 
     FileView {
         id: barPosFile
-        path: "/home/shogun/.config/hypr/carbon-bar-position.json"
+        path: root.home + "/.config/hypr/carbon-bar-position.json"
         watchChanges: true
         blockLoading: true
         printErrors: false
@@ -667,7 +762,16 @@ ShellRoot {
 
     function openControls() {
         if (root.barMode === "minimal") return
+        root.closeAllPopupsExcept("controls")
+        root.controlsPinned = true
         root.controlsVisible = true
+    }
+    function openControlsHover() {
+        if (root.barMode === "minimal") return
+        root.closeAllPopupsExcept("controls")
+        root.controlsPinned = false
+        root.controlsVisible = true
+        controlsLeaveTimer.stop()
     }
     function closeControls() { root.controlsVisible = false; root.controlsPinned = false }
     function toggleControls() {
@@ -675,6 +779,7 @@ ShellRoot {
         if (root.controlsVisible && root.controlsPinned) {
             root.closeControls()
         } else {
+            root.closeAllPopupsExcept("controls")
             root.controlsPinned = true
             root.controlsVisible = true
         }
@@ -682,7 +787,7 @@ ShellRoot {
 
     Timer {
         id: controlsLeaveTimer
-        interval: 800
+        interval: 350
         onTriggered: {
             if (!root.controlsPinned && !root.controlsHovered) root.controlsVisible = false
         }
@@ -700,10 +805,16 @@ ShellRoot {
     /* External trigger (keybinds): Super+W brokered to the launcher in
      * wallpaper mode by carbon-ipc.sh over this unix socket. */
     SocketServer {
+        id: cmdSocketServer
         path: "/tmp/carbon-shell.sock"
         active: true
-        handler: Socket {
-            parser: SplitParser {
+        Component.onCompleted: {
+            cmdSocketServer.active = false
+            cmdSocketServer.active = true
+        }
+        handler: Component {
+            Socket {
+                parser: SplitParser {
                 splitMarker: "\n"
                 onRead: function (message) {
                     var cmd = message.trim()
@@ -727,6 +838,22 @@ ShellRoot {
                         root.closeLauncher()
                     else if (cmd === "toggle-launcher")
                         root.toggleLauncher()
+                    else if (cmd === "spotlight" || cmd === "toggle-spotlight")
+                        root.toggleSpotlight()
+                    else if (cmd === "open-spotlight")
+                        root.openSpotlight()
+                    else if (cmd === "close-spotlight")
+                        root.closeSpotlight()
+                    else if (cmd === "test-hud-vol")
+                        HudService.trigger("volume", 0.72, "72%", "Volume", "", false, "volume_up", "", 2500)
+                    else if (cmd === "test-hud-bright")
+                        HudService.trigger("brightness", 0.85, "85%", "Brightness", "", false, "light_mode", "", 2500)
+                    else if (cmd === "test-hud-track")
+                        HudService.trigger("track", 1.0, "Now Playing", "Do I Wanna Know?", "Arctic Monkeys", false, "music_note", "", 3500)
+                    else if (cmd === "test-wp-transition")
+                        root.startWallpaperTransition("Testing")
+                    else if (cmd === "test-wp-finish")
+                        root.finishWallpaperTransition()
                     else if (cmd === "mixer")
                         root.toggleMixer()
                     else if (cmd === "brightness")
@@ -745,6 +872,37 @@ ShellRoot {
                         root.controlsPinned = true
                         root.controlsVisible = true
                         controlsItem.mode = 0
+                    } else if (cmd === "controls-wifi") {
+                        root.controlsPinned = true
+                        root.controlsVisible = true
+                        controlsItem.mode = 0
+                        controlsItem.wifiPopupOpen = !controlsItem.wifiPopupOpen
+                        if (controlsItem.wifiPopupOpen) controlsItem.btPopupOpen = false
+                    } else if (cmd === "controls-bt") {
+                        root.controlsPinned = true
+                        root.controlsVisible = true
+                        controlsItem.mode = 0
+                        controlsItem.btPopupOpen = !controlsItem.btPopupOpen
+                        if (controlsItem.btPopupOpen) controlsItem.wifiPopupOpen = false
+                    } else if (cmd === "controls-notifs") {
+                        root.controlsPinned = true
+                        root.controlsVisible = true
+                        controlsItem.mode = 0
+                        controlsItem.scrollToNotifs()
+                    } else if (cmd === "controls-notif-next") {
+                        controlsItem.selectNextNotif()
+                    } else if (cmd === "controls-notif-prev") {
+                        controlsItem.selectPrevNotif()
+                    } else if (cmd === "controls-notif-enter") {
+                        controlsItem.activateSelectedNotif()
+                    } else if (cmd === "controls-mode-weather" || cmd === "weather") {
+                        root.controlsPinned = true
+                        root.controlsVisible = true
+                        controlsItem.mode = 3
+                    } else if (cmd === "controls-mode-timer" || cmd === "timer") {
+                        root.controlsPinned = true
+                        root.controlsVisible = true
+                        controlsItem.mode = 2
                     }
                     else if (cmd === "battery")
                         root.toggleBattery()
@@ -758,6 +916,8 @@ ShellRoot {
                         root.toggleBt()
                     else if (cmd === "power")
                         root.togglePower()
+                    else if (cmd === "tray" || cmd === "toggle-tray")
+                        root.toggleTray()
                     else if (cmd === "close-power")
                         root.closePower()
                     else if (cmd === "lock") {
@@ -773,8 +933,37 @@ ShellRoot {
                         root.toggleOverview()
                     else if (cmd === "close-overview")
                         root.closeOverview()
-                    else if (cmd === "calendar")
-                        root.toggleCalendar()
+                    else if (cmd === "theme-reload" || cmd === "reload-theme")
+                        Theme.reload()
+                    else if (cmd === "calendar" || cmd === "center-dashboard" || cmd === "center" || cmd === "time-weather" || cmd === "toggle-dashboard" || cmd === "dashboard")
+                        root.toggleCenterDashboard()
+                    else if (cmd === "calendar-events") {
+                        root.closeAllPopupsExcept("centerDashboard")
+                        root.centerDashboardPinned = true
+                        root.centerDashboardOpen = true
+                        if (centerDashboardItem) {
+                            centerDashboardItem.calendarViewMode = "events"
+                            centerDashboardItem.selectedDay = 14
+                        }
+                    }
+                    else if (cmd === "calendar-form") {
+                        root.closeAllPopupsExcept("centerDashboard")
+                        root.centerDashboardPinned = true
+                        root.centerDashboardOpen = true
+                        if (centerDashboardItem) {
+                            centerDashboardItem.calendarViewMode = "events"
+                            centerDashboardItem.selectedDay = 14
+                            centerDashboardItem.eventFormMode = true
+                        }
+                    }
+                    else if (cmd === "lyrics" || cmd === "toggle-lyrics") {
+                        root.closeAllPopupsExcept("centerDashboard")
+                        root.centerDashboardPinned = true
+                        root.centerDashboardOpen = true
+                        if (centerDashboardItem && centerDashboardItem.rightColItem) {
+                            centerDashboardItem.rightColItem.viewMode = (centerDashboardItem.rightColItem.viewMode === "lyrics" ? "weather" : "lyrics")
+                        }
+                    }
                     else if (cmd === "music" || cmd === "music-toggle")
                         root.toggleMusic()
                     else if (cmd === "music-open") {
@@ -847,6 +1036,7 @@ ShellRoot {
             }
         }
     }
+}
 
     /* ── Lock Screen (Carbon Lewis Dot Structure & Password Card) ───── */
     LockScreen {
@@ -876,6 +1066,13 @@ ShellRoot {
 
             WallpaperMod { anchors.fill: parent }
         }
+    }
+
+    /* ── Audio-Reactive Active Window Border Daemon ──────────────────────── */
+    Process {
+        id: audioBorderDaemon
+        command: ["python3", root.home + "/.config/hypr/scripts/audio-border.py"]
+        running: true
     }
 
     /* ── Dynamic Edge Reservation Windows (Prevents App Overlap) ────────── */
@@ -1030,88 +1227,17 @@ ShellRoot {
                         onOpenLauncher: root.openLauncher()
                     }
 
-                    /* Center: Clock & Music Island */
-                    Item {
-                        id: pillCenterSec
+                    /* Center: Clock, Rotating Vinyl Disc, Equalizer & Music Island */
+                    BarCenter {
+                        id: pillCenterItem
                         anchors.centerIn: parent
-                        implicitWidth: pillCenterRow.implicitWidth
-                        implicitHeight: 38
-
-                        Row {
-                            id: pillCenterRow
-                            anchors.centerIn: parent
-                            spacing: 8
-
-                            CenterClock {
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible: root.musicBarContent !== "music"
-                            }
-
-                            Rectangle {
-                                width: 1
-                                height: 14
-                                color: Qt.alpha(Theme.fg, 0.22)
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible: root.musicBarContent === "both"
-                            }
-
-                            Row {
-                                spacing: 6
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible: root.musicBarContent !== "clock"
-
-                                Rectangle {
-                                    width: 22
-                                    height: 22
-                                    radius: 11
-                                    color: Theme.bgAlt
-                                    border.color: Theme.accent
-                                    border.width: 1.5
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    clip: true
-
-                                    Image {
-                                        anchors.fill: parent
-                                        source: root.mprisArtUrl
-                                        fillMode: Image.PreserveAspectCrop
-                                        visible: root.mprisHasTrack && root.mprisArtUrl.length > 0
-                                    }
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "\uf51f"
-                                        font.family: Theme.font
-                                        font.pixelSize: 13
-                                        color: Theme.accent
-                                        visible: !root.mprisHasTrack || root.mprisArtUrl.length === 0
-                                    }
-                                }
-
-                                Text {
-                                    text: root.mprisHasTrack ? root.mprisTrackTitle : "Nothing Playing"
-                                    font.family: "Valley Sans"
-                                    font.pixelSize: 10
-                                    font.weight: Font.Bold
-                                    color: root.mprisHasTrack ? Theme.fg : Theme.fgDim
-                                    elide: Text.ElideRight
-                                    width: Math.min(implicitWidth, 160)
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.toggleMusic()
-                            // Temporarily disabled music hover
-                            // onEntered: root.openMusic()
-                            // onExited: {
-                            //     root.musicHovered = false
-                            //     musicLeaveTimer.restart()
-                            // }
-                        }
+                        barContent: root.musicBarContent
+                        onOpenCenterDashboard: root.openCenterDashboard()
+                        onCloseCenterDashboard: centerDashboardLeaveTimer.restart()
+                        onToggleCenterDashboard: root.toggleCenterDashboard()
+                        onToggleMusic: root.toggleCenterDashboard()
+                        onOpenMusic: root.openCenterDashboard()
+                        onToggleControls: root.toggleCenterDashboard()
                     }
 
                     /* Right: System Tray & Controls */
@@ -1122,7 +1248,7 @@ ShellRoot {
                         showBackground: false
                         vertical: false
                         anchorWindow: pillFullBarWindow
-                        notifCount: notifItem ? notifItem.total : 0
+                        notifCount: (notificationServer && notificationServer.trackedNotifications) ? notificationServer.trackedNotifications.values.length : 0
                         onOpenMixer: root.openMixer()
                         onCloseMixer: mixerLeaveTimer.restart()
                         onToggleMixer: root.toggleMixer()
@@ -1132,9 +1258,9 @@ ShellRoot {
                         onOpenBattery: root.openBattery()
                         onCloseBattery: batteryLeaveTimer.restart()
                         onToggleBattery: root.toggleBattery()
-                        onOpenNotif: root.openNotif()
-                        onCloseNotif: notifLeaveTimer.restart()
-                        onToggleNotif: root.toggleNotif()
+                        onOpenTray: root.openTray()
+                        onCloseTray: trayLeaveTimer.restart()
+                        onToggleTray: root.toggleTray()
                         onToggleControls: root.toggleControls()
                         onOpenPower: root.openPower()
                     }
@@ -1225,9 +1351,9 @@ ShellRoot {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "\uf51f"
-                                    font.family: Theme.font
-                                    font.pixelSize: 12
+                                    text: "music_note"
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: 14
                                     color: Theme.accent
                                     visible: !root.mprisHasTrack || root.mprisArtUrl.length === 0
                                 }
@@ -1265,7 +1391,7 @@ ShellRoot {
                         showBackground: false
                         vertical: true
                         anchorWindow: pillFullVerticalBarWindow
-                        notifCount: notifItem ? notifItem.total : 0
+                        notifCount: (notificationServer && notificationServer.trackedNotifications) ? notificationServer.trackedNotifications.values.length : 0
                         onOpenMixer: root.openMixer()
                         onCloseMixer: mixerLeaveTimer.restart()
                         onToggleMixer: root.toggleMixer()
@@ -1275,9 +1401,9 @@ ShellRoot {
                         onOpenBattery: root.openBattery()
                         onCloseBattery: batteryLeaveTimer.restart()
                         onToggleBattery: root.toggleBattery()
-                        onOpenNotif: root.openNotif()
-                        onCloseNotif: notifLeaveTimer.restart()
-                        onToggleNotif: root.toggleNotif()
+                        onOpenTray: root.openTray()
+                        onCloseTray: trayLeaveTimer.restart()
+                        onToggleTray: root.toggleTray()
                         onToggleControls: root.toggleControls()
                         onOpenPower: root.openPower()
                     }
@@ -1351,7 +1477,7 @@ ShellRoot {
                 id: minimalIslandItem
                 attachedBottom: root.mainBarEdge === "bottom"
                 islandStyle: root.islandStyle
-                notifCount: notifItem ? notifItem.total : 0
+                notifCount: (notificationServer && notificationServer.trackedNotifications) ? notificationServer.trackedNotifications.values.length : 0
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 y: {
@@ -1413,7 +1539,13 @@ ShellRoot {
                 onCloseNotif: notifLeaveTimer.restart()
                 onToggleNotif: root.toggleNotif()
                 onOpenCalendar: root.openCalendar()
-                onCloseCalendar: calendarLeaveTimer.restart()
+                onCloseCalendar: {
+                    calendarLeaveTimer.restart()
+                    if (root.centerDashboardOpen && !root.centerDashboardHovered) {
+                        centerDashboardLeaveTimer.interval = 1000
+                        centerDashboardLeaveTimer.restart()
+                    }
+                }
                 onToggleCalendar: root.toggleCalendar()
                 onOpenSmallMusic: root.openSmallMusic()
                 onCloseSmallMusic: smallMusicLeaveTimer.restart()
@@ -1449,7 +1581,7 @@ ShellRoot {
             }
 
             implicitWidth: 340
-            implicitHeight: 140
+            implicitHeight: 184
             visible: (root.smallMusicOpen || smallMusicItem.animatingOut)
 
             mask: Region {
@@ -1601,11 +1733,14 @@ ShellRoot {
                 anchors.bottom: root.mainBarEdge === "bottom" ? parent.bottom : undefined
                 anchors.horizontalCenter: parent.horizontalCenter
                 leftFillet: true
-                rightFillet: true
-                onOpenMusicHover: {}
-                onCloseMusicHover: {}
-                onToggleMusic: root.toggleMusic()
-                onOpenMusic: root.toggleMusic()
+                onOpenMusicHover: root.openCenterDashboard()
+                onCloseMusicHover: centerDashboardLeaveTimer.restart()
+                onOpenCenterDashboard: root.openCenterDashboard()
+                onCloseCenterDashboard: centerDashboardLeaveTimer.restart()
+                onToggleCenterDashboard: root.toggleCenterDashboard()
+                onToggleMusic: root.toggleCenterDashboard()
+                onOpenMusic: root.openCenterDashboard()
+                onToggleControls: root.toggleCenterDashboard()
             }
 
             NotchBarRight {
@@ -1616,7 +1751,6 @@ ShellRoot {
                 anchors.right: parent.right
                 leftFillet: true
                 rightFillet: false
-                notifCount: notifItem ? notifItem.total : 0
                 onOpenMixer: root.openMixer()
                 onCloseMixer: mixerLeaveTimer.restart()
                 onToggleMixer: root.toggleMixer()
@@ -1626,9 +1760,9 @@ ShellRoot {
                 onOpenBattery: root.openBattery()
                 onCloseBattery: batteryLeaveTimer.restart()
                 onToggleBattery: root.toggleBattery()
-                onOpenNotif: root.openNotif()
-                onCloseNotif: notifLeaveTimer.restart()
-                onToggleNotif: root.toggleNotif()
+                onOpenTray: root.openTray()
+                onCloseTray: trayLeaveTimer.restart()
+                onToggleTray: root.toggleTray()
                 onOpenPower: root.openPower()
             }
         }
@@ -1661,10 +1795,14 @@ ShellRoot {
                 barContent: root.musicBarContent
                 attachedBottom: root.musicBarEdge === "bottom"
                 anchors.fill: parent
-                onOpenMusicHover: {}
-                onCloseMusicHover: {}
-                onToggleMusic: root.toggleMusic()
-                onOpenMusic: root.toggleMusic()
+                onOpenMusicHover: root.openCenterDashboard()
+                onCloseMusicHover: centerDashboardLeaveTimer.restart()
+                onOpenCenterDashboard: root.openCenterDashboard()
+                onCloseCenterDashboard: centerDashboardLeaveTimer.restart()
+                onToggleCenterDashboard: root.toggleCenterDashboard()
+                onToggleMusic: root.toggleCenterDashboard()
+                onOpenMusic: root.openCenterDashboard()
+                onToggleControls: root.toggleCenterDashboard()
             }
         }
     }
@@ -1681,7 +1819,7 @@ ShellRoot {
             color: "transparent"
             WlrLayershell.namespace: "carbon-launcher"
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: root.launcherOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: root.launcherOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             exclusionMode: ExclusionMode.Ignore
             anchors { top: true; left: true; right: true; bottom: true }
 
@@ -1706,6 +1844,49 @@ ShellRoot {
                 open: root.launcherOpen
                 barEdge: root.mainBarEdge
                 onCloseRequested: root.closeLauncher()
+            }
+        }
+    }
+
+    /* Spotlight Command Palette: centred floating modal over the desktop (Super + K) */
+    Variants {
+        model: Quickshell.screens
+
+        PanelWindow {
+            id: spotlightWindow
+            required property var modelData
+
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-spotlight"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: root.spotlightOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            exclusionMode: ExclusionMode.Ignore
+            anchors { top: true; left: true; right: true; bottom: true }
+
+            aboveWindows: true
+            visible: root.spotlightOpen
+
+            MouseArea {
+                anchors.fill: parent
+                enabled: root.spotlightOpen
+                onClicked: (mouse) => {
+                    var sw = spotlightItem.width
+                    var sh = spotlightItem.height
+                    var sx = spotlightItem.x
+                    var sy = spotlightItem.y
+                    if (mouse.x < sx || mouse.x > sx + sw || mouse.y < sy || mouse.y > sy + sh)
+                        root.closeSpotlight()
+                }
+            }
+
+            SpotlightModal {
+                id: spotlightItem
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.verticalCenterOffset: -60
+                open: root.spotlightOpen
+                onCloseRequested: root.closeSpotlight()
             }
         }
     }
@@ -1744,6 +1925,8 @@ ShellRoot {
                 open: root.wallpaperPickerOpen
                 activeSource: root.wallpaperSource
                 onCloseRequested: root.closeWallpaperPicker()
+                onWallpaperApplyStarted: (name) => root.startWallpaperTransition(name)
+                onWallpaperApplyFinished: () => root.finishWallpaperTransition()
 
                 Connections {
                     target: root
@@ -1755,6 +1938,36 @@ ShellRoot {
                             wpItem.activeSource = root.wallpaperSource
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /* Full-screen blurred wallpaper applying transition overlay (0:13 video reference) */
+    Variants {
+        model: Quickshell.screens
+
+        PanelWindow {
+            id: wallpaperTransitionWindow
+            required property var modelData
+
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-wallpaper-transition"
+            WlrLayershell.layer: WlrLayer.Overlay
+            exclusionMode: ExclusionMode.Ignore
+            anchors { top: true; left: true; right: true; bottom: true }
+
+            aboveWindows: true
+            visible: root.wallpaperTransitionOpen
+
+            WallpaperTransition {
+                anchors.fill: parent
+                active: root.wallpaperTransitionOpen
+                pendingFinish: root.wallpaperTransitionPendingFinish
+                statusText: root.wallpaperTransitionText
+                onFinished: {
+                    root.wallpaperTransitionOpen = false
                 }
             }
         }
@@ -1990,12 +2203,12 @@ ShellRoot {
         }
     }
 
-    /* Notification popup: (Centered below island in minimal mode, right-anchored in bar mode) */
+    /* Tray overflow popup: Windows-style overflow showing running background apps */
     PanelWindow {
-        id: notifWindow
+        id: trayWindow
         screen: Quickshell.screens[0]
         color: "transparent"
-        WlrLayershell.namespace: "carbon-notif"
+        WlrLayershell.namespace: "carbon-tray"
         WlrLayershell.layer: WlrLayer.Overlay
         exclusionMode: ExclusionMode.Ignore
         anchors {
@@ -2009,29 +2222,28 @@ ShellRoot {
             right: root.barMode === "minimal" ? 0 : (root.mainBarEdge === "right" ? (root.barMode === "notch" ? 38 : 54) : 16)
         }
 
-        implicitWidth: notifItem.implicitWidth
-        implicitHeight: notifItem.implicitHeight + 20
+        implicitWidth: trayItem.implicitWidth
+        implicitHeight: trayItem.implicitHeight + 20
 
         visible: root.mainBarEdge !== "left"
 
         mask: Region {
-            item: root.notifOpen ? notifItem : null
+            item: root.trayOpen ? trayItem : null
             x: 0; y: 0
-            width: root.notifOpen ? notifItem.implicitWidth : 0
-            height: root.notifOpen ? notifItem.implicitHeight + 20 : 0
+            width: root.trayOpen ? trayItem.implicitWidth : 0
+            height: root.trayOpen ? trayItem.implicitHeight + 20 : 0
         }
 
-        NotificationPopup {
-            id: notifItem
-            server: notificationServer
+        TrayPopup {
+            id: trayItem
             barEdge: root.mainBarEdge
-            open: root.notifOpen
+            open: root.trayOpen
             onHoveredChanged: {
-                root.notifHovered = notifItem.hovered
-                if (root.notifHovered) notifLeaveTimer.stop()
-                else notifLeaveTimer.restart()
+                root.trayHovered = trayItem.hovered
+                if (root.trayHovered) trayLeaveTimer.stop()
+                else trayLeaveTimer.restart()
             }
-            onRequestClose: root.closeNotif()
+            onRequestedClose: root.closeTray()
         }
     }
 
@@ -2075,6 +2287,68 @@ ShellRoot {
                 if (root.calendarHovered) calendarLeaveTimer.stop()
                 else calendarLeaveTimer.restart()
             }
+        }
+    }
+
+    /* ── Top-Center Calendar, Time & Weather Dashboard Panel ── */
+    PanelWindow {
+        id: centerDashboardWindow
+        screen: Quickshell.screens[0]
+        color: "transparent"
+        WlrLayershell.namespace: "carbon-center-dashboard"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: root.centerDashboardOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+
+        anchors {
+            top: root.mainBarEdge !== "bottom"
+            bottom: root.mainBarEdge === "bottom"
+        }
+        margins {
+            top: root.mainBarEdge !== "bottom" ? (root.barMode === "notch" ? 44 : (root.barMode === "minimal" ? 44 : 52)) : 0
+            bottom: root.mainBarEdge === "bottom" ? (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 44 : 54) : (root.barMode === "notch" ? 44 : 52)) : 0
+        }
+
+        implicitWidth: centerDashboardItem.implicitWidth
+        implicitHeight: centerDashboardItem.implicitHeight
+
+        mask: Region {
+            item: root.centerDashboardOpen ? centerDashboardItem.cardItem : null
+        }
+
+        visible: root.centerDashboardOpen || centerDashboardItem.animatingOut
+
+        function updateHover() {
+            var isHov = windowHoverArea.containsMouse || centerDashboardItem.hovered
+            root.centerDashboardHovered = isHov
+            if (isHov) {
+                root.centerDashboardAwaitingHover = false
+                centerDashboardLeaveTimer.stop()
+            } else if (!root.centerDashboardPinned && !root.centerDashboardAwaitingHover) {
+                centerDashboardLeaveTimer.interval = 350
+                centerDashboardLeaveTimer.restart()
+            }
+        }
+
+        MouseArea {
+            id: windowHoverArea
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.NoButton
+            z: 99
+            onContainsMouseChanged: centerDashboardWindow.updateHover()
+        }
+
+        CenterDashboard {
+            id: centerDashboardItem
+            anchors.centerIn: parent
+            open: root.centerDashboardOpen
+            minimalCalendarOnly: root.barMode === "minimal"
+            attachedBottom: root.mainBarEdge === "bottom"
+            onCloseRequested: root.closeCenterDashboard()
+            onHoveredChanged: centerDashboardWindow.updateHover()
+            Keys.onEscapePressed: root.closeCenterDashboard()
         }
     }
 
@@ -2200,10 +2474,10 @@ ShellRoot {
     }
 
     PanelWindow {
-        id: notifWindowLeft
+        id: trayWindowLeft
         screen: Quickshell.screens[0]
         color: "transparent"
-        WlrLayershell.namespace: "carbon-notif-left"
+        WlrLayershell.namespace: "carbon-tray-left"
         WlrLayershell.layer: WlrLayer.Overlay
         exclusionMode: ExclusionMode.Ignore
         anchors {
@@ -2215,28 +2489,27 @@ ShellRoot {
             left: root.barMode === "notch" ? 38 : 54
         }
 
-        implicitWidth: notifItemLeft.implicitWidth
-        implicitHeight: notifItemLeft.implicitHeight + 20
+        implicitWidth: trayItemLeft.implicitWidth
+        implicitHeight: trayItemLeft.implicitHeight + 20
 
         visible: root.mainBarEdge === "left"
 
         mask: Region {
             x: 0; y: 0
-            width: root.notifOpen ? notifItemLeft.implicitWidth : 0
-            height: root.notifOpen ? notifItemLeft.implicitHeight + 20 : 0
+            width: root.trayOpen ? trayItemLeft.implicitWidth : 0
+            height: root.trayOpen ? trayItemLeft.implicitHeight + 20 : 0
         }
 
-        NotificationPopup {
-            id: notifItemLeft
-            server: notificationServer
+        TrayPopup {
+            id: trayItemLeft
             barEdge: "left"
-            open: root.notifOpen
+            open: root.trayOpen
             onHoveredChanged: {
-                root.notifHovered = notifItemLeft.hovered
-                if (root.notifHovered) notifLeaveTimer.stop()
-                else notifLeaveTimer.restart()
+                root.trayHovered = trayItemLeft.hovered
+                if (root.trayHovered) trayLeaveTimer.stop()
+                else trayLeaveTimer.restart()
             }
-            onRequestClose: root.closeNotif()
+            onRequestedClose: root.closeTray()
         }
     }
 
@@ -2351,7 +2624,7 @@ ShellRoot {
         MouseArea {
             anchors.fill: parent
             hoverEnabled: true
-            onEntered: root.openControls()
+            onEntered: root.openControlsHover()
             onExited: controlsLeaveTimer.restart()
         }
     }
@@ -2395,10 +2668,14 @@ ShellRoot {
             width: controlsItem.implicitWidth
             height: controlsItem.implicitHeight
             open: root.controlsVisible
+            server: notificationServer
             onHoveredChanged: {
                 root.controlsHovered = controlsItem.hovered
-                if (controlsItem.hovered) root.controlsVisible = true
-                controlsLeaveTimer.restart()
+                if (controlsItem.hovered) {
+                    controlsLeaveTimer.stop()
+                } else {
+                    controlsLeaveTimer.restart()
+                }
             }
         }
     }
@@ -2427,7 +2704,7 @@ ShellRoot {
             }
 
             implicitHeight: osdItem.implicitHeight
-            visible: osdItem.opacity > 0.001
+            visible: false // Replaced by Dynamic Island in-place morphing HUD
 
             NotchOsd {
                 id: osdItem

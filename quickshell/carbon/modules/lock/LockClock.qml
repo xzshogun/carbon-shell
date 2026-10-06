@@ -23,18 +23,60 @@ Item {
     property string timeStr: Qt.formatTime(new Date(), "hh:mm")
     property string dayStr: Qt.formatDate(new Date(), "dddd")
     property string dateStr: Qt.formatDate(new Date(), "d MMMM")
-    property string greetingStr: "Good day, Kazu"
+    readonly property var splashes: [
+        "Woo, animations!",
+        "It's like Hypr, but better.",
+        "Release 1.0 when?",
+        "It's not awesome, it's Hyprland!",
+        "\"I commit too often, people can't catch up lmao\" - Vaxry",
+        "This text is random.",
+        "\"There are reasons to not use rust.\" - Boga",
+        "Read the wiki.",
+        "\"Hello everyone this is YOUR daily dose of ‘read the wiki’\" - Vaxry",
+        "h",
+        "\"‘why no work’, bro I haven't hacked your pc to get live feeds yet\" - Vaxry",
+        "Compile, wait for 20 minutes, notice a new commit, compile again.",
+        "To rice, or not to rice, that is the question.",
+        "Now available on Fedora!",
+        "\"Hyprland is so good it starts with a capital letter\" - Hazel",
+        "\"please make this message a splash\" - eriedaberrie",
+        "\"the only wayland compositor powered by fried chicken\" - raf",
+        "\"This will never get into Hyprland\" - Flafy",
+        "\"Hyprland only gives you up on -git\" - fazzi",
+        "Segmentation fault (core dumped)",
+        "\"disabling hyprland logo is a war crime\" - Vaxry",
+        "some basic startup code",
+        "\"I think I am addicted to hyprland\" - mathisbuilder",
+        "Thanks Brodie!",
+        "Thanks fufexan!",
+        "Thanks raf!",
+        "You can't use --splash to change this message :)",
+        "Hyprland will overtake Gnome in popularity by [insert year]",
+        "Designed in California - Assembled in China",
+        "\"something <time here> and still no new splash\" - snowman",
+        "My name is Land. Hypr Land. One red bull, shaken not stirred.",
+        "\"Glory To The Emperor\" - raf",
+        "Help I forgot to install kitty",
+        "Go to settings to activate Hyprland",
+        "Why is there code??? Make a damn .exe file and give it to me.",
+        "Hyprland: sleek, fluid, and unstoppable"
+    ]
+
+    property string splashStr: root.splashes[Math.floor(Math.random() * root.splashes.length)]
+
+    function pickRandomSplash() {
+        var next = root.splashes[Math.floor(Math.random() * root.splashes.length)]
+        if (next === root.splashStr && root.splashes.length > 1) {
+            next = root.splashes[(root.splashes.indexOf(next) + 1) % root.splashes.length]
+        }
+        root.splashStr = next
+    }
 
     function refresh() {
         var d = new Date()
         root.timeStr = Qt.formatTime(d, "hh:mm")
         root.dayStr = Qt.formatDate(d, "dddd")
         root.dateStr = Qt.formatDate(d, "d MMMM")
-        const hour = d.getHours()
-        if (hour >= 5 && hour < 12) root.greetingStr = "Good morning, Kazu"
-        else if (hour >= 12 && hour < 17) root.greetingStr = "Good afternoon, Kazu"
-        else if (hour >= 17 && hour < 22) root.greetingStr = "Good evening, Kazu"
-        else root.greetingStr = "Late night coding, Kazu"
     }
 
     Timer {
@@ -45,8 +87,16 @@ Item {
         onTriggered: root.refresh()
     }
 
+    // Refresh the splash quote every 45 seconds or on every entrance
+    Timer {
+        interval: 45000
+        running: true
+        repeat: true
+        onTriggered: root.pickRandomSplash()
+    }
+
     /* ── Read Lock Screen Configuration ───────────────────────────────────── */
-    readonly property string configPath: "/home/shogun/.config/hypr/carbon-lockscreen.json"
+    readonly property string configPath: (Quickshell.env("HOME") || "") + "/.config/hypr/carbon-lockscreen.json"
     property bool enabledSetting: true
 
     FileView {
@@ -104,7 +154,10 @@ Item {
         id: introDelay
         interval: 180
         running: true
-        onTriggered: root.entered = true
+        onTriggered: {
+            root.pickRandomSplash()
+            root.entered = true
+        }
     }
 
     /* ── Drop Shadow Component ───────────────────────────────────────────── */
@@ -139,18 +192,25 @@ Item {
             layer.effect: shadowFx
         }
 
-        // Ambient Cursive Greeting
+        // Ambient Hyprland Splash Quote
         Text {
             id: greetingText
             anchors.right: parent.right
-            text: root.greetingStr
+            text: root.splashStr
             font.family: "Caveat"
-            font.pixelSize: 24
+            font.pixelSize: 22
             font.weight: Font.Bold
             color: Theme.accentLit ? Theme.accentLit : (Theme.accent ? Theme.accent : "#00F0FF")
+            horizontalAlignment: Text.AlignRight
+            wrapMode: Text.WordWrap
+            width: Math.min(460, root.parent ? root.parent.width * 0.45 : 460)
 
             layer.enabled: true
             layer.effect: shadowFx
+
+            Behavior on opacity {
+                NumberAnimation { duration: 250; easing.type: Easing.OutQuad }
+            }
         }
 
         // Day and Date Row

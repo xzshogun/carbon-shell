@@ -101,7 +101,7 @@ Item {
     }
 
     /* ── Read Lock Screen Configuration ───────────────────────────────────── */
-    readonly property string configPath: "/home/shogun/.config/hypr/carbon-lockscreen.json"
+    readonly property string configPath: (Quickshell.env("HOME") || "") + "/.config/hypr/carbon-lockscreen.json"
     property bool enabledSetting: true
 
     FileView {
@@ -204,9 +204,9 @@ Item {
                 // Fallback Music Glyph if no cover or idle
                 Text {
                     anchors.centerIn: parent
-                    text: "\uf001" // FontAwesome music note
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 22
+                    text: "music_note"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 24
                     color: root.hasTrack ? "#66FFFFFF" : "#44FFFFFF"
                     visible: !root.hasTrack || artImg.status !== Image.Ready
                 }

@@ -23,15 +23,17 @@ Item {
 
     property bool open: false
     signal closeRequested()
+    readonly property string home: Quickshell.env("HOME") || ""
 
     readonly property var cardItem: card
-    readonly property bool animatingOut: !root.open && root.opacity > 0.001
+    readonly property bool animatingOut: !root.open && (root.opacity > 0.005 || xAnim.running || scaleAnim.running || opacityAnim.running)
 
     property string mode: "apps"
     property var allApps: []
     property var letterMap: ({})
     property var activeLettersSet: ({})
     property var letterCounts: ({})
+    property var letterOffsets: ({})
 
     readonly property var alphabet: [
         "#", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
@@ -44,27 +46,27 @@ Item {
             "id": "wallpaper",
             "name": "Change Wallpaper",
             "desc": "Open the Carbon Wallpaper Picker",
-            "glyph": "\uf03e",
+            "glyph": "wallpaper",
             "run": () => {
                 root.closeRequested()
-                Quickshell.execDetached(["sh", "/home/shogun/.config/hypr/scripts/carbon-ipc.sh", "wallpaper"])
+                Quickshell.execDetached(["sh", root.home + "/.config/hypr/scripts/carbon-ipc.sh", "wallpaper"])
             }
         },
         {
             "id": "config",
             "name": "Carbon Settings",
             "desc": "Open Carbon Config & Keybind Editor",
-            "glyph": "\uf013",
+            "glyph": "settings",
             "run": () => {
                 root.closeRequested()
-                Quickshell.execDetached(["python3", "/home/shogun/.config/hypr/scripts/carbon-config-editor.py"])
+                Quickshell.execDetached(["python3", root.home + "/.config/hypr/scripts/carbon-config-editor.py"])
             }
         },
         {
             "id": "terminal",
             "name": "Open Terminal",
             "desc": "Launch default terminal emulator",
-            "glyph": "\uf120",
+            "glyph": "terminal",
             "run": () => {
                 root.closeRequested()
                 Quickshell.execDetached(["kitty"])
@@ -74,17 +76,17 @@ Item {
             "id": "lock",
             "name": "Lock Screen",
             "desc": "Lock the desktop session with Carbon Lock",
-            "glyph": "\uf023",
+            "glyph": "lock",
             "run": () => {
                 root.closeRequested()
-                Quickshell.execDetached(["sh", "/home/shogun/.config/hypr/scripts/carbon-ipc.sh", "lock"])
+                Quickshell.execDetached(["sh", root.home + "/.config/hypr/scripts/carbon-ipc.sh", "lock"])
             }
         },
         {
             "id": "suspend",
             "name": "Suspend System",
             "desc": "Suspend the computer to sleep",
-            "glyph": "\uf2dc",
+            "glyph": "bedtime",
             "run": () => {
                 root.closeRequested()
                 Quickshell.execDetached(["systemctl", "suspend"])
@@ -94,7 +96,7 @@ Item {
             "id": "logout",
             "name": "Log Out",
             "desc": "Exit current desktop session",
-            "glyph": "\uf2f5",
+            "glyph": "logout",
             "run": () => {
                 root.closeRequested()
                 Quickshell.execDetached(["sh", "-c", "command -v wlogout >/dev/null && wlogout || hyprctl dispatch exit"])
@@ -133,6 +135,8 @@ Item {
                 const newLetterMap = {};
                 const newActiveSet = {};
                 const newCounts = {};
+                const newLetterOffsets = {};
+                let runningY = 0;
 
                 for (let i = 0; i < root.allApps.length; i++) {
                     const e = root.allApps[i];
@@ -144,9 +148,11 @@ Item {
                         lastLetter = letter;
                         newLetterMap[letter] = i;
                         newActiveSet[letter] = true;
+                        newLetterOffsets[letter] = runningY;
                     }
 
                     newCounts[letter] = (newCounts[letter] || 0) + 1;
+                    runningY += isFirst ? 72 : 44;
 
                     appModel.append({
                         "entry": e,
@@ -154,9 +160,22 @@ Item {
                         "isFirstOfLetter": isFirst
                     });
                 }
+
+                // Fill gaps so scrubbing through letters with no apps glides seamlessly
+                let lastKnownY = 0;
+                for (let a = 0; a < root.alphabet.length; a++) {
+                    let ch = root.alphabet[a];
+                    if (newLetterOffsets[ch] !== undefined) {
+                        lastKnownY = newLetterOffsets[ch];
+                    } else {
+                        newLetterOffsets[ch] = lastKnownY;
+                    }
+                }
+
                 root.letterMap = newLetterMap;
                 root.activeLettersSet = newActiveSet;
                 root.letterCounts = newCounts;
+                root.letterOffsets = newLetterOffsets;
             } else {
                 // Filtered search results
                 const matched = [];
@@ -246,7 +265,7 @@ Item {
 
     /* Edge docking & notch geometry */
     property string barEdge: "top"
-    readonly property string attachedEdge: (root.barEdge === "bottom") ? "right" : "left"
+    readonly property string attachedEdge: (root.barEdge === "right") ? "right" : "left"
 
     readonly property real filletRadius: 20
     readonly property real cornerRadius: 16
@@ -294,6 +313,7 @@ Item {
 
     Behavior on x {
         NumberAnimation {
+            id: xAnim
             duration: root.open ? 340 : 200
             easing.type: root.open ? Easing.OutBack : Easing.InQuad
             easing.overshoot: root.open ? 1.35 : 1.0
@@ -301,6 +321,7 @@ Item {
     }
     Behavior on scale {
         NumberAnimation {
+            id: scaleAnim
             duration: root.open ? 340 : 180
             easing.type: root.open ? Easing.OutBack : Easing.InQuad
             easing.overshoot: root.open ? 1.35 : 1.0
@@ -314,7 +335,8 @@ Item {
     }
     Behavior on opacity {
         NumberAnimation {
-            duration: root.open ? 220 : 140
+            id: opacityAnim
+            duration: root.open ? 220 : 180
             easing.type: root.open ? Easing.OutQuad : Easing.InQuad
         }
     }
@@ -363,21 +385,38 @@ Item {
         radius: 12
         color: Theme.bgAlt
         border.color: searchField.activeFocus ? Theme.accent : Theme.outline
-        border.width: 1
+        border.width: searchField.activeFocus ? 1.5 : 1
         scale: root.open ? 1.0 : 0.92
         opacity: root.open ? 1.0 : 0.0
 
         Behavior on anchors.topMargin { NumberAnimation { duration: 320; easing.type: Easing.OutBack; easing.overshoot: 1.25 } }
         Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutBack; easing.overshoot: 1.25 } }
         Behavior on opacity { NumberAnimation { duration: 220 } }
+        Behavior on border.color { ColorAnimation { duration: 160 } }
+
+        /* Ambient glowing search halo */
+        Rectangle {
+            anchors.centerIn: parent
+            width: parent.width + 6
+            height: parent.height + 6
+            radius: parent.radius + 3
+            color: "transparent"
+            border.color: Qt.alpha(Theme.accent, searchField.activeFocus ? 0.35 : 0.0)
+            border.width: 1.5
+            opacity: searchField.activeFocus ? 1.0 : 0.0
+            scale: searchField.activeFocus ? 1.0 : 0.96
+            Behavior on opacity { NumberAnimation { duration: 180 } }
+            Behavior on scale { NumberAnimation { duration: 180 } }
+            z: -1
+        }
 
         Text {
             anchors.left: parent.left
             anchors.leftMargin: 12
             anchors.verticalCenter: parent.verticalCenter
-            text: "\uf002"
-            font.family: Theme.font
-            font.pixelSize: 13
+            text: "search"
+            font.family: Theme.fontIcon
+            font.pixelSize: 16
             color: searchField.activeFocus ? Theme.accent : Theme.fgDim
         }
 
@@ -424,11 +463,78 @@ Item {
         }
     }
 
+    /* Pinned / Frequent Quick-Access Apps Row */
+    Row {
+        id: pinnedAppsRow
+        anchors.top: searchBox.bottom
+        anchors.topMargin: searchField.text.length === 0 ? 8 : 0
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: 14
+        anchors.rightMargin: 14
+        height: searchField.text.length === 0 ? 30 : 0
+        spacing: 6
+        visible: height > 0
+        opacity: searchField.text.length === 0 ? 1.0 : 0.0
+        clip: true
+
+        Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
+        Behavior on opacity { NumberAnimation { duration: 160 } }
+        Behavior on anchors.topMargin { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
+
+        Repeater {
+            model: [
+                { name: "Terminal", icon: "terminal", cmd: "kitty" },
+                { name: "Browser",  icon: "public", cmd: "brave || firefox || google-chrome-stable" },
+                { name: "Files",    icon: "folder", cmd: "nautilus || dolphin" },
+                { name: "Discord",  icon: "forum", cmd: "discord" },
+                { name: "Code",     icon: "code", cmd: "code || vscodium" },
+                { name: "Config",   icon: "settings", cmd: "python3 " + root.home + "/.config/hypr/scripts/carbon-config-editor.py" }
+            ]
+
+            delegate: Rectangle {
+                id: pinnedChip
+                required property var modelData
+                required property int index
+
+                width: (pinnedAppsRow.width - (5 * pinnedAppsRow.spacing)) / 6
+                height: 28
+                radius: 8
+                color: chipMouse.containsMouse ? Qt.alpha(Theme.accent, 0.20) : Qt.alpha(Theme.fg, 0.06)
+                border.color: chipMouse.containsMouse ? Qt.alpha(Theme.accent, 0.50) : Qt.alpha(Theme.outline, 0.35)
+                border.width: 1
+                scale: chipMouse.containsMouse ? 1.06 : 1.0
+                Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack } }
+                Behavior on color { ColorAnimation { duration: 100 } }
+                Behavior on border.color { ColorAnimation { duration: 100 } }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: pinnedChip.modelData.icon
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 16
+                    color: chipMouse.containsMouse ? Theme.accent : Theme.fgDim
+                }
+
+                MouseArea {
+                    id: chipMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        root.closeRequested()
+                        Quickshell.execDetached(["sh", "-c", pinnedChip.modelData.cmd])
+                    }
+                }
+            }
+        }
+    }
+
     /* Application & Command Results List */
     ListView {
         id: resultsList
-        anchors.top: searchBox.bottom
-        anchors.topMargin: 8
+        anchors.top: pinnedAppsRow.bottom
+        anchors.topMargin: searchField.text.length === 0 ? 6 : 8
         anchors.bottom: quickActionsRow.top
         anchors.bottomMargin: 8
         anchors.left: parent.left
@@ -498,11 +604,9 @@ Item {
 
                     /* Active indicator pill */
                     Rectangle {
-                        anchors.left: root.attachedEdge === "left" ? parent.left : undefined
-                        anchors.right: root.attachedEdge === "right" ? parent.right : undefined
-                        anchors.top: parent.top
-                        anchors.bottom: parent.bottom
-                        anchors.margins: 7
+                        x: root.attachedEdge === "left" ? 7 : (parent.width - width - 7)
+                        y: 7
+                        height: parent.height - 14
                         width: 3
                         radius: 1.5
                         color: Theme.accent
@@ -539,8 +643,8 @@ Item {
                             visible: rowItem.isAction
                             text: rowItem.action ? rowItem.action.glyph : ""
                             color: Theme.accentLit
-                            font.family: Theme.font
-                            font.pixelSize: 14
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 16
                         }
                     }
 
@@ -602,10 +706,7 @@ Item {
         id: niagaraWaveBar
         anchors.top: resultsList.top
         anchors.bottom: resultsList.bottom
-        anchors.right: root.attachedEdge === "left" ? parent.right : undefined
-        anchors.left: root.attachedEdge === "right" ? parent.left : undefined
-        anchors.rightMargin: root.attachedEdge === "left" ? 6 : 0
-        anchors.leftMargin: root.attachedEdge === "right" ? 6 : 0
+        x: root.attachedEdge === "left" ? (parent.width - width - 6) : 6
         width: 26
         z: 10
         visible: root.mode === "apps"
@@ -716,6 +817,13 @@ Item {
             }
         }
 
+        NumberAnimation {
+            id: smoothListScroller
+            target: resultsList
+            property: "contentY"
+            easing.type: Easing.OutCubic
+        }
+
         MouseArea {
             anchors.fill: parent
             hoverEnabled: true
@@ -733,13 +841,36 @@ Item {
                 }
 
                 var letterH = parent.height / root.alphabet.length
-                var idx = Math.max(0, Math.min(root.alphabet.length - 1, Math.floor(niagaraWaveBar.scrubY / letterH)))
-                var targetLetter = root.alphabet[idx]
+                var floatIdx = Math.max(0, Math.min(root.alphabet.length - 1, niagaraWaveBar.scrubY / letterH))
+                var idx = Math.floor(floatIdx)
+                var nextIdx = Math.min(root.alphabet.length - 1, idx + 1)
+                var frac = floatIdx - idx
+
+                var roundIdx = Math.max(0, Math.min(root.alphabet.length - 1, Math.round(floatIdx)))
+                var targetLetter = root.alphabet[roundIdx]
+
                 if (niagaraWaveBar.activeLetter !== targetLetter) {
                     niagaraWaveBar.activeLetter = targetLetter
                     if (root.letterMap[targetLetter] !== undefined) {
-                        resultsList.positionViewAtIndex(root.letterMap[targetLetter], ListView.Beginning)
+                        resultsList.currentIndex = root.letterMap[targetLetter]
                     }
+                }
+
+                // Continuous interpolation for fluid, buttery-smooth scrolling
+                var let0 = root.alphabet[idx]
+                var let1 = root.alphabet[nextIdx]
+                var y0 = (root.letterOffsets && root.letterOffsets[let0] !== undefined) ? root.letterOffsets[let0] : 0
+                var y1 = (root.letterOffsets && root.letterOffsets[let1] !== undefined) ? root.letterOffsets[let1] : y0
+                var contY = y0 + (y1 - y0) * frac
+                var maxContentY = Math.max(0, resultsList.contentHeight - resultsList.height)
+                var targetY = Math.max(0, Math.min(maxContentY, contY))
+
+                var dist = Math.abs(targetY - resultsList.contentY)
+                if (dist > 1.0) {
+                    smoothListScroller.stop()
+                    smoothListScroller.to = targetY
+                    smoothListScroller.duration = Math.min(140, Math.max(50, Math.round(dist * 0.12)))
+                    smoothListScroller.start()
                 }
             }
 
@@ -748,6 +879,15 @@ Item {
             onReleased: {
                 niagaraWaveBar.isScrubbing = false
                 niagaraWaveBar.inwardPull = 0
+                if (root.letterOffsets && root.letterOffsets[niagaraWaveBar.activeLetter] !== undefined) {
+                    var maxContentY = Math.max(0, resultsList.contentHeight - resultsList.height)
+                    var targetY = Math.max(0, Math.min(maxContentY, root.letterOffsets[niagaraWaveBar.activeLetter]))
+                    smoothListScroller.stop()
+                    smoothListScroller.to = targetY
+                    smoothListScroller.duration = 180
+                    smoothListScroller.easing.type = Easing.OutQuad
+                    smoothListScroller.start()
+                }
             }
             onExited: {
                 if (!pressed) {
@@ -787,9 +927,9 @@ Item {
                 Layout.preferredHeight: 20
                 Text {
                     anchors.centerIn: parent
-                    text: "\uf120"
-                    font.family: Theme.font
-                    font.pixelSize: 12
+                    text: "terminal"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 16
                     color: termHov.containsMouse ? Theme.accent : Theme.fgDim
                 }
                 MouseArea {
@@ -810,9 +950,9 @@ Item {
                 Layout.preferredHeight: 20
                 Text {
                     anchors.centerIn: parent
-                    text: "\uf013"
-                    font.family: Theme.font
-                    font.pixelSize: 12
+                    text: "settings"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 16
                     color: cfgHov.containsMouse ? Theme.accent : Theme.fgDim
                 }
                 MouseArea {
@@ -822,7 +962,7 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         root.closeRequested()
-                        Quickshell.execDetached(["python3", "/home/shogun/.config/hypr/scripts/carbon-config-editor.py"])
+                        Quickshell.execDetached(["python3", root.home + "/.config/hypr/scripts/carbon-config-editor.py"])
                     }
                 }
             }
@@ -833,9 +973,9 @@ Item {
                 Layout.preferredHeight: 20
                 Text {
                     anchors.centerIn: parent
-                    text: "\uf023"
-                    font.family: Theme.font
-                    font.pixelSize: 12
+                    text: "lock"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 16
                     color: lockHov.containsMouse ? Theme.accent : Theme.fgDim
                 }
                 MouseArea {
@@ -845,7 +985,7 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         root.closeRequested()
-                        Quickshell.execDetached(["sh", "/home/shogun/.config/hypr/scripts/carbon-ipc.sh", "lock"])
+                        Quickshell.execDetached(["sh", root.home + "/.config/hypr/scripts/carbon-ipc.sh", "lock"])
                     }
                 }
             }
@@ -856,9 +996,9 @@ Item {
                 Layout.preferredHeight: 20
                 Text {
                     anchors.centerIn: parent
-                    text: "\uf03e"
-                    font.family: Theme.font
-                    font.pixelSize: 12
+                    text: "wallpaper"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 16
                     color: wpHov.containsMouse ? Theme.accent : Theme.fgDim
                 }
                 MouseArea {
@@ -868,7 +1008,7 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         root.closeRequested()
-                        Quickshell.execDetached(["sh", "/home/shogun/.config/hypr/scripts/carbon-ipc.sh", "wallpaper"])
+                        Quickshell.execDetached(["sh", root.home + "/.config/hypr/scripts/carbon-ipc.sh", "wallpaper"])
                     }
                 }
             }

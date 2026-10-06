@@ -32,7 +32,7 @@ Item {
 
     Process {
         id: dataProbe
-        command: ["/home/shogun/.config/hypr/scripts/carbon-overview-data.py"]
+        command: [(Quickshell.env("HOME") || "") + "/.config/hypr/scripts/carbon-overview-data.py"]
         stdout: StdioCollector {
             id: dataCol
             waitForEnd: true

@@ -10,7 +10,7 @@ import "../Singletons"
 IconButton {
     id: root
 
-    glyph: "\uf011"
+    glyph: "power_settings_new"
     tip: "Power"
     color: Theme.fg
     hoverColor: Theme.accentLit

@@ -27,6 +27,7 @@ import "../Singletons"
 Item {
     id: root
 
+    readonly property string home: Quickshell.env("HOME") || ""
     implicitHeight: 34
     implicitWidth: capsule.width
     width: capsule.width
@@ -97,7 +98,7 @@ Item {
 
     Process {
         id: nightLightStatusProc
-        command: ["/home/shogun/.config/hypr/scripts/carbon-night.sh", "status"]
+        command: [root.home + "/.config/hypr/scripts/carbon-night.sh", "status"]
         stdout: SplitParser {
             onRead: line => {
                 root.nightLightOn = (line.trim() === "on")
@@ -115,7 +116,7 @@ Item {
     }
 
     function toggleNightLight() {
-        Quickshell.execDetached(["/home/shogun/.config/hypr/scripts/carbon-night.sh", "toggle"])
+        Quickshell.execDetached([root.home + "/.config/hypr/scripts/carbon-night.sh", "toggle"])
         root.nightLightOn = !root.nightLightOn
         nightLightCheckTimer.restart()
     }
@@ -298,7 +299,7 @@ Item {
     /* ── Clock Style Watcher ── */
     FileView {
         id: clockStyleFile
-        path: "/home/shogun/.config/hypr/carbon-clock-style.json"
+        path: root.home + "/.config/hypr/carbon-clock-style.json"
         watchChanges: true
         onFileChanged: root.reloadClockStyle()
         onLoaded: root.reloadClockStyle()
@@ -356,7 +357,7 @@ Item {
 
     Process {
         id: cavaProc
-        command: ["cava", "-p", "/home/shogun/.config/hypr/cava-island.conf"]
+        command: ["cava", "-p", root.home + "/.config/hypr/cava-island.conf"]
         running: root.currentPage === 2 && root.isPlaying
         stdout: SplitParser {
             splitMarker: "\n"
@@ -392,10 +393,10 @@ Item {
     readonly property real volume: audioSink && audioSink.audio ? audioSink.audio.volume : 0.0
     readonly property bool muted: audioSink && audioSink.audio ? audioSink.audio.muted : false
     readonly property string volumeGlyph: {
-        if (muted) return "\uf6a9"
-        if (volume > 0.5) return "\uf028"
-        if (volume > 0.0) return "\uf027"
-        return "\uf026"
+        if (muted) return "volume_off"
+        if (volume > 0.5) return "volume_up"
+        if (volume > 0.0) return "volume_down"
+        return "volume_mute"
     }
 
     /* ── Battery State (UPower Direct) ── */
@@ -404,13 +405,13 @@ Item {
     readonly property real batteryPct: battery ? battery.percentage : 1.0
     readonly property bool isCharging: battery ? (battery.state === UPowerDeviceState.Charging || battery.state === UPowerDeviceState.FullyCharged) : false
     readonly property string batteryGlyph: {
-        if (isCharging) return "\uf0e7"
+        if (isCharging) return "battery_charging_full"
         const p = batteryPct * 100
-        if (p > 85) return "\uf240"
-        if (p > 60) return "\uf241"
-        if (p > 35) return "\uf242"
-        if (p > 10) return "\uf243"
-        return "\uf244"
+        if (p > 85) return "battery_full"
+        if (p > 60) return "battery_5_bar"
+        if (p > 35) return "battery_3_bar"
+        if (p > 10) return "battery_1_bar"
+        return "battery_alert"
     }
 
     /* ── Dynamic Container ── */
@@ -561,42 +562,58 @@ Item {
                         }
                     }
 
-                    /* Live Clock (Titan 3D Pop) */
-                    Row {
-                        spacing: root.clockStyle === "titan" ? 1 : 2
+                    /* Live Clock (Titan 3D Pop) - hoverable to trigger calendar */
+                    Item {
                         anchors.verticalCenter: parent.verticalCenter
+                        implicitWidth: clockRow.implicitWidth
+                        implicitHeight: clockRow.implicitHeight
 
-                        Text {
-                            text: root.hourStr
-                            font.pixelSize: root.clockStyle === "titan" ? 14 : 12
-                            font.weight: root.clockStyle === "titan" ? Font.Black : Font.Bold
-                            font.family: root.clockStyle === "titan" ? "Titan One" : "JetBrains Mono"
-                            color: Theme.fg
-                            style: root.clockStyle === "titan" ? Text.Raised : Text.Normal
-                            styleColor: root.clockStyle === "titan" ? "#55000000" : "transparent"
-                            anchors.verticalCenter: parent.verticalCenter
+                        Row {
+                            id: clockRow
+                            spacing: root.clockStyle === "titan" ? 1 : 2
+                            anchors.centerIn: parent
+
+                            Text {
+                                text: root.hourStr
+                                font.pixelSize: root.clockStyle === "titan" ? 14 : 12
+                                font.weight: root.clockStyle === "titan" ? Font.Black : Font.Bold
+                                font.family: root.clockStyle === "titan" ? "Titan One" : "JetBrains Mono"
+                                color: Theme.fg
+                                style: root.clockStyle === "titan" ? Text.Raised : Text.Normal
+                                styleColor: root.clockStyle === "titan" ? "#55000000" : "transparent"
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: ":"
+                                font.pixelSize: root.clockStyle === "titan" ? 14 : 12
+                                font.weight: root.clockStyle === "titan" ? Font.Black : Font.Bold
+                                font.family: root.clockStyle === "titan" ? "Titan One" : "JetBrains Mono"
+                                color: Theme.accent
+                                style: root.clockStyle === "titan" ? Text.Raised : Text.Normal
+                                styleColor: root.clockStyle === "titan" ? "#55000000" : "transparent"
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: root.minStr
+                                font.pixelSize: root.clockStyle === "titan" ? 14 : 12
+                                font.weight: root.clockStyle === "titan" ? Font.Black : Font.Bold
+                                font.family: root.clockStyle === "titan" ? "Titan One" : "JetBrains Mono"
+                                color: root.clockStyle === "titan" ? Theme.accent : Theme.fg
+                                style: root.clockStyle === "titan" ? Text.Raised : Text.Normal
+                                styleColor: root.clockStyle === "titan" ? "#55000000" : "transparent"
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
                         }
 
-                        Text {
-                            text: ":"
-                            font.pixelSize: root.clockStyle === "titan" ? 14 : 12
-                            font.weight: root.clockStyle === "titan" ? Font.Black : Font.Bold
-                            font.family: root.clockStyle === "titan" ? "Titan One" : "JetBrains Mono"
-                            color: Theme.accent
-                            style: root.clockStyle === "titan" ? Text.Raised : Text.Normal
-                            styleColor: root.clockStyle === "titan" ? "#55000000" : "transparent"
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-
-                        Text {
-                            text: root.minStr
-                            font.pixelSize: root.clockStyle === "titan" ? 14 : 12
-                            font.weight: root.clockStyle === "titan" ? Font.Black : Font.Bold
-                            font.family: root.clockStyle === "titan" ? "Titan One" : "JetBrains Mono"
-                            color: root.clockStyle === "titan" ? Theme.accent : Theme.fg
-                            style: root.clockStyle === "titan" ? Text.Raised : Text.Normal
-                            styleColor: root.clockStyle === "titan" ? "#55000000" : "transparent"
-                            anchors.verticalCenter: parent.verticalCenter
+                        MouseArea {
+                            id: clockArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.ArrowCursor
+                            z: 5
+                            onWheel: wheel => root.handleWheel(wheel)
                         }
                     }
 
@@ -641,9 +658,9 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "\uf073"
-                            font.family: Theme.font
-                            font.pixelSize: 11
+                            text: "calendar_today"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 14
                             color: calArea.containsMouse ? Theme.accent : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.7)
                         }
 
@@ -801,9 +818,9 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "\uf185"
-                            font.family: Theme.font
-                            font.pixelSize: 12
+                            text: "light_mode"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 14
                             color: brightArea.containsMouse ? Theme.accentLit : Theme.fg
                         }
 
@@ -921,9 +938,9 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "\uf1eb"
-                            font.family: Theme.font
-                            font.pixelSize: 12
+                            text: "wifi"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 14
                             color: wifiArea.containsMouse ? Theme.accent : Theme.fg
                         }
 
@@ -981,9 +998,9 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "\uf294"
-                            font.family: Theme.font
-                            font.pixelSize: 12
+                            text: "bluetooth"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 14
                             color: btArea.containsMouse ? Theme.accent : Theme.fg
                         }
 
@@ -1041,9 +1058,9 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "\uf186"
-                            font.family: Theme.font
-                            font.pixelSize: 12
+                            text: "nightlight"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 14
                             color: root.nightLightOn ? Theme.accent : (nightArea.containsMouse ? Theme.accent : Theme.fg)
                         }
 
@@ -1104,9 +1121,9 @@ Item {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: "\uf0f3"
-                                font.family: Theme.font
-                                font.pixelSize: 12
+                                text: "notifications"
+                                font.family: Theme.fontIcon
+                                font.pixelSize: 14
                                 color: Theme.dnd ? Theme.fgDim : (notifArea.containsMouse ? Theme.accent : (root.notifCount > 0 ? Theme.accent : Theme.fg))
                             }
 
@@ -1219,10 +1236,9 @@ Item {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "\uf001"
-                                    font.family: "Font Awesome 6 Free"
-                                    font.weight: Font.Black
-                                    font.pixelSize: 9
+                                    text: "music_note"
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: 12
                                     color: root.isPlaying ? Theme.accent : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.6)
                                     visible: !LyricsService.artUrl || LyricsService.artUrl === ""
                                 }
@@ -1261,9 +1277,8 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             z: 5
-                            // Temporarily disabled music hover
-                            // onEntered: { capsule.musicHovered = true }
-                            // onExited: { capsule.musicHovered = false }
+                            onEntered: { capsule.musicHovered = true }
+                            onExited: { capsule.musicHovered = false }
                             onClicked: root.clickPopup("smallMusic")
                             onWheel: wheel => root.handleWheel(wheel)
                         }
@@ -1290,39 +1305,6 @@ Item {
                                 }
                             }
                         }
-                    }
-                }
-            }
-        }
-
-        /* ── Modern Pagination Dots (Smooth Morphing Indicator) ── */
-        Row {
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 2
-            anchors.horizontalCenter: parent.horizontalCenter
-            spacing: 4
-            z: 10
-
-            Repeater {
-                model: 3
-                Rectangle {
-                    width: root.currentPage === index ? 12 : 3
-                    height: 2.5
-                    radius: 1.25
-                    color: root.currentPage === index ? Theme.accent : Qt.rgba(1, 1, 1, 0.22)
-
-                    Behavior on width {
-                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-                    }
-                    Behavior on color {
-                        ColorAnimation { duration: 180 }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        anchors.margins: -4
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.currentPage = index
                     }
                 }
             }

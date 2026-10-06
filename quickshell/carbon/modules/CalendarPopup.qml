@@ -160,9 +160,9 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     Text {
                         anchors.centerIn: parent
-                        text: "\u2039"
-                        font.pixelSize: 14
-                        font.bold: true
+                        text: "chevron_left"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 15
                         color: Theme.fgDim
                     }
                     MouseArea {
@@ -196,9 +196,9 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     Text {
                         anchors.centerIn: parent
-                        text: "\u203a"
-                        font.pixelSize: 14
-                        font.bold: true
+                        text: "chevron_right"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 15
                         color: Theme.fgDim
                     }
                     MouseArea {

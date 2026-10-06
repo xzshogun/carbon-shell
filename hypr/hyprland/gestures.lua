@@ -24,7 +24,7 @@ hl.gesture({
     fingers   = vars.gestureFingers,
     direction = "down",
     action    = function()
-        hl.exec_cmd("/home/shogun/.local/bin/carbon-screenshot-full.sh")
+        hl.exec_cmd("sh ~/.config/hypr/scripts/carbon-screenshot-full.sh")
     end,
 })
 hl.gesture({

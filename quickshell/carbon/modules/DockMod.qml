@@ -33,7 +33,7 @@ Item {
 
         IconButton {
             id: wallpaperBtn
-            glyph: "\uf03e"
+            glyph: "wallpaper"
             tip: "Change wallpaper"
             color: Theme.fg
             hoverColor: Theme.accentLit
@@ -44,7 +44,7 @@ Item {
 
         IconButton {
             id: launcherBtn
-            glyph: "\uf00a"
+            glyph: "apps"
             tip: "Launch apps"
             color: Theme.fg
             hoverColor: Theme.accentLit
@@ -55,7 +55,7 @@ Item {
 
         IconButton {
             id: terminalBtn
-            glyph: "\uf120"
+            glyph: "terminal"
             tip: "opencode"
             color: Theme.fg
             hoverColor: Theme.accentLit

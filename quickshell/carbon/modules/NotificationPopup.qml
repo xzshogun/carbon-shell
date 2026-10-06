@@ -121,9 +121,9 @@ Item {
                 spacing: 6
 
                 Text {
-                    text: "\uf0f3"
-                    font.family: Theme.font
-                    font.pixelSize: 12
+                    text: "notifications"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 15
                     color: Theme.accent
                 }
 
@@ -166,7 +166,7 @@ Item {
                     border.color: clearHov.containsMouse ? Theme.accent : Theme.outline
                     border.width: 1
 
-                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Behavior on color { ColorAnimation { duration: Theme.motionDurationShort3 } }
 
                     Row {
                         id: clearRow
@@ -175,9 +175,9 @@ Item {
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "\uf2ed"
-                            font.family: Theme.font
-                            font.pixelSize: 10
+                            text: "delete_sweep"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 13
                             color: clearHov.containsMouse ? Theme.accent : Theme.fgDim
                         }
 
@@ -207,13 +207,13 @@ Item {
                     radius: 11
                     color: closeHov.containsMouse ? Theme.bgHover : "transparent"
 
-                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Behavior on color { ColorAnimation { duration: Theme.motionDurationShort3 } }
 
                     Text {
                         anchors.centerIn: parent
-                        text: "\uf00d"
-                        font.family: Theme.font
-                        font.pixelSize: 10
+                        text: "close"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 13
                         color: closeHov.containsMouse ? Theme.fg : Theme.fgFaint
                     }
 
@@ -247,9 +247,9 @@ Item {
 
                     Text {
                         Layout.alignment: Qt.AlignHCenter
-                        text: "\uf0f3"
-                        font.family: Theme.font
-                        font.pixelSize: 32
+                        text: "notifications"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 36
                         color: Qt.alpha(Theme.fg, 0.15)
                     }
 
@@ -381,9 +381,9 @@ Item {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "\uf0f3"
-                                    font.family: Theme.font
-                                    font.pixelSize: 11
+                                    text: "notifications"
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: 14
                                     color: Theme.accent
                                     visible: parent.children[0].status !== Image.Ready
                                 }
@@ -417,9 +417,9 @@ Item {
 
                                     /* Dismiss cross on hover */
                                     Text {
-                                        text: "\uf00d"
-                                        font.family: Theme.font
-                                        font.pixelSize: 9
+                                        text: "close"
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: 11
                                         color: itemMouse.containsMouse ? Theme.err : "transparent"
                                     }
                                 }

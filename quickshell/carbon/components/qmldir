@@ -9,3 +9,4 @@ MarqueeText MarqueeText.qml
 NotchContainer NotchContainer.qml
 CenterClock CenterClock.qml
 StaticCarbonLogo StaticCarbonLogo.qml
+WavySeekBar WavySeekBar.qml

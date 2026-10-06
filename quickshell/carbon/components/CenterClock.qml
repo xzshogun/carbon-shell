@@ -36,7 +36,7 @@ Item {
 
     FileView {
         id: cfgFile
-        path: "/home/shogun/.config/hypr/carbon-clock-style.json"
+        path: (Quickshell.env("HOME") || "") + "/.config/hypr/carbon-clock-style.json"
         watchChanges: true
         blockLoading: true
         printErrors: false

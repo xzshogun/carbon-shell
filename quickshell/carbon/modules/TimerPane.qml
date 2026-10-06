@@ -1,5 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
+import Quickshell.Io
 import "../Singletons"
 
 /**
@@ -21,6 +23,8 @@ Item {
     property int remaining: root.workSec  // pomodoro countdown
     property int elapsed: 0               // stopwatch count-up
 
+    readonly property string filePath: (Quickshell.env("HOME") || "") + "/.config/hypr/carbon-pomodoro.json"
+
     implicitWidth: 264
     implicitHeight: 296
 
@@ -29,6 +33,62 @@ Item {
         const ss = s % 60
         if (m >= 60) return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0") + ":" + String(ss).padStart(2, "0")
         return String(m).padStart(2, "0") + ":" + String(ss).padStart(2, "0")
+    }
+
+    Process {
+        id: readProc
+        command: ["cat", root.filePath]
+        stdout: StdioCollector {
+            waitForEnd: true
+            onTextChanged: {
+                if (text && text.trim().length > 0) {
+                    try {
+                        const parsed = JSON.parse(text.trim())
+                        if (parsed && typeof parsed === "object") {
+                            if (!root.running) {
+                                root.mode = parsed.mode || "pomo"
+                                root.workSec = parsed.workSec || 1500
+                                root.breakSec = parsed.breakSec || 300
+                                root.longBreakSec = parsed.longBreakSec || 900
+                                root.remaining = parsed.remaining !== undefined ? parsed.remaining : root.workSec
+                                root.elapsed = parsed.elapsed || 0
+                                root.cycles = parsed.cycles || 0
+                                root.onBreak = (parsed.phase === "short_break" || parsed.phase === "long_break")
+                                root.longBreak = (parsed.phase === "long_break")
+                            }
+                        }
+                    } catch (e) {}
+                }
+            }
+        }
+    }
+
+    Timer {
+        interval: 2000
+        repeat: true
+        running: !root.running
+        onTriggered: {
+            readProc.running = false
+            readProc.running = true
+        }
+    }
+
+    Component.onCompleted: readProc.running = true
+
+    function saveState() {
+        const stateObj = {
+            running: root.running,
+            mode: root.mode,
+            phase: root.onBreak ? (root.longBreak ? "long_break" : "short_break") : "work",
+            remaining: root.remaining,
+            elapsed: root.elapsed,
+            workSec: root.workSec,
+            breakSec: root.breakSec,
+            longBreakSec: root.longBreakSec,
+            cycles: root.cycles
+        }
+        const jsonStr = JSON.stringify(stateObj)
+        Quickshell.execDetached(["sh", "-c", "python3 -c 'import json, os, sys; p = sys.argv[1]; d = json.loads(sys.argv[2]); f = open(p, \"r+\") if os.path.exists(p) else open(p, \"w+\"); cur = json.load(f) if f.seek(0) or f.tell() != 0 else {}; cur.update(d); f.seek(0); json.dump(cur, f, indent=2); f.truncate(); f.close()' " + root.filePath + " '" + jsonStr.replace(/'/g, "'\\''") + "'"])
     }
 
     function tick() {
@@ -49,10 +109,12 @@ Item {
         } else {
             root.elapsed++
         }
+        if (root.remaining % 5 === 0) root.saveState()
     }
 
     function startPause() {
         root.running = !root.running
+        root.saveState()
     }
     function reset() {
         root.running = false
@@ -63,12 +125,14 @@ Item {
         } else {
             root.elapsed = 0
         }
+        root.saveState()
     }
     function setMode(m) {
         if (root.mode === m) return
         root.mode = m
         root.running = false
         root.reset()
+        root.saveState()
     }
     function clamp(v, lo, hi) {
         return Math.max(lo, Math.min(hi, v))
@@ -76,12 +140,15 @@ Item {
     function setWork(m) {
         root.workSec = clamp(m, 1, 180) * 60
         if (!root.running && !root.onBreak) root.remaining = root.workSec
+        root.saveState()
     }
     function setBreak(m) {
         root.breakSec = clamp(m, 1, 60) * 60
+        root.saveState()
     }
     function setLong(m) {
         root.longBreakSec = clamp(m, 5, 90) * 60
+        root.saveState()
     }
 
     Timer {
@@ -239,54 +306,78 @@ Item {
             }
         }
 
-        /* Controls */
-        Row {
+        Item { Layout.fillHeight: true }
+
+        /* Controls: Start/Pause is bottom-centered, Reset is a clean circular glyph button */
+        Item {
             Layout.fillWidth: true
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 8
+            Layout.preferredHeight: 32
+            Layout.alignment: Qt.AlignBottom | Qt.AlignHCenter
 
             Rectangle {
-                width: 80
-                height: 28
-                radius: 14
-                color: rHov.hovered ? Theme.bgHover : "transparent"
-                border.width: 1
-                border.color: Theme.outline
-                Text {
-                    anchors.centerIn: parent
-                    text: "RESET"
-                    font.family: "Valley Sans"
-                    font.pixelSize: 11
-                    font.weight: Font.Bold
-                    color: Theme.fgDim
-                }
-                MouseArea {
-                    id: rHov
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.reset()
-                }
-            }
-
-            Rectangle {
-                width: 100
+                id: startBtn
+                anchors.centerIn: parent
+                width: 104
                 height: 28
                 radius: 14
                 color: root.running ? Theme.bgHover : Theme.accent
-                Text {
+                scale: startMH.pressed ? 0.94 : (startMH.containsMouse ? 1.03 : 1.0)
+                Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
+                Behavior on color { ColorAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingStandard } }
+
+                RowLayout {
                     anchors.centerIn: parent
-                    text: root.running ? "PAUSE" : "START"
-                    font.family: "Valley Sans"
-                    font.pixelSize: 11
-                    font.weight: Font.Bold
-                    color: root.running ? Theme.fg : "#0e0e12"
+                    spacing: 5
+                    Text {
+                        text: root.running ? "pause" : "play_arrow"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 15
+                        color: root.running ? Theme.fg : "#0e0e12"
+                    }
+                    Text {
+                        text: root.running ? "PAUSE" : "START"
+                        font.family: "Valley Sans"
+                        font.pixelSize: 11
+                        font.weight: Font.Bold
+                        color: root.running ? Theme.fg : "#0e0e12"
+                    }
                 }
                 MouseArea {
+                    id: startMH
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.startPause()
+                }
+            }
+
+            Rectangle {
+                id: resetBtn
+                anchors.left: startBtn.right
+                anchors.leftMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+                width: 28
+                height: 28
+                radius: 14
+                color: "transparent"
+                border.width: 0
+
+                scale: resetMH.pressed ? 0.88 : (resetMH.containsMouse ? 1.1 : 1.0)
+                Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "refresh"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 16
+                    color: resetMH.containsMouse ? Theme.accentLit : Theme.fgDim
+                }
+                MouseArea {
+                    id: resetMH
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.reset()
                 }
             }
         }

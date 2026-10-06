@@ -267,9 +267,9 @@ Item {
                         spacing: 5
 
                         Text {
-                            text: root.isCharging ? "\uf0e7" : "\uf240"
-                            font.family: Theme.font
-                            font.pixelSize: 12
+                            text: root.isCharging ? "bolt" : "battery_full"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 15
                             font.weight: Font.Bold
                             color: root.isCharging ? root.statusColor : Theme.fg
                         }
@@ -393,9 +393,9 @@ Item {
 
                     Repeater {
                         model: [
-                            { id: "power-saver", label: "Quiet", icon: "\uf06c" },
-                            { id: "balanced",    label: "Balanced", icon: "\uf24e" },
-                            { id: "performance", label: "Max",   icon: "\uf0e7" }
+                            { id: "power-saver", label: "Quiet", icon: "eco" },
+                            { id: "balanced",    label: "Balanced", icon: "balance" },
+                            { id: "performance", label: "Max",   icon: "bolt" }
                         ]
 
                         delegate: Rectangle {
@@ -412,13 +412,13 @@ Item {
                             border.color: isSelected ? Theme.accentLit : "transparent"
                             border.width: 1
 
-                            Behavior on color { ColorAnimation { duration: 120 } }
+                            Behavior on color { ColorAnimation { duration: Theme.motionDurationShort2 } }
 
                             Text {
                                 anchors.centerIn: parent
                                 text: profBtn.modelData.icon
-                                font.family: Theme.font
-                                font.pixelSize: 12
+                                font.family: Theme.fontIcon
+                                font.pixelSize: 14
                                 color: profBtn.isSelected ? "#111111" : Theme.fg
                             }
 

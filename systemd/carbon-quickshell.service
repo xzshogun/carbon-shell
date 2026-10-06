@@ -1,0 +1,14 @@
+[Unit]
+Description=Carbon Quickshell Desktop Shell
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/quickshell --config %h/.local/share/quickshell/carbon
+Restart=always
+RestartSec=2
+Environment=QT_QPA_PLATFORM=wayland
+Environment=XDG_CURRENT_DESKTOP=Hyprland
+
+[Install]
+WantedBy=default.target

@@ -6,9 +6,10 @@ import Quickshell.Io
 Item {
     id: root
 
-    readonly property string symlink: "/home/shogun/.config/hypr/current_wallpaper"
-    readonly property string stateFile: "/home/shogun/.config/hypr/current_wallpaper_path"
-    readonly property string modeConfigFile: "/home/shogun/.config/hypr/carbon-bar-mode.json"
+    readonly property string home: Quickshell.env("HOME") || ""
+    readonly property string symlink: root.home + "/.config/hypr/current_wallpaper"
+    readonly property string stateFile: root.home + "/.config/hypr/current_wallpaper_path"
+    readonly property string modeConfigFile: root.home + "/.config/hypr/carbon-bar-mode.json"
 
     property string currentWpPath: ""
     property string pendingNewPath: ""
@@ -37,7 +38,7 @@ Item {
         
         const parts = clean.split("/")
         const filename = parts[parts.length - 1]
-        const safeScaled = "/home/shogun/.cache/carbon/wpscale/" + filename.replace(/\./g, "_") + ".jpg"
+        const safeScaled = root.home + "/.cache/carbon/wpscale/" + filename.replace(/\./g, "_") + ".jpg"
         
         return "file://" + safeScaled
     }
@@ -73,9 +74,14 @@ Item {
         id: stateWatcher
         path: root.stateFile
         watchChanges: true
+        blockLoading: true
         printErrors: false
         onFileChanged: {
-            stateWatcher.reload()
+            reload()
+            const p = stateWatcher.text().trim()
+            if (p && p !== root.currentWpPath && p !== root.pendingNewPath) {
+                root.applyNewWallpaper(p)
+            }
         }
         onLoaded: {
             const p = stateWatcher.text().trim()

@@ -3,20 +3,26 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
+import Quickshell.Services.Pipewire
 import "../Singletons"
 import "../components"
 
 /**
- * SmallMusicOverlay: Minimalist floating music card with album art, track info,
- * full transport buttons (Previous, Play/Pause, Next), and interactive progress/seek bar.
+ * SmallMusicOverlay: Modern OneUI / Android 13/14 styled floating media overlay.
+ * Features:
+ *  - Output device badge / Spotify header
+ *  - Album art background blur + rounded album thumbnail
+ *  - Track title & artist typography
+ *  - Animated wavy visualizer & interactive progress scrubber
+ *  - 5-button transport controls (Shuffle, Prev, Play/Pause, Next, Loop)
  */
 Item {
     id: root
 
-    implicitWidth: 320
-    implicitHeight: 128
-    width: 320
-    height: 128
+    implicitWidth: 340
+    implicitHeight: 180
+    width: 340
+    height: 180
 
     signal closeRequested()
 
@@ -25,27 +31,39 @@ Item {
     readonly property bool hasTrack: LyricsService.hasTrack
     readonly property real currentPosition: LyricsService.currentPosition
     readonly property real totalLength: LyricsService.totalLength
-    readonly property real progress: totalLength > 0 ? Math.max(0, Math.min(1.0, currentPosition / totalLength)) : 0.0
 
-    property bool isDragging: false
-    property real dragProgress: 0.0
-    readonly property real displayProgress: root.isDragging ? root.dragProgress : root.progress
     property bool open: true
     property bool attachedBottom: false
     readonly property bool animatingOut: !root.open && bgCard.opacity > 0.001
 
+    readonly property string deviceName: {
+        if (Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.description && Pipewire.defaultAudioSink.description.length > 0) {
+            return Pipewire.defaultAudioSink.description
+        }
+        if (activePlayer && activePlayer.identity && activePlayer.identity.length > 0) {
+            return activePlayer.identity
+        }
+        return "Audio Output"
+    }
+
+    readonly property bool isSpotify: activePlayer && activePlayer.identity && activePlayer.identity.toLowerCase().includes("spotify")
+
     Rectangle {
         id: bgCard
         anchors.fill: parent
-        radius: 16
-        color: Qt.rgba(0.08, 0.09, 0.12, 0.97)
-        border.color: root.open ? Theme.accentLit : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.35)
+        radius: 18
+        color: Qt.rgba(0.08, 0.09, 0.12, 0.95)
+        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.35) : Qt.rgba(1, 1, 1, 0.08)
         border.width: 1
-        Behavior on border.color { ColorAnimation { duration: root.open ? 350 : 150; easing.type: Easing.OutQuad } }
+        clip: true
+
+        Behavior on border.color {
+            ColorAnimation { duration: root.open ? 300 : 150; easing.type: Easing.OutQuad }
+        }
 
         transformOrigin: !root.attachedBottom ? Item.Top : Item.Bottom
         transform: Translate {
-            y: root.open ? 0 : (!root.attachedBottom ? -18 : 18)
+            y: root.open ? 0 : (!root.attachedBottom ? -16 : 16)
             Behavior on y {
                 NumberAnimation {
                     duration: root.open ? 280 : 150
@@ -53,7 +71,7 @@ Item {
                 }
             }
         }
-        scale: root.open ? 1.0 : 0.90
+        scale: root.open ? 1.0 : 0.92
         opacity: root.open ? 1.0 : 0.0
         Behavior on scale {
             NumberAnimation {
@@ -68,95 +86,71 @@ Item {
             }
         }
 
-        /* Ambient accent glow border */
+        /* ── Subtle blurred/dimmed album art ambient background ───────── */
+        Image {
+            anchors.fill: parent
+            source: LyricsService.artUrl
+            fillMode: Image.PreserveAspectCrop
+            opacity: 0.14
+            visible: status === Image.Ready && source != ""
+        }
+
+        /* ── Ambient Inner Border Highlight ───────────────────────────── */
         Rectangle {
             anchors.fill: parent
-            radius: 16
+            radius: 18
             color: "transparent"
             border.color: Qt.rgba(1, 1, 1, 0.06)
             border.width: 1
         }
 
-        Column {
+        ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 10
+            anchors.margins: 12
             spacing: 6
 
-            /* ── Top Row: Album Art + Track Info + Close Button ── */
-            Row {
-                width: parent.width
-                spacing: 10
+            /* ── 1. Top Header Row: Device / App Badge + Close Button ── */
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
 
-                /* Album Art / Vinyl Placeholder */
-                Rectangle {
-                    width: 38
-                    height: 38
-                    radius: 8
-                    color: Qt.rgba(0.12, 0.14, 0.18, 0.9)
-                    border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.3)
-                    border.width: 1
-                    clip: true
-                    anchors.verticalCenter: parent.verticalCenter
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
 
-                    Image {
-                        anchors.fill: parent
-                        source: LyricsService.artUrl
-                        fillMode: Image.PreserveAspectCrop
-                        visible: status === Image.Ready && source != ""
-                    }
-
+                    // App / Device Icon
                     Text {
-                        anchors.centerIn: parent
-                        text: "\uf001"
-                        font.family: "Font Awesome 6 Free"
-                        font.weight: Font.Black
+                        text: "music_note"
+                        font.family: Theme.fontIcon
                         font.pixelSize: 14
-                        color: root.isPlaying ? Theme.accent : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.5)
-                        visible: !LyricsService.artUrl || LyricsService.artUrl === ""
-                    }
-                }
-
-                /* Track Title & Artist */
-                Column {
-                    width: parent.width - 38 - 20 - 20
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 2
-
-                    Text {
-                        width: parent.width
-                        text: root.hasTrack ? LyricsService.trackTitle : "No Media Playing"
-                        font.pixelSize: 11
-                        font.bold: true
-                        font.family: "Inter"
-                        color: Theme.fg
-                        elide: Text.ElideRight
+                        color: Theme.accentLit
                     }
 
+                    // Device Name (e.g. boAt Rockerz 400 / Galaxy Buds2 Pro)
                     Text {
-                        width: parent.width
-                        text: root.hasTrack ? (LyricsService.trackArtist || "Unknown Artist") : "Waiting for playback..."
-                        font.pixelSize: 9
+                        Layout.fillWidth: true
+                        text: root.deviceName
                         font.family: "Inter"
-                        color: Theme.accent
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                        color: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.78)
                         elide: Text.ElideRight
                     }
                 }
 
-                /* Close Button */
+                // Close Button
                 Rectangle {
-                    width: 20
-                    height: 20
+                    Layout.preferredWidth: 20
+                    Layout.preferredHeight: 20
                     radius: 10
                     color: closeArea.containsMouse ? Qt.rgba(1, 0.3, 0.3, 0.28) : Qt.rgba(1, 1, 1, 0.08)
-                    anchors.verticalCenter: parent.verticalCenter
 
                     Text {
                         anchors.centerIn: parent
-                        text: "\uf00d"
-                        font.family: "Font Awesome 6 Free"
-                        font.weight: Font.Black
-                        font.pixelSize: 8
-                        color: closeArea.containsMouse ? "#ff5555" : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.7)
+                        text: "close"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 14
+                        color: closeArea.containsMouse ? "#ff5555" : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.65)
                     }
 
                     MouseArea {
@@ -169,30 +163,124 @@ Item {
                 }
             }
 
-            /* ── Middle Row: Playback Control Buttons (Prev, Play/Pause, Next) ── */
-            Row {
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 16
+            /* ── 2. Middle Row: Track Title & Artist + Album Art Thumbnail ── */
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
 
-                /* Previous */
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.hasTrack ? LyricsService.trackTitle : "No Media Playing"
+                        font.family: "Inter"
+                        font.pixelSize: 13
+                        font.weight: Font.Bold
+                        color: Theme.fg
+                        elide: Text.ElideRight
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.hasTrack ? (LyricsService.trackArtist || "Unknown Artist") : "Waiting for playback..."
+                        font.family: "Inter"
+                        font.pixelSize: 10
+                        font.weight: Font.Normal
+                        color: Theme.accent
+                        elide: Text.ElideRight
+                    }
+                }
+
+                // Album Art Thumbnail
                 Rectangle {
-                    width: 28
-                    height: 28
-                    radius: 14
-                    color: prevHov.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : "transparent"
-                    anchors.verticalCenter: parent.verticalCenter
+                    Layout.preferredWidth: 42
+                    Layout.preferredHeight: 42
+                    radius: 9
+                    color: Qt.rgba(0.12, 0.14, 0.18, 0.9)
+                    border.color: Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.35)
+                    border.width: 1
+                    clip: true
+
+                    Image {
+                        anchors.fill: parent
+                        source: LyricsService.artUrl
+                        fillMode: Image.PreserveAspectCrop
+                        visible: status === Image.Ready && source != ""
+                    }
 
                     Text {
                         anchors.centerIn: parent
-                        text: "\uf048"
-                        font.family: "Font Awesome 6 Free"
-                        font.weight: Font.Black
-                        font.pixelSize: 11
-                        color: prevHov.containsMouse ? Theme.accent : Theme.fg
+                        text: "music_note"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 18
+                        color: root.isPlaying ? Theme.accentLit : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.45)
+                        visible: !LyricsService.artUrl || LyricsService.artUrl === ""
+                    }
+                }
+            }
+
+            /* ── 3. Animated Wavy Visualizer & Interactive Progress Bar ─ */
+            WavySeekBar {
+                Layout.fillWidth: true
+                waveHeight: 16
+                barHeight: 8
+                timeLabelSize: 8
+                accentColor: Theme.accent
+                accentLitColor: Theme.accentLit
+            }
+
+            /* ── 4. Transport Controls Row (Shuffle, Prev, Play/Pause, Next, Loop) ── */
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
+
+                Item { Layout.fillWidth: true }
+
+                // Shuffle
+                Rectangle {
+                    Layout.preferredWidth: 26
+                    Layout.preferredHeight: 26
+                    radius: 13
+                    color: shufArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : "transparent"
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "shuffle"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 14
+                        color: shufArea.containsMouse ? Theme.accentLit : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.65)
                     }
 
                     MouseArea {
-                        id: prevHov
+                        id: shufArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Quickshell.execDetached(["playerctl", "shuffle", "Toggle"])
+                    }
+                }
+
+                Item { Layout.preferredWidth: 8 }
+
+                // Previous
+                Rectangle {
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    radius: 14
+                    color: prevArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : "transparent"
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "skip_previous"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 18
+                        color: prevArea.containsMouse ? Theme.accentLit : Theme.fg
+                    }
+
+                    MouseArea {
+                        id: prevArea
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
@@ -200,25 +288,27 @@ Item {
                     }
                 }
 
-                /* Play / Pause */
+                Item { Layout.preferredWidth: 8 }
+
+                // Play / Pause (Accent filled circle)
                 Rectangle {
-                    width: 32
-                    height: 32
-                    radius: 16
-                    color: playHov.containsMouse ? Theme.accentLit : Theme.accent
-                    anchors.verticalCenter: parent.verticalCenter
+                    Layout.preferredWidth: 34
+                    Layout.preferredHeight: 34
+                    radius: 17
+                    color: playArea.containsMouse ? Theme.accentLit : Theme.accent
+                    border.color: Theme.accentLit
+                    border.width: 1
 
                     Text {
                         anchors.centerIn: parent
-                        text: root.isPlaying ? "\uf04c" : "\uf04b"
-                        font.family: "Font Awesome 6 Free"
-                        font.weight: Font.Black
-                        font.pixelSize: 12
-                        color: Theme.bg
+                        text: root.isPlaying ? "pause" : "play_arrow"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 18
+                        color: Theme.isDark ? "#121118" : "#ffffff"
                     }
 
                     MouseArea {
-                        id: playHov
+                        id: playArea
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
@@ -226,160 +316,59 @@ Item {
                     }
                 }
 
-                /* Next */
+                Item { Layout.preferredWidth: 8 }
+
+                // Next
                 Rectangle {
-                    width: 28
-                    height: 28
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
                     radius: 14
-                    color: nextHov.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : "transparent"
-                    anchors.verticalCenter: parent.verticalCenter
+                    color: nextArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : "transparent"
 
                     Text {
                         anchors.centerIn: parent
-                        text: "\uf051"
-                        font.family: "Font Awesome 6 Free"
-                        font.weight: Font.Black
-                        font.pixelSize: 11
-                        color: nextHov.containsMouse ? Theme.accent : Theme.fg
+                        text: "skip_next"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 18
+                        color: nextArea.containsMouse ? Theme.accentLit : Theme.fg
                     }
 
                     MouseArea {
-                        id: nextHov
+                        id: nextArea
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: LyricsService.skipNext()
                     }
                 }
-            }
 
-            /* ── Bottom Row: Draggable Wavy Progress Bar & Live Time Labels ── */
-            Column {
-                width: parent.width
-                spacing: 2
+                Item { Layout.preferredWidth: 8 }
 
-                /* Scrubber Track */
-                Item {
-                    id: scrubArea
-                    width: parent.width
-                    height: 16
+                // Loop / Repeat
+                Rectangle {
+                    Layout.preferredWidth: 26
+                    Layout.preferredHeight: 26
+                    radius: 13
+                    color: loopArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : "transparent"
 
-                    /* Unfilled Track Background */
-                    Rectangle {
-                        anchors.left: knob.right
-                        anchors.leftMargin: 2
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 2
-                        radius: 1
-                        color: Qt.rgba(1, 1, 1, 0.14)
-                        visible: root.totalLength > 0 && root.displayProgress < 0.99
+                    Text {
+                        anchors.centerIn: parent
+                        text: "repeat"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 14
+                        color: loopArea.containsMouse ? Theme.accentLit : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.65)
                     }
 
-                    /* Interactive Wavy Fill */
-                    WavyLine {
-                        anchors.left: parent.left
-                        anchors.right: knob.left
-                        anchors.rightMargin: 1
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 12
-                        visible: root.totalLength > 0 && root.displayProgress > 0.005
-                        color: Theme.accent
-                        lineWidth: 2
-                        amplitudeMultiplier: 0.8 + 0.8 * root.displayProgress
-                        frequency: 3 + 6 * root.displayProgress
-                        fullLength: Math.max(1, parent.width)
-                        running: (root.isPlaying || root.isDragging) && (root.open || root.animatingOut)
-                    }
-
-                    /* Scrubber Knob */
-                    Rectangle {
-                        id: knob
-                        width: 8
-                        height: 8
-                        radius: 4
-                        color: scrubMouse.containsMouse || root.isDragging ? "#ffffff" : Theme.accent
-                        border.color: Theme.accent
-                        border.width: 1
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: root.totalLength > 0
-                        x: Math.max(0, Math.min(parent.width - width, root.displayProgress * (parent.width - width)))
-                        scale: root.isDragging ? 1.4 : (scrubMouse.containsMouse ? 1.2 : 1.0)
-                        Behavior on scale { NumberAnimation { duration: 100 } }
-                    }
-
-                    /* Draggable Mouse Area */
                     MouseArea {
-                        id: scrubMouse
+                        id: loopArea
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        preventStealing: true
-
-                        onPressed: mouse => {
-                            root.isDragging = true
-                            seekFromMouse(mouse.x)
-                        }
-
-                        onPositionChanged: mouse => {
-                            if (pressed) {
-                                seekFromMouse(mouse.x)
-                            }
-                        }
-
-                        onReleased: mouse => {
-                            seekFromMouse(mouse.x)
-                            root.isDragging = false
-                        }
-
-                        onCanceled: {
-                            root.isDragging = false
-                        }
-
-                        function seekFromMouse(mouseX) {
-                            if (root.totalLength > 0) {
-                                const ratio = Math.max(0.0, Math.min(1.0, mouseX / width))
-                                root.dragProgress = ratio
-                                const targetSec = Math.floor(ratio * root.totalLength)
-                                try {
-                                    if (root.activePlayer && root.activePlayer.positionSupported) {
-                                        root.activePlayer.position = targetSec
-                                    }
-                                } catch (e) {}
-                                Quickshell.execDetached(["playerctl", "position", String(targetSec)])
-                                if (root.activePlayer && root.activePlayer.positionSupported)
-                                    root.activePlayer.positionChanged()
-                            }
-                        }
+                        onClicked: Quickshell.execDetached(["playerctl", "loop", "Track"])
                     }
                 }
 
-                /* Time Labels */
-                Item {
-                    width: parent.width
-                    height: 10
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: {
-                            const cur = root.isDragging ? (root.dragProgress * root.totalLength) : root.currentPosition
-                            return LyricsService.formatTime(cur)
-                        }
-                        font.pixelSize: 8
-                        font.family: "JetBrains Mono"
-                        color: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.6)
-                    }
-
-                    Text {
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: LyricsService.formatTime(root.totalLength)
-                        font.pixelSize: 8
-                        font.family: "JetBrains Mono"
-                        color: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.6)
-                    }
-                }
+                Item { Layout.fillWidth: true }
             }
         }
     }

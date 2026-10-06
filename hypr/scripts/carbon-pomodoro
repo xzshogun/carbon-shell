@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Carbon Pomodoro & Tracker launcher
+exec /usr/bin/python3 "${HOME}/.config/hypr/scripts/carbon-pomodoro.py" "$@"

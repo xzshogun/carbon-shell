@@ -51,6 +51,23 @@ hl.window_rule({
     size   = "(monitor_w*0.6) (monitor_h*0.7)",
     center = true,
 })
+hl.window_rule({
+    match        = { class = "org.carbon.pomodoro", title = "Carbon Focus Mini" },
+    float        = true,
+    pin          = true,
+    border_color = "rgba(00000000)",
+    no_shadow    = true,
+    no_blur      = true,
+    rounding     = 0,
+    size         = "170 58",
+    center       = true,
+})
+hl.window_rule({
+    match  = { class = "org.carbon.pomodoro" },
+    float  = true,
+    size   = "(monitor_w*0.72) (monitor_h*0.80)",
+    center = true,
+})
 
 hl.window_rule({
     match  = { tag = "float_60_70" },

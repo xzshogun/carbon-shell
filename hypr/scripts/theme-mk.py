@@ -227,88 +227,152 @@ def main():
     if "carbon" in wp_lower or "black" in wp_lower or "mono" in wp_lower:
         is_mono = True
 
-    mat_data = get_matugen_palette(analysis_img)
+    caelestia_scheme_path = os.path.expanduser("~/.local/state/caelestia/scheme.json")
+    cael_data = None
 
-    # Base dark carbon palette defaults
-    bg_hex = "#121214"
-    bg_alt_hex = "#1E1E22"
-    fg_hex = "#F4F4F6"
-    accent_hex = "#38BDF8"
-    accent_lit_hex = "#7DD3FC"
-    outline_hex = "#4A4A52"
-
-    if mat_data and not is_mono:
-        colors = mat_data.get("colors", {})
-
-        def get_col(name, fallback):
-            c = colors.get(name, {})
-            val = c.get("dark", {}).get("color") or c.get("default", {}).get("color")
-            return val if val else fallback
-
-        # Extract accent from primary
-        cand_accent = get_col("primary", accent_hex)
-        cand_lit = get_col("primary_container", accent_lit_hex)
-        cand_outline = get_col("outline", outline_hex)
-        cand_fg = get_col("on_surface", fg_hex)
-
-        # Check if primary is sufficiently saturated, otherwise augment with vibrant color
-        cand_lum = get_luminance(cand_accent)
-        h, l, s = colorsys.rgb_to_hls(
-            int(cand_accent[1:3], 16) / 255.0,
-            int(cand_accent[3:5], 16) / 255.0,
-            int(cand_accent[5:7], 16) / 255.0,
+    # 1. Ask Caelestia to extract the dynamic Material 3 scheme for THIS wallpaper
+    try:
+        res = subprocess.run(
+            ["caelestia", "wallpaper", "-p", analysis_img],
+            capture_output=True, text=True, timeout=5.0
         )
+        if res.returncode == 0 and res.stdout.strip():
+            cael_data = json.loads(res.stdout)
+    except Exception as e:
+        print(f"theme-mk: caelestia wallpaper -p error: {e}", file=sys.stderr)
 
-        if s < 0.20:
-            pil_accent = extract_vibrant_fallback(analysis_img)
-            if pil_accent and pil_accent != "#38BDF8":
-                cand_accent = pil_accent
+    # 2. Also register wallpaper with Caelestia daemon/state in background
+    try:
+        subprocess.Popen(
+            ["caelestia", "wallpaper", "-f", analysis_img],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+    except Exception:
+        pass
 
-        accent_hex = cand_accent
-        accent_lit_hex = cand_lit
-        outline_hex = cand_outline
+    if cael_data and "colours" in cael_data:
+        c = cael_data["colours"]
+        def ccol(k, fb):
+            v = c.get(k)
+            return f"#{v.lstrip('#')}" if v else fb
 
-        # Text color sense: ensure fg is ALWAYS high-contrast (> 0.80 luminance)
-        fg_lum = get_luminance(cand_fg)
-        if fg_lum >= 0.78:
-            fg_hex = cand_fg
-        else:
-            fg_hex = "#F4F4F6"
+        bg_hex = ccol("surfaceContainer", "#191920")
+        bg_alt_hex = ccol("surfaceContainerHigh", "#1F1F26")
+        bg_hover_hex = ccol("surfaceContainerHighest", "#24252E")
+        bg_active_hex = ccol("primaryContainer", "#4B5074")
+        fg_hex = ccol("onSurface", "#E6E4F0")
+        fg_dim_hex = ccol("onSurfaceVariant", "#ABAAB5")
+        fg_faint_hex = ccol("outline", "#75747F")
+        accent_hex = ccol("primary", "#C0C4EE")
+        accent_lit_hex = ccol("onPrimaryContainer", "#E0E1FF")
+        on_accent_hex = ccol("onPrimary", "#393E61")
+        outline_hex = ccol("outlineVariant", "#474750")
+        ok_hex = ccol("success", OK)
+        warn_hex = ccol("tertiary", WARN)
+        err_hex = ccol("error", ERR)
 
-    elif is_mono:
-        # Pure specular white highlights and high contrast for monochrome wallpapers
-        accent_hex = "#FFFFFF"
-        accent_lit_hex = "#FFFFFF"
-        outline_hex = "#52525B"
-        fg_hex = "#FFFFFF"
+        # If image is colorful but Caelestia picked a low-saturation accent, boost it
+        if not is_mono:
+            try:
+                h, l, s = colorsys.rgb_to_hls(
+                    int(accent_hex[1:3], 16) / 255.0,
+                    int(accent_hex[3:5], 16) / 255.0,
+                    int(accent_hex[5:7], 16) / 255.0,
+                )
+                if s < 0.12:
+                    pil_accent = extract_vibrant_fallback(analysis_img)
+                    if pil_accent:
+                        accent_hex = pil_accent
+                        c["primary"] = accent_hex.lstrip("#")
+            except Exception:
+                pass
 
+        # Write updated cael_data to ~/.local/state/caelestia/scheme.json
+        try:
+            os.makedirs(os.path.dirname(caelestia_scheme_path), exist_ok=True)
+            with open(caelestia_scheme_path + ".tmp", "w", encoding="utf-8") as f:
+                json.dump(cael_data, f, indent=2)
+            os.replace(caelestia_scheme_path + ".tmp", caelestia_scheme_path)
+        except Exception as e:
+            print(f"theme-mk: failed to write scheme.json: {e}", file=sys.stderr)
+
+        palette_dict = {
+            "bg": alpha(bg_hex, 0.92),
+            "bgAlt": alpha(bg_alt_hex, 0.75),
+            "bgHover": alpha(bg_hover_hex, 0.90),
+            "bgActive": alpha(bg_active_hex, 0.85),
+            "fg": fg_hex,
+            "fgDim": fg_dim_hex,
+            "fgFaint": fg_faint_hex,
+            "accent": accent_hex,
+            "accentLit": accent_lit_hex,
+            "onAccent": on_accent_hex,
+            "outline": alpha(outline_hex, 0.40),
+            "ok": ok_hex,
+            "warn": warn_hex,
+            "err": err_hex,
+            "isDark": cael_data.get("mode") != "light",
+            "caelestia": c,
+        }
     else:
-        # Fallback to PIL vibrant extraction
-        accent_hex = extract_vibrant_fallback(analysis_img)
-        accent_lit_hex = "#7DD3FC"
-        outline_hex = "#4A4A52"
-        fg_hex = "#F4F4F6"
+        mat_data = get_matugen_palette(analysis_img)
 
-    # Ensure fg_hex is always crisp and bright
-    if get_luminance(fg_hex) < 0.80:
-        fg_hex = "#F4F4F6"
+        # Base dark carbon palette defaults
+        bg_hex = "#191920"
+        bg_alt_hex = "#1F1F26"
+        fg_hex = "#E6E4F0"
+        accent_hex = "#C0C4EE"
+        accent_lit_hex = "#E0E1FF"
+        on_accent_hex = "#393E61"
+        outline_hex = "#474750"
 
-    palette_dict = {
-        "bg": alpha(bg_hex, 0.92),
-        "bgAlt": alpha(bg_alt_hex, 0.24),
-        "bgHover": alpha(accent_hex, 0.18),
-        "bgActive": alpha(accent_hex, 0.32),
-        "fg": fg_hex,
-        "fgDim": alpha(fg_hex, 0.70),    # Clear, readable secondary text (70% opacity)
-        "fgFaint": alpha(fg_hex, 0.42),  # Subtle separators & placeholders (42% opacity)
-        "accent": accent_hex,
-        "accentLit": accent_lit_hex,
-        "outline": alpha(outline_hex, 0.38),
-        "ok": OK,
-        "warn": WARN,
-        "err": ERR,
-        "isDark": True,
-    }
+        if mat_data and not is_mono:
+            colors = mat_data.get("colors", {})
+
+            def get_col(name, fallback):
+                c = colors.get(name, {})
+                val = c.get("dark", {}).get("color") or c.get("default", {}).get("color")
+                return val if val else fallback
+
+            cand_accent = get_col("primary", accent_hex)
+            cand_lit = get_col("primary_container", accent_lit_hex)
+            cand_outline = get_col("outline_variant", outline_hex)
+            cand_fg = get_col("on_surface", fg_hex)
+
+            cand_lum = get_luminance(cand_accent)
+            h, l, s = colorsys.rgb_to_hls(
+                int(cand_accent[1:3], 16) / 255.0,
+                int(cand_accent[3:5], 16) / 255.0,
+                int(cand_accent[5:7], 16) / 255.0,
+            )
+
+            if s < 0.15:
+                pil_accent = extract_vibrant_fallback(analysis_img)
+                if pil_accent:
+                    cand_accent = pil_accent
+
+            accent_hex = cand_accent
+            accent_lit_hex = cand_lit
+            outline_hex = cand_outline
+            fg_hex = cand_fg
+
+        palette_dict = {
+            "bg": alpha(bg_hex, 0.92),
+            "bgAlt": alpha(bg_alt_hex, 0.75),
+            "bgHover": alpha(accent_hex, 0.20),
+            "bgActive": alpha(accent_hex, 0.35),
+            "fg": fg_hex,
+            "fgDim": alpha(fg_hex, 0.70),
+            "fgFaint": alpha(fg_hex, 0.42),
+            "accent": accent_hex,
+            "accentLit": accent_lit_hex,
+            "onAccent": on_accent_hex,
+            "outline": alpha(outline_hex, 0.40),
+            "ok": OK,
+            "warn": WARN,
+            "err": ERR,
+            "isDark": True,
+        }
 
     # Write theme.json atomically
     json_tmp = JSON_PATH + ".tmp"
@@ -344,6 +408,14 @@ def main():
 
     # Reload hyprland active border colors
     subprocess.run(["hyprctl", "reload"], capture_output=True)
+
+    # Notify Carbon Quickshell to reload Theme singleton immediately
+    try:
+        ipc_path = os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh")
+        if os.path.isfile(ipc_path):
+            subprocess.run(["sh", ipc_path, "theme-reload"], capture_output=True, timeout=1.0)
+    except Exception:
+        pass
 
     print(f"theme-mk: updated theme (accent={accent_hex}, fg={fg_hex}, src={os.path.basename(src_wp)})")
 

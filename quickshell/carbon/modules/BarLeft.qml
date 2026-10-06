@@ -31,7 +31,7 @@ Item {
             case 1: return MaterialShape.Clover4Leaf
             case 2: return MaterialShape.Sunny
             case 3: return MaterialShape.Flower
-            case 4: return MaterialShape.Heart
+            case 4: return MaterialShape.Cookie12Sided
             case 5: return MaterialShape.Gem
             case 6: return MaterialShape.Diamond
             case 7: return MaterialShape.Cookie4Sided
@@ -523,9 +523,9 @@ Item {
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "\uf108" // Monitor glyph
-                    font.family: Theme.font
-                    font.pixelSize: 10
+                    text: "desktop_windows"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 13
                     color: Theme.accent
                 }
 

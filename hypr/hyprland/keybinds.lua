@@ -10,13 +10,13 @@ hl.bind(vars.kbScreenshot or "SUPER + Print", hl.dsp.exec_cmd("~/.config/hypr/sc
 hl.bind("Print", hl.dsp.exec_cmd("~/.config/hypr/scripts/screenshot.sh"))
 
 -- Wallpaper
-hl.bind(vars.kbWallpaper or "SUPER + W", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh wallpaper"), { release = true })
+hl.bind(vars.kbWallpaper or "SUPER + W", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh wallpaper"))
 
 -- Misc
 hl.bind(vars.kbSession, hl.dsp.global("caelestia:session"))
 hl.bind(vars.kbShowSidebar, hl.dsp.global("caelestia:sidebar"))
-hl.bind(vars.kbClearNotifs, hl.dsp.global("caelestia:clearNotifs"), { locked = true })
-hl.bind(vars.kbShowPanels, hl.dsp.global("caelestia:showall"))
+-- Spotlight Command Palette (Super + K)
+hl.bind(vars.kbShowPanels or "SUPER + K", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh spotlight"), { release = true })
 hl.bind(vars.kbLock, hl.dsp.exec_cmd("~/.config/hypr/scripts/hyprlock.sh"))
 
 -- Restore lock
@@ -26,6 +26,8 @@ hl.bind(vars.kbRestoreLock, function()
 end)
 
 -- Brightness
+hl.bind(vars.kbBrightnessUp or "F12", hl.dsp.global("caelestia:brightnessUp"), { locked = true })
+hl.bind(vars.kbBrightnessDown or "F11", hl.dsp.global("caelestia:brightnessDown"), { locked = true })
 hl.bind("XF86MonBrightnessUp", hl.dsp.global("caelestia:brightnessUp"), { locked = true })
 hl.bind("XF86MonBrightnessDown", hl.dsp.global("caelestia:brightnessDown"), { locked = true })
 
@@ -146,6 +148,7 @@ hl.bind(vars.kbTodoWs, hl.dsp.exec_cmd("caelestia toggle todo"))
 hl.bind(vars.kbTerminal, hl.dsp.exec_cmd(vars.terminal))
 hl.bind(vars.kbBrowser, hl.dsp.exec_cmd(vars.browser))
 hl.bind(vars.kbEditor, hl.dsp.exec_cmd(vars.editor))
+hl.bind(vars.kbPomodoro, hl.dsp.exec_cmd(vars.pomodoro))
 hl.bind(vars.kbFileExplorer, hl.dsp.exec_cmd(vars.fileExplorer))
 hl.bind("SUPER + H", hl.dsp.exec_cmd("discord"))
 hl.bind("SUPER + E", hl.dsp.exec_cmd("rofi -show drun"))
@@ -153,7 +156,7 @@ hl.bind("CTRL + ALT + V", hl.dsp.exec_cmd(vars.audioSettings))
 hl.bind("SUPER + Tab", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh toggle-overview"))
 
 -- Utilities
-hl.bind("Print", hl.dsp.exec_cmd("/home/shogun/.local/bin/carbon-screenshot-full.sh"), { locked = true })
+hl.bind("Print", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-screenshot-full.sh"), { locked = true })
 hl.bind("SUPER + SHIFT + S", hl.dsp.global("caelestia:screenshotFreeze"))
 hl.bind("SUPER + SHIFT + ALT + S", hl.dsp.global("caelestia:screenshot"))
 hl.bind("SUPER + ALT + R", hl.dsp.exec_cmd("caelestia record -s"))

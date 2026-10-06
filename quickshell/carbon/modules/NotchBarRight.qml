@@ -38,9 +38,9 @@ NotchContainer {
     signal openBattery()
     signal closeBattery()
     signal toggleBattery()
-    signal openNotif()
-    signal closeNotif()
-    signal toggleNotif()
+    signal openTray()
+    signal closeTray()
+    signal toggleTray()
     signal openPower()
 
     /* ── Audio Sink State ────────────────────────────────────────────── */
@@ -50,10 +50,10 @@ NotchContainer {
     readonly property int volumePct: Math.round(root.volume * 100)
 
     readonly property string volumeGlyph: {
-        if (root.muted) return "\uf6a9"
-        if (root.volume > 0.5) return "\uf028"
-        if (root.volume > 0.0) return "\uf027"
-        return "\uf026"
+        if (root.muted) return "volume_off"
+        if (root.volume > 0.5) return "volume_up"
+        if (root.volume > 0.0) return "volume_down"
+        return "volume_mute"
     }
 
     /* ── Battery State ───────────────────────────────────────────────── */
@@ -63,11 +63,64 @@ NotchContainer {
     readonly property bool isCharging: battery ? battery.state === UPowerDeviceState.Charging : false
 
     readonly property string batteryGlyph: {
-        if (root.isCharging) return "\uf0e7"
-        if (root.batteryPct > 0.8) return "\uf240"
-        if (root.batteryPct > 0.5) return "\uf241"
-        if (root.batteryPct > 0.2) return "\uf242"
-        return "\uf243"
+        if (root.isCharging) return "battery_charging_full"
+        if (root.batteryPct > 0.8) return "battery_full"
+        if (root.batteryPct > 0.5) return "battery_5_bar"
+        if (root.batteryPct > 0.2) return "battery_3_bar"
+        return "battery_alert"
+    }
+    /* ── System Telemetry (CPU & RAM) ────────────────────────────────── */
+    property int cpuUsage: 0
+    property string ramUsageGB: "0.0"
+    property int ramPct: 0
+    property real lastCpuTotal: 0
+    property real lastCpuIdle: 0
+
+    Process {
+        id: sysProbe
+        command: ["awk", "/^cpu / {print $2+$3+$4+$5+$6+$7+$8, $5+$6} /^MemTotal:/ {tot=$2} /^MemAvailable:/ {avail=$2} END {print tot, avail}", "/proc/stat", "/proc/meminfo"]
+        running: false
+        stdout: StdioCollector {
+            id: sysOut
+            waitForEnd: true
+        }
+        onExited: {
+            var raw = sysOut.text.trim().split("\n")
+            if (raw.length >= 2) {
+                var cpuParts = raw[0].trim().split(/\s+/)
+                if (cpuParts.length >= 2) {
+                    var total = parseFloat(cpuParts[0])
+                    var idle = parseFloat(cpuParts[1])
+                    if (root.lastCpuTotal > 0 && total > root.lastCpuTotal) {
+                        var dTotal = total - root.lastCpuTotal
+                        var dIdle = idle - root.lastCpuIdle
+                        root.cpuUsage = Math.max(0, Math.min(100, Math.round((1.0 - (dIdle / dTotal)) * 100)))
+                    }
+                    root.lastCpuTotal = total
+                    root.lastCpuIdle = idle
+                }
+
+                var memParts = raw[1].trim().split(/\s+/)
+                if (memParts.length >= 2) {
+                    var totKb = parseFloat(memParts[0])
+                    var availKb = parseFloat(memParts[1])
+                    if (totKb > 0) {
+                        var usedKb = Math.max(0, totKb - availKb)
+                        root.ramUsageGB = (usedKb / (1024 * 1024)).toFixed(1)
+                        root.ramPct = Math.round((usedKb / totKb) * 100)
+                    }
+                }
+            }
+        }
+    }
+
+    Timer {
+        id: sysTimer
+        interval: 2000
+        repeat: true
+        running: true
+        triggeredOnStart: true
+        onTriggered: sysProbe.running = true
     }
 
     /* ── System Tray for Background App Mini Icons ──────────────────── */
@@ -78,65 +131,141 @@ NotchContainer {
 
     /* ── Content Inside Notch ────────────────────────────────────────── */
     content: [
-        /* 0. System Tray: Mini Icons of Running Background Apps */
-        Row {
+        /* 0. System Telemetry Badge (CPU & RAM) - Mirrors Left Bar Desktop Badge */
+        Item {
+            id: telemetryBadge
+            implicitWidth: telemRow.implicitWidth
+            implicitHeight: 24
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 5
-            visible: root.trayItems.length > 0
+            readonly property bool isHovered: telemMouse.containsMouse
 
-            Repeater {
-                model: root.trayItems
-                delegate: Item {
-                    id: slot
-                    required property var modelData
-                    required property int index
+            scale: isHovered ? 1.05 : 1.0
+            Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
 
-                    width: 18
-                    height: 18
+            Row {
+                id: telemRow
+                spacing: 6
+                anchors.verticalCenter: parent.verticalCenter
 
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 4
-                        color: trayHov.containsMouse ? Theme.bgHover : "transparent"
+                MaterialShape {
+                    width: 15
+                    height: 15
+                    anchors.verticalCenter: parent.verticalCenter
+                    shape: telemetryBadge.isHovered ? MaterialShape.Diamond : MaterialShape.Gem
+                    animationDuration: 280
+                    animationEasing: Easing.OutBack
+                    color: root.cpuUsage > 75 || root.ramPct > 85 ? Theme.warn : Theme.accent
+                    rotation: telemetryBadge.isHovered ? 45 : 0
+                    Behavior on rotation { NumberAnimation { duration: 280; easing.type: Easing.OutBack } }
+                }
+
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 0
+
+                    Row {
+                        spacing: 3
+                        Text {
+                            text: "CPU"
+                            font.family: "Valley Sans"
+                            font.pixelSize: 8
+                            font.weight: Font.Medium
+                            color: Theme.fgFaint
+                        }
+                        Text {
+                            text: root.cpuUsage + "%"
+                            font.family: "Valley Sans"
+                            font.pixelSize: 8
+                            font.weight: Font.Bold
+                            color: root.cpuUsage > 80 ? Theme.err : (root.cpuUsage > 50 ? Theme.warn : Theme.fgDim)
+                        }
                     }
 
-                    Image {
-                        anchors.centerIn: parent
-                        source: slot.modelData.icon
-                        sourceSize: Qt.size(16, 16)
-                        width: 16
-                        height: 16
-                        fillMode: Image.PreserveAspectFit
-                    }
-
-                    MouseArea {
-                        id: trayHov
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: function (mouse) {
-                            if (mouse.button === Qt.RightButton) {
-                                if (slot.modelData.hasMenu)
-                                    slot.modelData.openMenu(mouse.x, mouse.y)
-                                else
-                                    slot.modelData.secondaryActivate()
-                            } else {
-                                slot.modelData.activate()
-                            }
+                    Row {
+                        spacing: 3
+                        Text {
+                            text: "RAM"
+                            font.family: "Valley Sans"
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                            color: Theme.fg
+                        }
+                        Text {
+                            text: root.ramUsageGB + "G"
+                            font.family: "Valley Sans"
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                            color: root.ramPct > 85 ? Theme.warn : Theme.accent
                         }
                     }
                 }
             }
+
+            MouseArea {
+                id: telemMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    Quickshell.execDetached(["sh", "-c", "kitty -e btop || foot -e btop || btop"])
+                }
+            }
         },
 
-        /* Divider after tray if tray has items */
+        /* Divider after Telemetry */
+        Rectangle {
+            width: 1
+            height: 14
+            anchors.verticalCenter: parent.verticalCenter
+            color: Qt.alpha(Theme.fg, 0.18)
+        },
+        /* 0. System Tray Overflow: Windows-style Up Arrow (Chevron) */
+        Item {
+            id: trayBadge
+            width: 22
+            height: 22
+            anchors.verticalCenter: parent.verticalCenter
+            visible: true
+            readonly property bool isHovered: trayMouse.containsMouse
+
+            scale: isHovered ? 1.15 : 1.0
+            Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 6
+                color: trayBadge.isHovered ? Theme.bgHover : "transparent"
+                border.color: trayBadge.isHovered ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.4) : "transparent"
+                border.width: 1
+                Behavior on color { ColorAnimation { duration: Motion.fast } }
+            }
+
+            Text {
+                anchors.centerIn: parent
+                text: "keyboard_arrow_up"
+                font.family: Theme.fontIcon
+                font.pixelSize: 18
+                color: trayBadge.isHovered ? Theme.accent : Theme.fg
+            }
+
+            MouseArea {
+                id: trayMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onEntered: root.openTray()
+                onExited: root.closeTray()
+                onClicked: root.toggleTray()
+            }
+        },
+
+        /* Divider after tray */
         Rectangle {
             width: 1
             height: 14
             anchors.verticalCenter: parent.verticalCenter
             color: Qt.alpha(Theme.fg, 0.15)
-            visible: root.trayItems.length > 0
+            visible: true
         },
 
         /* 1. Volume (Speaker glyph) */
@@ -187,11 +316,11 @@ NotchContainer {
             Text {
                 anchors.centerIn: parent
                 text: root.volumeGlyph
-                font.family: Theme.font
-                font.pixelSize: 12
+                font.family: Theme.fontIcon
+                font.pixelSize: 15
                 color: root.muted ? Theme.err : (volBadge.isHovered ? Theme.accent : Theme.fg)
                 scale: volBadge.isHovered ? 1.12 : 1.0
-                Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized } }
             }
 
             MouseArea {
@@ -252,14 +381,14 @@ NotchContainer {
 
             Text {
                 anchors.centerIn: parent
-                text: "\uf185" // Sun glyph
-                font.family: Theme.font
-                font.pixelSize: 12
+                text: "light_mode"
+                font.family: Theme.fontIcon
+                font.pixelSize: 15
                 color: brightBadge.isHovered ? Theme.accentLit : Theme.fg
                 scale: brightBadge.isHovered ? 1.12 : 1.0
                 rotation: brightBadge.isHovered ? 25 : 0
-                Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
-                Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized } }
+                Behavior on rotation { NumberAnimation { duration: Theme.motionDurationMedium2; easing.type: Theme.easingEmphasized } }
             }
 
             MouseArea {
@@ -273,80 +402,6 @@ NotchContainer {
             }
         },
 
-
-        /* 7. Notification Bell with Unread Dot & DND 'z' Indicator */
-        Item {
-            id: notifBadge
-            width: 22
-            height: 22
-            anchors.verticalCenter: parent.verticalCenter
-            readonly property bool isHovered: notifMouse.containsMouse
-
-            Rectangle {
-                anchors.fill: parent
-                radius: 6
-                color: notifBadge.isHovered ? Theme.bgHover : "transparent"
-                Behavior on color { ColorAnimation { duration: Motion.fast } }
-            }
-
-            Item {
-                id: notifIconBox
-                anchors.centerIn: parent
-                width: 14
-                height: 14
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "\uf0f3"
-                    font.family: Theme.font
-                    font.pixelSize: 12
-                    color: Theme.dnd ? Theme.fgDim : (notifBadge.isHovered ? Theme.accent : Theme.fg)
-                }
-
-                /* Small indicator dot for normal mode */
-                Rectangle {
-                    visible: !Theme.dnd
-                    anchors.top: parent.top
-                    anchors.right: parent.right
-                    anchors.topMargin: -1
-                    anchors.rightMargin: -2
-                    width: 5
-                    height: 5
-                    radius: 2.5
-                    color: root.notifCount > 0 ? Theme.accent : Qt.alpha(Theme.fg, 0.45)
-                }
-
-                /* DND 'z' badge when Do Not Disturb is active */
-                Item {
-                    visible: Theme.dnd
-                    anchors.top: parent.top
-                    anchors.right: parent.right
-                    anchors.topMargin: -4
-                    anchors.rightMargin: -4
-                    width: 10
-                    height: 10
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "z"
-                        font.family: "Valley Sans"
-                        font.pixelSize: 9
-                        font.weight: Font.Black
-                        color: Theme.accent
-                    }
-                }
-            }
-
-            MouseArea {
-                id: notifMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onEntered: root.openNotif()
-                onExited: root.closeNotif()
-                onClicked: root.toggleNotif()
-            }
-        },
 
         /* 8. Battery Pill Icon */
         Item {
@@ -397,11 +452,11 @@ NotchContainer {
             Text {
                 anchors.centerIn: parent
                 text: root.batteryGlyph
-                font.family: Theme.font
-                font.pixelSize: 12
+                font.family: Theme.fontIcon
+                font.pixelSize: 15
                 color: root.isCharging ? Theme.accentLit : (root.batteryPct < 0.2 ? Theme.err : (batBadge.isHovered ? Theme.accent : Theme.fg))
                 scale: batBadge.isHovered ? 1.12 : 1.0
-                Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized } }
             }
 
             MouseArea {
@@ -428,33 +483,33 @@ NotchContainer {
             Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.4 } }
             Behavior on y { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.4 } }
 
-            // Ambient glowing halo morphing into unique Heart shape
+            // Ambient glowing halo morphing into unique SoftBurst energy shape
             MaterialShape {
                 anchors.centerIn: parent
                 width: parent.width + 8
                 height: parent.height + 8
-                shape: pwrBadge.isHovered ? MaterialShape.Heart : MaterialShape.Circle
+                shape: pwrBadge.isHovered ? MaterialShape.SoftBurst : MaterialShape.Circle
                 animationDuration: 260
                 animationEasing: Easing.OutBack
                 color: pwrBadge.isHovered ? Qt.rgba(Theme.err.r, Theme.err.g, Theme.err.b, 0.28) : "transparent"
                 scale: pwrBadge.isHovered ? 1.12 : 0.6
                 opacity: pwrBadge.isHovered ? 1.0 : 0.0
-                rotation: pwrBadge.isHovered ? 8 : 0
+                rotation: pwrBadge.isHovered ? 45 : 0
                 Behavior on opacity { NumberAnimation { duration: 180 } }
                 Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
                 Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
             }
 
-            // Tactile highlight chip morphing into unique Heart shape
+            // Tactile highlight chip morphing into unique SoftBurst energy shape
             MaterialShape {
                 anchors.fill: parent
-                shape: pwrBadge.isHovered ? MaterialShape.Heart : MaterialShape.Circle
+                shape: pwrBadge.isHovered ? MaterialShape.SoftBurst : MaterialShape.Circle
                 animationDuration: 260
                 animationEasing: Easing.OutBack
                 color: pwrBadge.isHovered ? Qt.alpha(Theme.err, 0.22) : "transparent"
                 strokeColor: pwrBadge.isHovered ? Qt.rgba(Theme.err.r, Theme.err.g, Theme.err.b, 0.45) : "transparent"
                 strokeWidth: 1.2
-                rotation: pwrBadge.isHovered ? 8 : 0
+                rotation: pwrBadge.isHovered ? 45 : 0
                 Behavior on color { ColorAnimation { duration: 120 } }
                 Behavior on strokeColor { ColorAnimation { duration: 120 } }
                 Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
@@ -462,12 +517,12 @@ NotchContainer {
 
             Text {
                 anchors.centerIn: parent
-                text: "\uf011"
-                font.family: Theme.font
-                font.pixelSize: 11
+                text: "power_settings_new"
+                font.family: Theme.fontIcon
+                font.pixelSize: 15
                 color: pwrBadge.isHovered ? Theme.err : Theme.fgDim
                 scale: pwrBadge.isHovered ? 1.12 : 1.0
-                Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized } }
             }
 
             MouseArea {

@@ -25,7 +25,7 @@ Item {
         return c
     }
 
-    readonly property string filePath: "/home/shogun/.config/hypr/carbon-todos.json"
+    readonly property string filePath: (Quickshell.env("HOME") || "") + "/.config/hypr/carbon-todos.json"
 
     /* ── Storage Read / Write ────────────────────────────────────────────── */
     Process {
@@ -137,13 +137,15 @@ Item {
                 height: 22
                 radius: 11
                 color: clearHov.containsMouse ? Theme.bgHover : "transparent"
+                scale: clearHov.pressed ? 0.90 : (clearHov.containsMouse ? 1.08 : 1.0)
+                Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
                 visible: root.doneCount > 0
 
                 Text {
                     anchors.centerIn: parent
-                    text: "\uf1f8"
-                    font.family: Theme.font
-                    font.pixelSize: 10
+                    text: "delete_sweep"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 13
                     color: clearHov.containsMouse ? Theme.err : Theme.fgDim
                 }
 
@@ -206,12 +208,14 @@ Item {
                     height: 20
                     radius: 10
                     color: addHov.containsMouse ? Theme.accent : "#20FFFFFF"
+                    scale: addHov.pressed ? 0.90 : (addHov.containsMouse ? 1.08 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
 
                     Text {
                         anchors.centerIn: parent
-                        text: "\uf067"
-                        font.family: Theme.font
-                        font.pixelSize: 9
+                        text: "add"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 13
                         color: addHov.containsMouse ? "#111111" : Theme.fg
                     }
 
@@ -264,9 +268,9 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "\uf00c"
-                            font.family: Theme.font
-                            font.pixelSize: 9
+                            text: "check"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 11
                             color: "#111111"
                             visible: taskRow.modelData.done
                         }
@@ -296,14 +300,16 @@ Item {
                         height: 18
                         radius: 9
                         color: delHov.containsMouse ? Qt.alpha(Theme.err, 0.22) : "transparent"
+                        scale: delHov.pressed ? 0.88 : (delHov.containsMouse ? 1.1 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
                         opacity: rowMouse.containsMouse ? 1 : 0
                         Behavior on opacity { NumberAnimation { duration: 120 } }
 
                         Text {
                             anchors.centerIn: parent
-                            text: "\uf00d"
-                            font.family: Theme.font
-                            font.pixelSize: 9
+                            text: "close"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 11
                             color: delHov.containsMouse ? Theme.err : Theme.fgDim
                         }
 

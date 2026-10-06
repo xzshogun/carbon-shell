@@ -1,4 +1,5 @@
 Workspaces Workspaces.qml
+TrayPopup TrayPopup.qml
 TrayHost TrayHost.qml
 PowerMod PowerMod.qml
 ClockMod ClockMod.qml
@@ -32,3 +33,10 @@ CalendarPopup CalendarPopup.qml
 CarbonLewisWallpaper CarbonLewisWallpaper.qml
 OverviewMod OverviewMod.qml
 NotchOsd NotchOsd.qml
+CenterDashboard CenterDashboard.qml
+WeatherPane WeatherPane.qml
+BarCenter BarCenter.qml
+DynamicIslandPill DynamicIslandPill.qml
+SpotlightModal SpotlightModal.qml
+AmbientEdgeGlow AmbientEdgeGlow.qml
+WallpaperTransition WallpaperTransition.qml

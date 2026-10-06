@@ -103,14 +103,27 @@ Item {
         }
     }
 
+    /* ── Auto-Hide Idle Timer (5 seconds idle after typing) ────────── */
+    Timer {
+        id: idleHideTimer
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            cardRoot.revealed = false
+            cardRoot.buffer = ""
+        }
+    }
+
     Keys.onPressed: (event) => {
         if (isAuthenticating || isSuccess) return
 
         if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
+            idleHideTimer.stop()
             submitPassword()
             event.accepted = true
         } else if (event.key === Qt.Key_Backspace) {
             cardRoot.revealed = true
+            idleHideTimer.restart()
             if (event.modifiers & Qt.ControlModifier) {
                 buffer = ""
             } else {
@@ -121,6 +134,7 @@ Item {
             keyPressPulse.restart()
             event.accepted = true
         } else if (event.key === Qt.Key_Escape) {
+            idleHideTimer.stop()
             buffer = ""
             cardRoot.revealed = false
             isError = false
@@ -129,6 +143,7 @@ Item {
             const code = event.text.charCodeAt(0)
             if (code >= 32 && code !== 127) {
                 cardRoot.revealed = true
+                idleHideTimer.restart()
                 buffer += event.text
                 isError = false
                 lockTiltAnim.restart()
@@ -138,6 +153,7 @@ Item {
         } else {
             // Reveal on any other keypress as well so user sees the password card immediately
             cardRoot.revealed = true
+            idleHideTimer.restart()
         }
     }
 
@@ -266,9 +282,9 @@ Item {
                 Text {
                     id: lockIcon
                     anchors.centerIn: parent
-                    text: cardRoot.isSuccess ? "\uf00c" : (cardRoot.isError ? "\uf071" : "\uf023")
-                    font.family: Theme.font
-                    font.pixelSize: 16
+                    text: cardRoot.isSuccess ? "check" : (cardRoot.isError ? "error" : "lock")
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 18
                     color: {
                         if (cardRoot.isSuccess) return Theme.ok ? Theme.ok : "#a6e3a1"
                         if (cardRoot.isError) return Theme.err ? Theme.err : "#f38ba8"
@@ -401,9 +417,9 @@ Item {
                     Text {
                         id: arrowText
                         anchors.centerIn: parent
-                        text: cardRoot.isAuthenticating ? "\uf110" : "\uf061"
-                        font.family: Theme.font
-                        font.pixelSize: 14
+                        text: cardRoot.isAuthenticating ? "progress_activity" : "arrow_forward"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 16
                         font.bold: true
                         color: (cardRoot.buffer.length > 0 && !cardRoot.isAuthenticating) ? "#121216" : Qt.rgba(1, 1, 1, 0.4)
                     }

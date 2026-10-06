@@ -37,7 +37,7 @@ def search(sort="toplist", query="", page=1):
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     
     try:
-        with urllib.request.urlopen(req, timeout=12) as response:
+        with urllib.request.urlopen(req, timeout=8) as response:
             data = json.loads(response.read().decode("utf-8"))
             items = []
             for entry in data.get("data", []):
@@ -64,7 +64,57 @@ def search(sort="toplist", query="", page=1):
             
             print(json.dumps({"success": True, "data": items}))
     except Exception as e:
-        print(json.dumps({"success": False, "error": str(e), "data": []}))
+        # Wallhaven API outage / Cloudflare 503 fallback
+        # Serve the user's cached library of downloaded Wallhaven wallpapers so the UI doesn't break
+        cache_dir = os.path.expanduser("~/.cache/carbon/wp-thumbs")
+        valid_exts = {".jpg", ".jpeg", ".png", ".webp"}
+        fallback_items = []
+        try:
+            for fname in os.listdir(WALLPAPER_DIR):
+                if not fname.startswith("wallhaven-"):
+                    continue
+                ext = os.path.splitext(fname)[1].lower()
+                if ext not in valid_exts:
+                    continue
+                full_path = os.path.join(WALLPAPER_DIR, fname)
+                if not os.path.isfile(full_path):
+                    continue
+                if query and query.strip().lower() not in fname.lower():
+                    continue
+
+                safe_thumb = fname.replace(".", "_") + ".png"
+                thumb_path = os.path.join(cache_dir, safe_thumb)
+                thumb_url = f"file://{thumb_path}" if os.path.isfile(thumb_path) else f"file://{full_path}"
+                
+                res = "HD"
+                m = re.search(r"(\d{3,5}x\d{3,5})", fname)
+                if m:
+                    res = m.group(1)
+
+                fallback_items.append({
+                    "id": fname,
+                    "resolution": res,
+                    "category": "wallhaven (cached)",
+                    "thumb": thumb_url,
+                    "url": f"file://{full_path}",
+                    "path": full_path,
+                    "filename": fname,
+                    "mtime": os.path.getmtime(full_path),
+                    "is_local": True,
+                    "exists": True
+                })
+            fallback_items.sort(key=lambda x: x["mtime"], reverse=True)
+        except Exception:
+            pass
+
+        # Return the cached collection with notice
+        print(json.dumps({
+            "success": True,
+            "data": fallback_items,
+            "offline_fallback": True,
+            "notice": "Wallhaven servers are currently undergoing maintenance (503). Showing your downloaded Wallhaven library.",
+            "error": str(e)
+        }))
 
 
 def list_local(query=""):

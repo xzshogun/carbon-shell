@@ -24,7 +24,7 @@ Item {
     implicitHeight: 70
 
     /* ── Read Lock Screen Configuration ───────────────────────────────────── */
-    readonly property string configPath: "/home/shogun/.config/hypr/carbon-lockscreen.json"
+    readonly property string configPath: (Quickshell.env("HOME") || "") + "/.config/hypr/carbon-lockscreen.json"
 
     FileView {
         id: cfgFile
@@ -60,7 +60,7 @@ Item {
     /* ── Cava Subprocess Pipeline ────────────────────────────────────────── */
     Process {
         id: cavaProc
-        command: ["cava", "-p", "/home/shogun/.config/hypr/cava-lock.conf"]
+        command: ["cava", "-p", (Quickshell.env("HOME") || "") + "/.config/hypr/cava-lock.conf"]
         running: root.enabledSetting && root.active && root.visible
         stdout: SplitParser {
             splitMarker: "\n"

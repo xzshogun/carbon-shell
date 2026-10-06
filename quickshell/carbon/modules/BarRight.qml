@@ -37,9 +37,9 @@ Item {
     signal openBattery()
     signal closeBattery()
     signal toggleBattery()
-    signal openNotif()
-    signal closeNotif()
-    signal toggleNotif()
+    signal openTray()
+    signal closeTray()
+    signal toggleTray()
     signal toggleControls()
     signal openPower()
 
@@ -49,10 +49,10 @@ Item {
     readonly property bool muted: audioSink && audioSink.audio ? audioSink.audio.muted : false
 
     readonly property string volumeGlyph: {
-        if (root.muted) return "\uf6a9"
-        if (root.volume > 0.5) return "\uf028"
-        if (root.volume > 0.0) return "\uf027"
-        return "\uf026"
+        if (root.muted) return "volume_off"
+        if (root.volume > 0.5) return "volume_up"
+        if (root.volume > 0.0) return "volume_down"
+        return "volume_mute"
     }
 
     /* Battery State */
@@ -62,11 +62,11 @@ Item {
     readonly property bool isCharging: battery ? battery.state === UPowerDeviceState.Charging : false
 
     readonly property string batteryGlyph: {
-        if (root.isCharging) return "\uf0e7"
-        if (root.batteryPct > 0.8) return "\uf240"
-        if (root.batteryPct > 0.5) return "\uf241"
-        if (root.batteryPct > 0.2) return "\uf242"
-        return "\uf243"
+        if (root.isCharging) return "battery_charging_full"
+        if (root.batteryPct > 0.8) return "battery_full"
+        if (root.batteryPct > 0.5) return "battery_5_bar"
+        if (root.batteryPct > 0.2) return "battery_3_bar"
+        return "battery_alert"
     }
 
     /* System Tray Items */
@@ -156,65 +156,53 @@ Item {
             anchors.leftMargin: 8
             spacing: 7
 
-            /* ── System Tray (Horizontal) ─────────────────────────────── */
-            Row {
+            /* ── System Tray (Windows-style Up Arrow) ─────────────────── */
+            Item {
+                id: trayBadge
+                Layout.preferredWidth: 22
+                Layout.preferredHeight: 22
                 Layout.alignment: Qt.AlignVCenter
-                spacing: 5
-                visible: root.trayItems.length > 0
+                visible: true
+                readonly property bool isHovered: trayMouse.containsMouse
 
-                Repeater {
-                    model: root.trayItems
-                    delegate: Item {
-                        id: slot
-                        required property var modelData
-                        required property int index
+                scale: isHovered ? 1.15 : 1.0
+                Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
 
-                        width: 18
-                        height: 18
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 6
+                    color: trayBadge.isHovered ? Theme.bgHover : "transparent"
+                    border.color: trayBadge.isHovered ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.4) : "transparent"
+                    border.width: 1
+                    Behavior on color { ColorAnimation { duration: Motion.fast } }
+                }
 
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: 4
-                            color: trayHov.containsMouse ? Theme.bgHover : "transparent"
-                        }
+                Text {
+                    anchors.centerIn: parent
+                    text: "keyboard_arrow_up"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 18
+                    color: trayBadge.isHovered ? Theme.accent : Theme.fg
+                }
 
-                        Image {
-                            anchors.centerIn: parent
-                            source: slot.modelData.icon
-                            sourceSize: Qt.size(16, 16)
-                            width: 16
-                            height: 16
-                            fillMode: Image.PreserveAspectFit
-                        }
-
-                        MouseArea {
-                            id: trayHov
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: function (mouse) {
-                                if (mouse.button === Qt.RightButton) {
-                                    if (slot.modelData.hasMenu)
-                                        slot.modelData.openMenu(mouse.x, mouse.y)
-                                    else
-                                        slot.modelData.secondaryActivate()
-                                } else {
-                                    slot.modelData.activate()
-                                }
-                            }
-                        }
-                    }
+                MouseArea {
+                    id: trayMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onEntered: root.openTray()
+                    onExited: root.closeTray()
+                    onClicked: root.toggleTray()
                 }
             }
 
-            /* Divider after tray if tray has items */
+            /* Divider after tray */
             Rectangle {
                 Layout.preferredWidth: 1
                 Layout.preferredHeight: 14
                 Layout.alignment: Qt.AlignVCenter
                 color: "#25FFFFFF"
-                visible: root.trayItems.length > 0
+                visible: true
             }
 
             /* ── Battery Button (Hover/Click to open battery popup) ────── */
@@ -267,11 +255,11 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.batteryGlyph
-                    font.family: Theme.font
-                    font.pixelSize: 12
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 15
                     color: root.isCharging ? Theme.accentLit : (root.batteryPct < 0.2 ? Theme.err : (batBadge.isHovered ? Theme.accent : Theme.fg))
                     scale: batBadge.isHovered ? 1.12 : 1.0
-                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                    Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized } }
                 }
 
                 MouseArea {
@@ -334,11 +322,11 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.volumeGlyph
-                    font.family: Theme.font
-                    font.pixelSize: 12
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 15
                     color: root.muted ? Theme.err : (volBadge.isHovered ? Theme.accent : Theme.fg)
                     scale: volBadge.isHovered ? 1.12 : 1.0
-                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                    Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized } }
                 }
 
                 MouseArea {
@@ -400,14 +388,14 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "\uf185"
-                    font.family: Theme.font
-                    font.pixelSize: 12
+                    text: "light_mode"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 15
                     color: brightBadge.isHovered ? Theme.accentLit : Theme.fg
                     scale: brightBadge.isHovered ? 1.12 : 1.0
                     rotation: brightBadge.isHovered ? 25 : 0
-                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
-                    Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                    Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized } }
+                    Behavior on rotation { NumberAnimation { duration: Theme.motionDurationMedium2; easing.type: Theme.easingEmphasized } }
                 }
 
                 MouseArea {
@@ -418,78 +406,6 @@ Item {
                     onEntered: root.openBrightness()
                     onExited: root.closeBrightness()
                     onClicked: root.toggleBrightness()
-                }
-            }
-
-            /* ── Notification Bell Icon (Hover/Click to open notifs) ─── */
-            Item {
-                id: notifBadge
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 26
-                Layout.alignment: Qt.AlignVCenter
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: 6
-                    color: notifBadge.isHovered ? Theme.bgHover : "transparent"
-                    Behavior on color { ColorAnimation { duration: Motion.fast } }
-                }
-
-                Item {
-                    anchors.centerIn: parent
-                    width: 14
-                    height: 14
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "\uf0f3"
-                        font.family: Theme.font
-                        font.pixelSize: 12
-                        color: Theme.dnd ? Theme.fgDim : (notifBadge.isHovered ? Theme.accent : Theme.fg)
-                    }
-
-                    /* Small indicator dot for normal mode */
-                    Rectangle {
-                        visible: !Theme.dnd
-                        anchors.top: parent.top
-                        anchors.right: parent.right
-                        anchors.topMargin: -1
-                        anchors.rightMargin: -2
-                        width: 5
-                        height: 5
-                        radius: 2.5
-                        color: root.notifCount > 0 ? Theme.accent : Qt.alpha(Theme.fg, 0.45)
-                    }
-
-                    /* DND 'z' badge when Do Not Disturb is active */
-                    Item {
-                        visible: Theme.dnd
-                        anchors.top: parent.top
-                        anchors.right: parent.right
-                        anchors.topMargin: -4
-                        anchors.rightMargin: -4
-                        width: 10
-                        height: 10
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "z"
-                            font.family: "Valley Sans"
-                            font.pixelSize: 9
-                            font.weight: Font.Black
-                            color: Theme.accent
-                        }
-                    }
-                }
-
-                MouseArea {
-                    id: notifMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onEntered: root.openNotif()
-                    onExited: root.closeNotif()
-                    onClicked: root.toggleNotif()
                 }
             }
 
@@ -515,33 +431,33 @@ Item {
                 Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.4 } }
                 Behavior on y { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.4 } }
 
-                // Ambient glowing halo morphing into unique Heart shape
+                // Ambient glowing halo morphing into unique SoftBurst energy shape
                 MaterialShape {
                     anchors.centerIn: parent
                     width: parent.width + 8
                     height: parent.height + 8
-                    shape: pwrBadge.isHovered ? MaterialShape.Heart : MaterialShape.Circle
+                    shape: pwrBadge.isHovered ? MaterialShape.SoftBurst : MaterialShape.Circle
                     animationDuration: 260
                     animationEasing: Easing.OutBack
                     color: pwrBadge.isHovered ? Qt.rgba(Theme.err.r, Theme.err.g, Theme.err.b, 0.28) : "transparent"
                     scale: pwrBadge.isHovered ? 1.12 : 0.6
                     opacity: pwrBadge.isHovered ? 1.0 : 0.0
-                    rotation: pwrBadge.isHovered ? 8 : 0
+                    rotation: pwrBadge.isHovered ? 45 : 0
                     Behavior on opacity { NumberAnimation { duration: 180 } }
                     Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
                     Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
                 }
 
-                // Tactile highlight chip morphing into unique Heart shape
+                // Tactile highlight chip morphing into unique SoftBurst energy shape
                 MaterialShape {
                     anchors.fill: parent
-                    shape: pwrBadge.isHovered ? MaterialShape.Heart : MaterialShape.Circle
+                    shape: pwrBadge.isHovered ? MaterialShape.SoftBurst : MaterialShape.Circle
                     animationDuration: 260
                     animationEasing: Easing.OutBack
                     color: pwrBadge.isHovered ? Qt.alpha(Theme.err, 0.22) : "transparent"
                     strokeColor: pwrBadge.isHovered ? Qt.rgba(Theme.err.r, Theme.err.g, Theme.err.b, 0.45) : "transparent"
                     strokeWidth: 1.2
-                    rotation: pwrBadge.isHovered ? 8 : 0
+                    rotation: pwrBadge.isHovered ? 45 : 0
                     Behavior on color { ColorAnimation { duration: 120 } }
                     Behavior on strokeColor { ColorAnimation { duration: 120 } }
                     Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
@@ -549,12 +465,12 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "\uf011"
-                    font.family: Theme.font
-                    font.pixelSize: 12
+                    text: "power_settings_new"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 15
                     color: pwrBadge.isHovered ? Theme.err : Theme.fgDim
                     scale: pwrBadge.isHovered ? 1.12 : 1.0
-                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                    Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized } }
                 }
 
                 MouseArea {
@@ -575,6 +491,40 @@ Item {
             anchors.top: parent.top
             anchors.topMargin: root.attachedEdge !== "" ? 12 : (root.showBackground ? 8 : 4)
             spacing: 6
+
+            /* System Tray (Vertical) */
+            Item {
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 26
+                Layout.alignment: Qt.AlignHCenter
+                visible: true
+                readonly property bool isHovered: trayMouseV.containsMouse
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 6
+                    color: parent.isHovered ? Theme.bgHover : "transparent"
+                    Behavior on color { ColorAnimation { duration: Motion.fast } }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "keyboard_arrow_up"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 18
+                    color: parent.isHovered ? Theme.accent : Theme.fgDim
+                }
+
+                MouseArea {
+                    id: trayMouseV
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onEntered: root.openTray()
+                    onExited: root.closeTray()
+                    onClicked: root.toggleTray()
+                }
+            }
 
             /* Battery */
             Item {
@@ -624,11 +574,11 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.batteryGlyph
-                    font.family: Theme.font
-                    font.pixelSize: 12
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 15
                     color: root.isCharging ? Theme.accentLit : (root.batteryPct < 0.2 ? Theme.err : (parent.isHovered ? Theme.accent : Theme.fg))
                     scale: parent.isHovered ? 1.12 : 1.0
-                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                    Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized } }
                 }
 
                 MouseArea {
@@ -689,11 +639,11 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.volumeGlyph
-                    font.family: Theme.font
-                    font.pixelSize: 12
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 15
                     color: root.muted ? Theme.err : (parent.isHovered ? Theme.accent : Theme.fg)
                     scale: parent.isHovered ? 1.12 : 1.0
-                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                    Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized } }
                 }
 
                 MouseArea {
@@ -753,14 +703,14 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "\uf185"
-                    font.family: Theme.font
-                    font.pixelSize: 12
+                    text: "light_mode"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 15
                     color: parent.isHovered ? Theme.accentLit : Theme.fg
                     scale: parent.isHovered ? 1.12 : 1.0
                     rotation: parent.isHovered ? 25 : 0
-                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
-                    Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                    Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized } }
+                    Behavior on rotation { NumberAnimation { duration: Theme.motionDurationMedium2; easing.type: Theme.easingEmphasized } }
                 }
 
                 MouseArea {
@@ -771,112 +721,6 @@ Item {
                     onEntered: root.openBrightness()
                     onExited: root.closeBrightness()
                     onClicked: root.toggleBrightness()
-                }
-            }
-
-            /* Notification */
-            Item {
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 26
-                Layout.alignment: Qt.AlignHCenter
-
-                readonly property bool isHovered: notifMouseV.containsMouse
-                scale: isHovered ? 1.18 : 1.0
-                x: isHovered ? -2 : 0
-                Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.4 } }
-                Behavior on x { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.4 } }
-
-                // Ambient glowing halo morphing into unique Clover4Leaf shape
-                MaterialShape {
-                    anchors.centerIn: parent
-                    width: parent.width + 8
-                    height: parent.height + 8
-                    shape: parent.isHovered ? MaterialShape.Clover4Leaf : MaterialShape.Circle
-                    animationDuration: 260
-                    animationEasing: Easing.OutBack
-                    color: parent.isHovered ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.25) : "transparent"
-                    scale: parent.isHovered ? 1.12 : 0.6
-                    opacity: parent.isHovered ? 1.0 : 0.0
-                    rotation: parent.isHovered ? -10 : 0
-                    Behavior on opacity { NumberAnimation { duration: 180 } }
-                    Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                    Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
-                }
-
-                // Tactile highlight chip morphing into unique Clover4Leaf shape
-                MaterialShape {
-                    anchors.fill: parent
-                    shape: parent.isHovered ? MaterialShape.Clover4Leaf : MaterialShape.Circle
-                    animationDuration: 260
-                    animationEasing: Easing.OutBack
-                    color: parent.isHovered ? Theme.bgHover : "transparent"
-                    strokeColor: parent.isHovered ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.40) : "transparent"
-                    strokeWidth: 1.2
-                    rotation: parent.isHovered ? -10 : 0
-                    Behavior on color { ColorAnimation { duration: 120 } }
-                    Behavior on strokeColor { ColorAnimation { duration: 120 } }
-                    Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
-                }
-
-                Item {
-                    anchors.centerIn: parent
-                    width: 14
-                    height: 14
-                    rotation: parent.isHovered ? -12 : 0
-                    scale: parent.isHovered ? 1.12 : 1.0
-                    Behavior on rotation { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.8 } }
-                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "\uf0f3"
-                        font.family: Theme.font
-                        font.pixelSize: 12
-                        color: Theme.dnd ? Theme.fgDim : (parent.parent.isHovered ? Theme.accent : (root.notifCount > 0 ? Theme.accent : Theme.fg))
-                    }
-
-                    /* Small indicator dot for unread notifications */
-                    Rectangle {
-                        visible: root.notifCount > 0 && !Theme.dnd
-                        anchors.top: parent.top
-                        anchors.right: parent.right
-                        anchors.topMargin: -1
-                        anchors.rightMargin: -1
-                        width: 5
-                        height: 5
-                        radius: 2.5
-                        color: Theme.accent
-                    }
-
-                    /* DND 'z' badge when Do Not Disturb is active */
-                    Item {
-                        visible: Theme.dnd
-                        anchors.top: parent.top
-                        anchors.right: parent.right
-                        anchors.topMargin: -5
-                        anchors.rightMargin: -6
-                        width: 10
-                        height: 10
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "z"
-                            font.family: "Valley Sans"
-                            font.pixelSize: 9
-                            font.weight: Font.Black
-                            color: Theme.accent
-                        }
-                    }
-                }
-
-                MouseArea {
-                    id: notifMouseV
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onEntered: root.openNotif()
-                    onExited: root.closeNotif()
-                    onClicked: root.toggleNotif()
                 }
             }
 
@@ -900,33 +744,33 @@ Item {
                 Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.4 } }
                 Behavior on x { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.4 } }
 
-                // Ambient glowing halo morphing into unique Heart shape
+                // Ambient glowing halo morphing into unique SoftBurst energy shape
                 MaterialShape {
                     anchors.centerIn: parent
                     width: parent.width + 8
                     height: parent.height + 8
-                    shape: parent.isHovered ? MaterialShape.Heart : MaterialShape.Circle
+                    shape: parent.isHovered ? MaterialShape.SoftBurst : MaterialShape.Circle
                     animationDuration: 260
                     animationEasing: Easing.OutBack
                     color: parent.isHovered ? Qt.rgba(Theme.err.r, Theme.err.g, Theme.err.b, 0.28) : "transparent"
                     scale: parent.isHovered ? 1.12 : 0.6
                     opacity: parent.isHovered ? 1.0 : 0.0
-                    rotation: parent.isHovered ? 8 : 0
+                    rotation: parent.isHovered ? 45 : 0
                     Behavior on opacity { NumberAnimation { duration: 180 } }
                     Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
                     Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
                 }
 
-                // Tactile highlight chip morphing into unique Heart shape
+                // Tactile highlight chip morphing into unique SoftBurst energy shape
                 MaterialShape {
                     anchors.fill: parent
-                    shape: parent.isHovered ? MaterialShape.Heart : MaterialShape.Circle
+                    shape: parent.isHovered ? MaterialShape.SoftBurst : MaterialShape.Circle
                     animationDuration: 260
                     animationEasing: Easing.OutBack
                     color: parent.isHovered ? Qt.alpha(Theme.err, 0.22) : "transparent"
                     strokeColor: parent.isHovered ? Qt.rgba(Theme.err.r, Theme.err.g, Theme.err.b, 0.45) : "transparent"
                     strokeWidth: 1.2
-                    rotation: parent.isHovered ? 8 : 0
+                    rotation: parent.isHovered ? 45 : 0
                     Behavior on color { ColorAnimation { duration: 120 } }
                     Behavior on strokeColor { ColorAnimation { duration: 120 } }
                     Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
@@ -934,12 +778,12 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "\uf011"
-                    font.family: Theme.font
-                    font.pixelSize: 12
+                    text: "power_settings_new"
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 15
                     color: parent.isHovered ? Theme.err : Theme.fgDim
                     scale: parent.isHovered ? 1.12 : 1.0
-                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                    Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized } }
                 }
 
                 MouseArea {

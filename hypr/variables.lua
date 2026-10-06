@@ -8,7 +8,8 @@ return {
     -- Apps
     terminal                   = "foot",
     browser                    = "firefox",
-    editor                     = "/home/shogun/.config/hypr/scripts/carbon-config-editor",
+    editor                     = (os.getenv("HOME") or "") .. "/.config/hypr/scripts/carbon-config-editor",
+    pomodoro                   = (os.getenv("HOME") or "") .. "/.config/hypr/scripts/carbon-pomodoro",
     fileExplorer               = "thunar",
     audioSettings              = "pavucontrol",
 
@@ -76,7 +77,7 @@ return {
     kbMoveWindow               = "SUPER + Z",
     kbResizeWindow             = "SUPER + X",
     kbWindowPip                = "SUPER + ALT + backslash",
-    kbPinWindow                = "SUPER + P",
+    kbPinWindow                = "SUPER + ALT + P",
     kbWindowFullscreen         = "SUPER + F",
     kbWindowBorderedFullscreen = "SUPER + ALT + F",
     kbToggleWindowFloating     = "SUPER + ALT + space",
@@ -93,6 +94,7 @@ return {
     kbTerminal                 = "SUPER + Return",
     kbBrowser                  = "SUPER + B",
     kbEditor                   = "SUPER + C",
+    kbPomodoro                 = "SUPER + P",
     kbFileExplorer             = "SUPER + SHIFT + E",
 
     -- Misc
@@ -108,4 +110,6 @@ return {
     kbKillProcess              = "CTRL + ALT + K",
     kbColorPicker              = "SUPER + SHIFT + C",
     kbFloatingTerminal         = "SUPER + ALT + Return",
+    kbBrightnessUp             = "F12",
+    kbBrightnessDown           = "F11",
 }

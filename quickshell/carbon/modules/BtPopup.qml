@@ -38,25 +38,26 @@ Item {
     ListModel { id: deviceModel }
 
     Process {
-        id: pairProc
-        command: ["sh", "-c", "bluetoothctl devices 2>/dev/null | sed -E 's/^Device ([0-9A-F:]+) (.*)/\\1|\\2/'"]
-        stdout: StdioCollector { id: pairC; waitForEnd: true }
-        onExited: root.applyPairs(String(pairC.text))
-    }
-
-    Process {
-        id: connSetProc
-        command: ["sh", "-c", "bluetoothctl devices Connected 2>/dev/null | sed -E 's/^Device ([0-9A-F:]+).*/\\1/'"]
-        stdout: StdioCollector { id: connSetC; waitForEnd: true }
-        onExited: root.applyConnected(String(connSetC.text))
+        id: listProc
+        command: ["sh", "-c", "echo '===PAIRED==='; bluetoothctl devices Paired 2>/dev/null | sed -E 's/^Device ([0-9A-F:]+) (.*)/\\1|\\2/'; echo '===CONNECTED==='; bluetoothctl devices Connected 2>/dev/null | sed -E 's/^Device ([0-9A-F:]+).*/\\1/'; echo '===ALL==='; bluetoothctl devices 2>/dev/null | sed -E 's/^Device ([0-9A-F:]+) (.*)/\\1|\\2/'"]
+        stdout: StdioCollector { id: listC; waitForEnd: true }
+        onExited: root.applyDevices(String(listC.text))
     }
 
     Process {
         id: actProc
         command: ["sh", "-c", "true"]
+        stdout: StdioCollector { id: actC; waitForEnd: true }
+        stderr: StdioCollector { id: actE; waitForEnd: true }
         onExited: {
             root.working = false
-            if (exitCode !== 0) root.status = "Action failed"
+            if (exitCode === 0) {
+                root.status = "Success"
+            } else {
+                var err = String(actE.text).trim()
+                if (!err) err = String(actC.text).trim()
+                root.status = err.length > 0 ? err.split("\n")[0] : "Action failed"
+            }
             delayRelist.restart()
         }
     }
@@ -70,15 +71,22 @@ Item {
         }
     }
 
-    Timer { id: delayRelist; interval: 1200; onTriggered: root.reloadAll() }
+    Timer {
+        id: scanTicker
+        interval: 1800
+        repeat: true
+        running: root.open && root.scanning
+        onTriggered: root.reloadAll()
+    }
+
+    Timer { id: delayRelist; interval: 1000; onTriggered: root.reloadAll() }
 
     function shellQuote(s) {
         return "'" + String(s).replace(/'/g, "'\\''") + "'"
     }
 
     function reloadAll() {
-        pairProc.running = true
-        connSetProc.running = true
+        listProc.running = true
     }
 
     function scanDevices() {
@@ -87,44 +95,79 @@ Item {
         scanProc.running = true
     }
 
-    function toggleDevice(mac, connected) {
+    function toggleDevice(mac, connected, paired) {
         if (root.working) return
         root.working = true
-        root.status = connected ? "Disconnecting…" : "Connecting…"
-        actProc.command = ["sh", "-c",
-            "bluetoothctl " + (connected ? "disconnect " : "connect ") +
-            root.shellQuote(mac) + " >/dev/null 2>&1"]
+        if (connected) {
+            root.status = "Disconnecting…"
+            actProc.command = ["sh", "-c", "bluetoothctl disconnect " + root.shellQuote(mac)]
+        } else if (paired) {
+            root.status = "Connecting…"
+            actProc.command = ["sh", "-c", "bluetoothctl connect " + root.shellQuote(mac)]
+        } else {
+            root.status = "Pairing…"
+            actProc.command = ["sh", "-c", "bluetoothctl trust " + root.shellQuote(mac) + " >/dev/null 2>&1; bluetoothctl pair " + root.shellQuote(mac) + " && bluetoothctl connect " + root.shellQuote(mac)]
+        }
         actProc.running = true
     }
 
-    function applyPairs(text) {
-        var seen = {}
+    function applyDevices(text) {
+        var pairedMap = {}
+        var connectedMap = {}
+        var allDevices = {}
         var lines = String(text).split("\n")
+        var section = ""
+
         for (var i = 0; i < lines.length; i++) {
             var l = lines[i].trim()
             if (!l) continue
-            var bar = l.indexOf("|")
-            if (bar < 0) continue
-            var mac = l.substring(0, bar).trim()
-            var name = l.substring(bar + 1).trim()
-            if (!mac) continue
-            seen[mac] = { mac: mac, name: name, connected: false }
+            if (l === "===PAIRED===") { section = "paired"; continue }
+            if (l === "===CONNECTED===") { section = "connected"; continue }
+            if (l === "===ALL===") { section = "all"; continue }
+
+            if (section === "paired") {
+                var barP = l.indexOf("|")
+                if (barP > 0) {
+                    var mP = l.substring(0, barP).trim()
+                    var nP = l.substring(barP + 1).trim()
+                    if (mP) {
+                        pairedMap[mP] = nP
+                        allDevices[mP] = { mac: mP, name: nP, paired: true, connected: false }
+                    }
+                }
+            } else if (section === "connected") {
+                connectedMap[l] = true
+            } else if (section === "all") {
+                var barA = l.indexOf("|")
+                if (barA > 0) {
+                    var mA = l.substring(0, barA).trim()
+                    var nA = l.substring(barA + 1).trim()
+                    if (mA) {
+                        if (!allDevices[mA]) {
+                            allDevices[mA] = { mac: mA, name: nA, paired: false, connected: false }
+                        }
+                    }
+                }
+            }
         }
+
+        var rows = []
+        for (var k in allDevices) {
+            var dev = allDevices[k]
+            dev.connected = !!connectedMap[dev.mac]
+            dev.paired = !!pairedMap[dev.mac]
+            rows.push(dev)
+        }
+
+        rows.sort(function(a, b) {
+            if (a.connected !== b.connected) return a.connected ? -1 : 1
+            if (a.paired !== b.paired) return a.paired ? -1 : 1
+            return a.name.localeCompare(b.name)
+        })
+
         deviceModel.clear()
         if (root.powerOn) {
-            for (var m in seen) deviceModel.append(seen[m])
-        }
-    }
-
-    function applyConnected(text) {
-        var set = {}
-        var lines = String(text).split("\n")
-        for (var i = 0; i < lines.length; i++) {
-            var m = lines[i].trim()
-            if (m) set[m] = true
-        }
-        for (var j = 0; j < deviceModel.count; j++) {
-            deviceModel.setProperty(j, "connected", !!set[deviceModel.get(j).mac])
+            for (var j = 0; j < rows.length; j++) deviceModel.append(rows[j])
         }
     }
 
@@ -134,9 +177,33 @@ Item {
         width: parent.width
         height: parent.height
         radius: 18
-        color: Theme.bg
+        color: Theme.isDark ? "#101116" : "#ffffff"
         border.width: 1
-        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Theme.outline
+        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.65) : Qt.rgba(1, 1, 1, 0.12)
+
+        /* Subtle glowing halo border like app window border */
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -1
+            radius: sheet.radius + 1
+            color: "transparent"
+            border.width: 1.5
+            border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.40) : "transparent"
+            z: -1
+            opacity: root.open ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 200 } }
+        }
+
+        /* Specular Rim highlight */
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 1
+            radius: sheet.radius - 1
+            color: "transparent"
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, root.open ? 0.14 : 0.04)
+            z: 99
+        }
 
         opacity: root.open ? 1 : 0
         scale: root.open ? 1.0 : 0.88
@@ -176,9 +243,9 @@ Item {
             spacing: 8
 
             Text {
-                text: "\uf294"
-                font.family: Theme.font
-                font.pixelSize: 15
+                text: "bluetooth"
+                font.family: Theme.fontIcon
+                font.pixelSize: 18
                 color: Theme.accentLit
             }
             Text {
@@ -218,13 +285,13 @@ Item {
                     color: root.powerOn ? "#0e0e12" : Theme.fgDim
                     anchors.verticalCenter: parent.verticalCenter
                     x: root.powerOn ? parent.width - width - 3 : 3
-                    Behavior on x { NumberAnimation { duration: Motion.fast } }
+                    Behavior on x { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
                 }
             }
             Text {
-                text: "\uf00d"
-                font.family: Theme.font
-                font.pixelSize: 13
+                text: "close"
+                font.family: Theme.fontIcon
+                font.pixelSize: 16
                 color: Theme.fgDim
                 MouseArea {
                     anchors.fill: parent
@@ -282,11 +349,11 @@ Item {
                     spacing: 8
 
                     Text {
-                        text: "\uf293"
-                        font.family: Theme.font
-                        font.pixelSize: 13
+                        text: "bluetooth"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 16
                         color: model.connected ? Theme.accentLit : Theme.fgFaint
-                        Layout.preferredWidth: 14
+                        Layout.preferredWidth: 16
                     }
 
                     ColumnLayout {
@@ -298,23 +365,34 @@ Item {
                             elide: Text.ElideRight
                             text: model.name.length > 0 ? model.name : model.mac
                             font.family: "Valley Sans"
-                            font.pixelSize: 14
+                            font.pixelSize: 13
                             color: model.connected ? Theme.accentLit : Theme.fg
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: model.mac
+                            text: model.connected ? "Connected" : (model.paired ? "Paired" : "Ready to pair")
                             font.family: "Valley Sans"
                             font.pixelSize: 10
-                            color: Theme.fgFaint
+                            color: model.connected ? Theme.accentLit : Theme.fgDim
                         }
                     }
 
-                    Text {
-                        text: model.connected ? "\uf00c" : ""
-                        font.family: Theme.font
-                        font.pixelSize: 12
-                        color: Theme.accentLit
+                    Rectangle {
+                        Layout.preferredHeight: 22
+                        Layout.preferredWidth: model.connected ? 48 : (model.paired ? 42 : 38)
+                        radius: 6
+                        color: model.connected ? Qt.rgba(1, 0.3, 0.3, 0.15) : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18)
+                        border.width: 1
+                        border.color: model.connected ? Qt.rgba(1, 0.3, 0.3, 0.35) : Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.35)
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: model.connected ? "DROP" : (model.paired ? "LINK" : "PAIR")
+                            font.family: Theme.font
+                            font.pixelSize: 9
+                            font.bold: true
+                            color: model.connected ? "#ff6b6b" : Theme.accentLit
+                        }
                     }
                 }
 
@@ -323,7 +401,7 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.toggleDevice(model.mac, model.connected)
+                    onClicked: root.toggleDevice(model.mac, model.connected, model.paired)
                 }
             }
         }
@@ -347,9 +425,9 @@ Item {
                 spacing: 10
 
                 Text {
-                    text: root.working ? "" : (root.scanning ? "\uf6be" : "\uf002")
-                    font.family: Theme.font
-                    font.pixelSize: 14
+                    text: root.working ? "" : (root.scanning ? "sync" : "search")
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 16
                     color: Theme.fgDim
                 }
 

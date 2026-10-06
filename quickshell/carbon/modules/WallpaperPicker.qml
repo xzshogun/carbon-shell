@@ -17,6 +17,8 @@ Item {
 
     property bool open: false
     signal closeRequested()
+    signal wallpaperApplyStarted(string name)
+    signal wallpaperApplyFinished()
 
     readonly property var cardItem: panelCard
     readonly property bool animatingOut: !root.open && root.opacity > 0.001
@@ -34,10 +36,11 @@ Item {
     property string activeDownloadId: ""
     property string downloadStatus: ""
     property string currentWallpaperPath: ""
+    property string noticeMessage: ""
 
-    readonly property string wallpaperDir: "/home/shogun/Pictures/Wallpapers"
-    readonly property string stateFile: "/home/shogun/.config/hypr/current_wallpaper_path"
-    readonly property string wallhavenScript: "/home/shogun/.config/hypr/scripts/wallhaven.py"
+    readonly property string wallpaperDir: (Quickshell.env("HOME") || "") + "/Pictures/Wallpapers"
+    readonly property string stateFile: (Quickshell.env("HOME") || "") + "/.config/hypr/current_wallpaper_path"
+    readonly property string wallhavenScript: (Quickshell.env("HOME") || "") + "/.config/hypr/scripts/wallhaven.py"
 
     FileView {
         id: wpLinkFile
@@ -106,6 +109,7 @@ Item {
         root.currentPage = 1
         root.hasMore = true
         root.wallpapers = []
+        root.noticeMessage = ""
 
         var args = []
         if (root.activeSource === "local") {
@@ -158,14 +162,17 @@ Item {
                         if (res && res.success && Array.isArray(res.data)) {
                             root.wallpapers = res.data
                             root.hasMore = res.data.length >= 20
+                            root.noticeMessage = res.notice || ""
                         } else {
                             root.wallpapers = []
                             root.hasMore = false
+                            root.noticeMessage = (res && res.error) ? res.error : ""
                         }
                     } catch (e) {
                         console.log("Failed to parse wallpaper list response:", e)
                         root.wallpapers = []
                         root.hasMore = false
+                        root.noticeMessage = ""
                     }
                 }
             }
@@ -232,16 +239,20 @@ Item {
 
     function selectWallpaper(item) {
         if (!item) return
+        var title = item.name || item.filename || item.id || "Wallpaper"
+        root.wallpaperApplyStarted(title)
+        root.closeRequested()
+
+        root.activeDownloadId = ""
+        root.downloadStatus = ""
+
         if (item.is_local) {
             // Directly apply local wallpaper
-            root.activeDownloadId = item.id
-            root.downloadStatus = "Applying..."
             applyProc.command = [root.wallhavenScript, "apply", item.path]
             applyProc.running = true
         } else {
             // Download from Wallhaven then apply
-            root.activeDownloadId = item.id
-            root.downloadStatus = "Downloading & Applying..."
+            downloadProc.buffer = ""
             downloadProc.command = [root.wallhavenScript, "download", item.url, item.filename]
             downloadProc.running = true
         }
@@ -254,6 +265,7 @@ Item {
             if (!running) {
                 root.activeDownloadId = ""
                 root.downloadStatus = ""
+                root.wallpaperApplyFinished()
             }
         }
         stdout: SplitParser {
@@ -274,6 +286,7 @@ Item {
                         root.currentWallpaperPath = res.path
                     }
                 } catch (e) {}
+                root.wallpaperApplyFinished()
             }
         }
         stdout: SplitParser {
@@ -354,14 +367,15 @@ Item {
                         color: isActive ? Theme.accent : (locHov.containsMouse ? Theme.bgHover : Qt.alpha(Theme.fg, 0.06))
                         border.color: isActive ? Theme.accentLit : Qt.alpha(Theme.fg, 0.12)
                         border.width: 1
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
+                        scale: locHov.pressed ? 0.94 : (locHov.containsMouse ? 1.05 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
+                        Behavior on color { ColorAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingStandard } }
 
                         Text {
                             anchors.centerIn: parent
-                            text: "\uf07c" // Folder/File icon
-                            font.family: Theme.font
-                            font.pixelSize: 14
+                            text: "folder"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 18
                             color: localTabBtn.isActive ? "#111111" : Theme.fg
                         }
 
@@ -384,14 +398,15 @@ Item {
                         color: isActive ? Theme.accent : (liveHov.containsMouse ? Theme.bgHover : Qt.alpha(Theme.fg, 0.06))
                         border.color: isActive ? Theme.accentLit : Qt.alpha(Theme.fg, 0.12)
                         border.width: 1
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
+                        scale: liveHov.pressed ? 0.94 : (liveHov.containsMouse ? 1.05 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
+                        Behavior on color { ColorAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingStandard } }
 
                         Text {
                             anchors.centerIn: parent
-                            text: "\uf008" // Film reel icon
-                            font.family: Theme.font
-                            font.pixelSize: 14
+                            text: "movie"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 18
                             color: liveTabBtn.isActive ? "#111111" : Theme.fg
                         }
 
@@ -414,14 +429,15 @@ Item {
                         color: isActive ? Theme.accent : (onlHov.containsMouse ? Theme.bgHover : Qt.alpha(Theme.fg, 0.06))
                         border.color: isActive ? Theme.accentLit : Qt.alpha(Theme.fg, 0.12)
                         border.width: 1
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
+                        scale: onlHov.pressed ? 0.94 : (onlHov.containsMouse ? 1.05 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
+                        Behavior on color { ColorAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingStandard } }
 
                         Text {
                             anchors.centerIn: parent
-                            text: "\uf0ac" // Globe icon
-                            font.family: Theme.font
-                            font.pixelSize: 14
+                            text: "public"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 18
                             color: onlineTabBtn.isActive ? "#111111" : Theme.fg
                         }
 
@@ -456,14 +472,17 @@ Item {
                         color: isActive ? Theme.accent : (bestHov.containsMouse ? Theme.bgHover : Qt.alpha(Theme.fg, 0.06))
                         border.color: isActive ? Theme.accentLit : Qt.alpha(Theme.fg, 0.12)
                         border.width: 1
+                        scale: bestHov.pressed ? 0.94 : (bestHov.containsMouse ? 1.04 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
+                        Behavior on color { ColorAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingStandard } }
 
                         RowLayout {
                             anchors.centerIn: parent
                             spacing: 5
                             Text {
-                                text: "\uf005"
-                                font.family: Theme.font
-                                font.pixelSize: 11
+                                text: "star"
+                                font.family: Theme.fontIcon
+                                font.pixelSize: 14
                                 color: bestBtn.isActive ? "#111111" : Theme.fg
                             }
                             Text {
@@ -496,14 +515,17 @@ Item {
                         color: isActive ? Theme.accent : (latestHov.containsMouse ? Theme.bgHover : Qt.alpha(Theme.fg, 0.06))
                         border.color: isActive ? Theme.accentLit : Qt.alpha(Theme.fg, 0.12)
                         border.width: 1
+                        scale: latestHov.pressed ? 0.94 : (latestHov.containsMouse ? 1.04 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
+                        Behavior on color { ColorAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingStandard } }
 
                         RowLayout {
                             anchors.centerIn: parent
                             spacing: 5
                             Text {
-                                text: "\uf017"
-                                font.family: Theme.font
-                                font.pixelSize: 11
+                                text: "schedule"
+                                font.family: Theme.fontIcon
+                                font.pixelSize: 14
                                 color: latestBtn.isActive ? "#111111" : Theme.fg
                             }
                             Text {
@@ -535,12 +557,14 @@ Item {
                         color: searchToggleHov.containsMouse ? Theme.bgHover : Qt.alpha(Theme.fg, 0.06)
                         border.color: Qt.alpha(Theme.fg, 0.12)
                         border.width: 1
+                        scale: searchToggleHov.pressed ? 0.94 : (searchToggleHov.containsMouse ? 1.05 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
 
                         Text {
                             anchors.centerIn: parent
-                            text: "\uf002" // Search icon
-                            font.family: Theme.font
-                            font.pixelSize: 13
+                            text: "search"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 16
                             color: Theme.fg
                         }
 
@@ -577,9 +601,9 @@ Item {
 
                         /* Target Icon */
                         Text {
-                            text: root.activeSource === "wallhaven" ? "\uf0ac" : (root.activeSource === "live" ? "\uf008" : "\uf07c")
-                            font.family: Theme.font
-                            font.pixelSize: 13
+                            text: root.activeSource === "wallhaven" ? "public" : (root.activeSource === "live" ? "movie" : "folder")
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 16
                             color: searchInput.activeFocus ? Theme.accent : Theme.fgDim
                         }
 
@@ -619,13 +643,15 @@ Item {
                             height: 20
                             radius: 10
                             color: clrHov.containsMouse ? Theme.bgHover : "transparent"
+                            scale: clrHov.pressed ? 0.90 : 1.0
+                            Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
                             visible: searchInput.text.length > 0
 
                             Text {
                                 anchors.centerIn: parent
-                                text: "\uf00d"
-                                font.family: Theme.font
-                                font.pixelSize: 10
+                                text: "close"
+                                font.family: Theme.fontIcon
+                                font.pixelSize: 12
                                 color: Theme.fgDim
                             }
 
@@ -648,13 +674,15 @@ Item {
                             height: 22
                             radius: 11
                             color: closeSearchHov.containsMouse ? Theme.bgHover : "transparent"
+                            scale: closeSearchHov.pressed ? 0.90 : 1.0
+                            Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
                             visible: root.activeSource === "wallhaven" && root.searchOpen
 
                             Text {
                                 anchors.centerIn: parent
-                                text: "\uf00d"
-                                font.family: Theme.font
-                                font.pixelSize: 11
+                                text: "close"
+                                font.family: Theme.fontIcon
+                                font.pixelSize: 13
                                 color: Theme.fgDim
                             }
 
@@ -682,12 +710,14 @@ Item {
                     color: refHov.containsMouse ? Theme.bgHover : Qt.alpha(Theme.fg, 0.06)
                     border.color: Qt.alpha(Theme.fg, 0.12)
                     border.width: 1
+                    scale: refHov.pressed ? 0.94 : (refHov.containsMouse ? 1.05 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
 
                     Text {
                         anchors.centerIn: parent
-                        text: "\uf021"
-                        font.family: Theme.font
-                        font.pixelSize: 12
+                        text: "refresh"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 16
                         color: Theme.fg
 
                         NumberAnimation on rotation {
@@ -714,12 +744,14 @@ Item {
                     color: clsHov.containsMouse ? Qt.alpha(Theme.err, 0.25) : Qt.alpha(Theme.fg, 0.06)
                     border.color: clsHov.containsMouse ? Theme.err : Qt.alpha(Theme.fg, 0.12)
                     border.width: 1
+                    scale: clsHov.pressed ? 0.94 : (clsHov.containsMouse ? 1.05 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
 
                     Text {
                         anchors.centerIn: parent
-                        text: "\uf00d"
-                        font.family: Theme.font
-                        font.pixelSize: 13
+                        text: "close"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 16
                         color: clsHov.containsMouse ? Theme.err : Theme.fgDim
                     }
 
@@ -740,6 +772,34 @@ Item {
                 color: Theme.outline
             }
 
+            /* ── Outage / Maintenance Notice Banner ──────────────────── */
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 30
+                visible: root.activeSource === "wallhaven" && root.noticeMessage.length > 0
+                color: Qt.alpha(Theme.warn || "#e5c07b", 0.12)
+                border.color: Qt.alpha(Theme.warn || "#e5c07b", 0.35)
+                border.width: 1
+                radius: 6
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 8
+                    Text {
+                        text: "warning"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 14
+                        color: Theme.warn || "#e5c07b"
+                    }
+                    Text {
+                        text: root.noticeMessage
+                        font.family: "Valley Sans"
+                        font.pixelSize: 11
+                        color: Theme.fg
+                    }
+                }
+            }
+
             /* ── Main Content Area: Wallpapers Grid ─────────────────── */
             Item {
                 Layout.fillWidth: true
@@ -753,8 +813,8 @@ Item {
 
                     Text {
                         Layout.alignment: Qt.AlignHCenter
-                        text: "\uf110"
-                        font.family: Theme.font
+                        text: "progress_activity"
+                        font.family: Theme.fontIcon
                         font.pixelSize: 32
                         color: Theme.accent
 
@@ -782,8 +842,8 @@ Item {
 
                     Text {
                         Layout.alignment: Qt.AlignHCenter
-                        text: "\uf002"
-                        font.family: Theme.font
+                        text: "search_off"
+                        font.family: Theme.fontIcon
                         font.pixelSize: 28
                         color: Theme.fgDim
                     }
@@ -859,9 +919,9 @@ Item {
                                     visible: parent.status !== Image.Ready
                                     Text {
                                         anchors.centerIn: parent
-                                        text: "\uf03e"
-                                        font.family: Theme.font
-                                        font.pixelSize: 22
+                                        text: "image"
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: 26
                                         color: Qt.alpha(Theme.fg, 0.2)
                                     }
                                 }
@@ -906,19 +966,28 @@ Item {
                                 anchors.top: parent.top
                                 anchors.margins: 6
                                 height: 18
-                                width: curTxt.implicitWidth + 8
+                                width: curBadgeRow.implicitWidth + 10
                                 radius: 4
                                 color: Theme.accent
                                 visible: cardItem.isCurrent
 
-                                Text {
-                                    id: curTxt
+                                RowLayout {
+                                    id: curBadgeRow
                                     anchors.centerIn: parent
-                                    text: "\uf00c Active"
-                                    font.family: Theme.font
-                                    font.pixelSize: 9
-                                    font.weight: Font.Bold
-                                    color: "#111111"
+                                    spacing: 3
+                                    Text {
+                                        text: "check"
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: 11
+                                        color: "#111111"
+                                    }
+                                    Text {
+                                        text: "Active"
+                                        font.family: "Valley Sans"
+                                        font.pixelSize: 9
+                                        font.weight: Font.Bold
+                                        color: "#111111"
+                                    }
                                 }
                             }
 
@@ -934,8 +1003,8 @@ Item {
 
                                     Text {
                                         Layout.alignment: Qt.AlignHCenter
-                                        text: "\uf110"
-                                        font.family: Theme.font
+                                        text: "progress_activity"
+                                        font.family: Theme.fontIcon
                                         font.pixelSize: 24
                                         color: Theme.accent
 
@@ -987,9 +1056,9 @@ Item {
                                     anchors.centerIn: parent
                                     spacing: 5
                                     Text {
-                                        text: cardItem.modelData.is_local ? "\uf00c" : "\uf019"
-                                        font.family: Theme.font
-                                        font.pixelSize: 10
+                                        text: cardItem.modelData.is_local ? "wallpaper" : "download"
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: 13
                                         color: Theme.accentLit
                                     }
                                     Text {
@@ -1029,14 +1098,16 @@ Item {
                                 color: loadMoreHov.containsMouse ? Theme.bgHover : Qt.alpha(Theme.fg, 0.06)
                                 border.color: Qt.alpha(Theme.fg, 0.12)
                                 border.width: 1
+                                scale: loadMoreHov.pressed ? 0.95 : (loadMoreHov.containsMouse ? 1.03 : 1.0)
+                                Behavior on scale { NumberAnimation { duration: Theme.motionDurationShort2; easing.type: Theme.easingEmphasized } }
 
                                 RowLayout {
                                     anchors.centerIn: parent
                                     spacing: 6
                                     Text {
-                                        text: root.isLoadingMore ? "\uf110" : "\uf078"
-                                        font.family: Theme.font
-                                        font.pixelSize: 10
+                                        text: root.isLoadingMore ? "progress_activity" : "expand_more"
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: 14
                                         color: Theme.accent
 
                                         NumberAnimation on rotation {

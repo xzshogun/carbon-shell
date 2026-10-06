@@ -76,9 +76,9 @@ Item {
             anchors.right: parent.right
             anchors.topMargin: 4
             anchors.rightMargin: 5
-            text: "\uf047"
-            font.family: Theme.font
-            font.pixelSize: 8
+            text: "drag_pan"
+            font.family: Theme.fontIcon
+            font.pixelSize: 10
             color: hov.drag.active || hov.containsMouse ? Theme.accent : Theme.fgFaint
             opacity: hov.drag.active || hov.containsMouse ? 0.9 : 0.25
             visible: root.draggable
@@ -90,8 +90,8 @@ Item {
             anchors.top: parent.top
             anchors.topMargin: Math.round(root.tileSize * 0.18)
             text: root.glyph
-            font.family: Theme.font
-            font.pixelSize: Math.max(13, Math.round(root.tileSize * 0.30))
+            font.family: Theme.fontIcon
+            font.pixelSize: Math.max(14, Math.round(root.tileSize * 0.32))
             color: root.disabled ? Theme.fgFaint
                  : (root.on || root.held ? Theme.accentLit : Theme.fg)
         }

@@ -78,7 +78,7 @@ Item {
                     {
                         id: "lock",
                         label: "Lock",
-                        icon: "\uf023",
+                        icon: "lock",
                         hoverShape: MaterialShape.Clover4Leaf,
                         accentColor: Theme.accent ? Theme.accent : "#00F0FF",
                         isDestructive: false
@@ -86,7 +86,7 @@ Item {
                     {
                         id: "switch",
                         label: "Switch",
-                        icon: "\uf2f1",
+                        icon: "switch_account",
                         hoverShape: MaterialShape.Sunny,
                         accentColor: "#b4befe",
                         cmd: ["sh", "-c", "loginctl terminate-session ${XDG_SESSION_ID:-2} || loginctl terminate-user $USER || hyprctl repl 'hl.dispatch(hl.dsp.exit())' || pkill -9 Hyprland"],
@@ -95,7 +95,7 @@ Item {
                     {
                         id: "reboot",
                         label: "Reboot",
-                        icon: "\uf01e",
+                        icon: "restart_alt",
                         hoverShape: MaterialShape.Flower,
                         accentColor: "#fab387",
                         cmd: ["sh", "-c", "systemctl reboot || loginctl reboot"],
@@ -104,8 +104,8 @@ Item {
                     {
                         id: "shutdown",
                         label: "Shutdown",
-                        icon: "\uf011",
-                        hoverShape: MaterialShape.Heart,
+                        icon: "power_settings_new",
+                        hoverShape: MaterialShape.SoftBurst,
                         accentColor: Theme.err ? Theme.err : "#f38ba8",
                         cmd: ["sh", "-c", "systemctl poweroff || loginctl poweroff"],
                         isDestructive: true
@@ -181,22 +181,22 @@ Item {
                             Behavior on strokeColor { ColorAnimation { duration: 220 } }
                         }
 
-                        // Big prominent icon
+                        // Big prominent icon (M3 Material Symbol)
                         Text {
                             anchors.centerIn: parent
                             text: btnRoot.modelData.icon
-                            font.family: Theme.font
-                            font.pixelSize: 34
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 36
                             color: btnRoot.isHovered ? btnRoot.modelData.accentColor : Theme.fg
                             scale: btnRoot.isHovered ? 1.12 : 1.0
 
                             Behavior on scale {
                                 NumberAnimation {
-                                    duration: 220
-                                    easing.type: Easing.OutBack
+                                    duration: Theme.motionDurationShort4
+                                    easing.type: Theme.easingEmphasized
                                 }
                             }
-                            Behavior on color { ColorAnimation { duration: 180 } }
+                            Behavior on color { ColorAnimation { duration: Theme.motionDurationShort3 } }
                         }
                     }
 
@@ -224,7 +224,7 @@ Item {
                             root.requestClose()
                             if (btnRoot.modelData.id === "lock") {
                                 root.requestLock()
-                                Quickshell.execDetached(["sh", "/home/shogun/.config/hypr/scripts/carbon-ipc.sh", "lock"])
+                                Quickshell.execDetached(["sh", (Quickshell.env("HOME") || "") + "/.config/hypr/scripts/carbon-ipc.sh", "lock"])
                             } else if (btnRoot.modelData.cmd) {
                                 Quickshell.execDetached(btnRoot.modelData.cmd)
                             }

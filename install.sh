@@ -57,6 +57,11 @@ DEPENDENCIES=(
     "grim"
     "slurp"
     "socat"
+    "jq"
+    "brightnessctl"
+    "pipewire"
+    "wireplumber"
+    "wpctl"
 )
 
 MISSING_DEPS=()
@@ -85,10 +90,10 @@ if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
             
             if [ -n "$AUR_HELPER" ]; then
                 echo -e "      Installing via ${AUR_HELPER}..."
-                $AUR_HELPER -S --needed --noconfirm "${MISSING_DEPS[@]}" python-pillow python-gobject gtk4 libadwaita cava ttf-jetbrains-mono-nerd || true
+                $AUR_HELPER -S --needed --noconfirm "${MISSING_DEPS[@]}" python-pillow python-gobject gtk4 libadwaita cava ttf-jetbrains-mono-nerd ttf-material-symbols-variable alsa-utils brightnessctl || true
             else
                 echo -e "      Installing official packages via sudo pacman..."
-                sudo pacman -S --needed --noconfirm "${MISSING_DEPS[@]}" python-pillow python-gobject gtk4 libadwaita || true
+                sudo pacman -S --needed --noconfirm "${MISSING_DEPS[@]}" python-pillow python-gobject gtk4 libadwaita alsa-utils brightnessctl || true
             fi
         fi
     else
@@ -96,6 +101,99 @@ if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
     fi
 else
     echo -e "      ${GREEN}All primary dependencies are present!${RESET}"
+fi
+
+# ------------------------------------------------------------------------------
+# 2.1 Hardware, Permissions & Security Diagnostics
+# ------------------------------------------------------------------------------
+echo -e "\n${BLUE}[2.1]${RESET} Running pre-flight system & hardware diagnostics..."
+DIAG_ERRORS=()
+DIAG_WARNINGS=()
+
+# Audio & PipeWire Service Check
+if systemctl --user is-active pipewire >/dev/null 2>&1 && systemctl --user is-active wireplumber >/dev/null 2>&1; then
+    echo -e "      ${GREEN}✓${RESET} Audio Engine: PipeWire and WirePlumber active"
+else
+    DIAG_WARNINGS+=("PipeWire / WirePlumber user services are not currently active. Audio slider / mute toggles may be non-responsive.")
+    echo -e "      ${YELLOW}⚠${RESET} Audio Engine: PipeWire or WirePlumber service is inactive"
+fi
+
+# Audio Hardware Controls (amixer / wpctl)
+if command -v amixer >/dev/null 2>&1 || command -v wpctl >/dev/null 2>&1; then
+    echo -e "      ${GREEN}✓${RESET} Audio Hardware Link: ALSA / WirePlumber controller found"
+else
+    DIAG_WARNINGS+=("Neither amixer (alsa-utils) nor wpctl (wireplumber) was found. Install alsa-utils or wireplumber.")
+    echo -e "      ${YELLOW}⚠${RESET} Audio Hardware Link: Missing mixer controller"
+fi
+
+# Display Backlight & brightnessctl Permissions
+BACKLIGHT_FOUND=false
+if [ -d "/sys/class/backlight" ] && [ "$(ls -A /sys/class/backlight 2>/dev/null)" ]; then
+    BACKLIGHT_FOUND=true
+    if command -v brightnessctl >/dev/null 2>&1; then
+        if brightnessctl g >/dev/null 2>&1; then
+            echo -e "      ${GREEN}✓${RESET} Brightness Control: Hardware backlight detected and accessible"
+        else
+            DIAG_WARNINGS+=("Backlight detected but non-root write access denied. Add user to video group: sudo usermod -aG video \$USER")
+            echo -e "      ${YELLOW}⚠${RESET} Brightness Control: Permission denied for backlight write"
+        fi
+    fi
+else
+    echo -e "      ${BLUE}ℹ${RESET} Brightness Control: Desktop / external monitor detected (no internal laptop backlight)"
+fi
+
+# Font Verification (Material Symbols Rounded & JetBrainsMono Nerd Font)
+if fc-list : family 2>/dev/null | grep -iq "Material Symbols Rounded"; then
+    echo -e "      ${GREEN}✓${RESET} Fonts: Material Symbols Rounded available"
+elif fc-list : family 2>/dev/null | grep -iq "Material Symbols"; then
+    echo -e "      ${GREEN}✓${RESET} Fonts: Material Symbols (generic) available"
+else
+    DIAG_WARNINGS+=("Material Symbols Rounded font is missing. Shell icons may render as raw text. Install ttf-material-symbols-variable or similar.")
+    echo -e "      ${YELLOW}⚠${RESET} Fonts: Material Symbols Rounded NOT detected"
+fi
+
+if fc-list : family 2>/dev/null | grep -iq "JetBrainsMono Nerd Font"; then
+    echo -e "      ${GREEN}✓${RESET} Fonts: JetBrainsMono Nerd Font available"
+else
+    DIAG_WARNINGS+=("JetBrainsMono Nerd Font is missing. Install ttf-jetbrains-mono-nerd for terminal & widget glyphs.")
+    echo -e "      ${YELLOW}⚠${RESET} Fonts: JetBrainsMono Nerd Font NOT detected"
+fi
+
+# PAM Authentication Check for hyprlock / lock screen
+if command -v hyprlock >/dev/null 2>&1; then
+    if [ -f "/etc/pam.d/hyprlock" ]; then
+        echo -e "      ${GREEN}✓${RESET} PAM Authentication: /etc/pam.d/hyprlock is configured"
+    elif [ -f "/etc/pam.d/system-auth" ] || [ -f "/etc/pam.d/login" ]; then
+        echo -e "      ${YELLOW}⚠${RESET} PAM Authentication: /etc/pam.d/hyprlock missing (fallback to system-auth/login)"
+        DIAG_WARNINGS+=("/etc/pam.d/hyprlock missing. Recommended fix: sudo cp /etc/pam.d/system-auth /etc/pam.d/hyprlock")
+    else
+        DIAG_ERRORS+=("No valid PAM configuration found for screen locker! Locking screen could result in lockout.")
+        echo -e "      ${RED}✗${RESET} PAM Authentication: Critical PAM configuration missing!"
+    fi
+fi
+
+# Summary Diagnostic Alert
+if [ ${#DIAG_ERRORS[@]} -gt 0 ] || [ ${#DIAG_WARNINGS[@]} -gt 0 ]; then
+    echo -e "\n  ${YELLOW}┌────────────────────────────────────────────────────────────────────────┐${RESET}"
+    echo -e "  ${YELLOW}│${RESET}  ${YELLOW}PRE-FLIGHT DIAGNOSTIC NOTICES${RESET}                                         ${YELLOW}│${RESET}"
+    echo -e "  ${YELLOW}├────────────────────────────────────────────────────────────────────────┤${RESET}"
+    for w in "${DIAG_WARNINGS[@]}"; do
+        echo -e "  ${YELLOW}│${RESET}  ${YELLOW}[WARN]${RESET} $w"
+    done
+    for e in "${DIAG_ERRORS[@]}"; do
+        echo -e "  ${YELLOW}│${RESET}  ${RED}[FAIL]${RESET} $e"
+    done
+    echo -e "  ${YELLOW}└────────────────────────────────────────────────────────────────────────┘${RESET}\n"
+    if [ ${#DIAG_ERRORS[@]} -gt 0 ]; then
+        echo -e "      ${RED}Critical pre-flight checks failed. Do you still wish to proceed? [y/N]${RESET} "
+        read -r -p "      > " proceed_choice
+        if [[ ! "$proceed_choice" =~ ^[Yy]$ ]]; then
+            echo -e "      ${RED}Installation aborted by user.${RESET}"
+            exit 1
+        fi
+    fi
+else
+    echo -e "      ${GREEN}Pre-flight diagnostics passed with zero warnings!${RESET}"
 fi
 
 # ------------------------------------------------------------------------------
@@ -157,6 +255,12 @@ cp -r "${REPO_DIR}/hypr/"* "${HOME}/.config/hypr/"
 chmod +x "${HOME}/.config/hypr/scripts/"*.sh 2>/dev/null || true
 chmod +x "${HOME}/.config/hypr/scripts/"*.py 2>/dev/null || true
 chmod +x "${HOME}/.config/hypr/scripts/carbon-config-editor" 2>/dev/null || true
+chmod +x "${HOME}/.config/hypr/scripts/carbon-pomodoro" 2>/dev/null || true
+
+# Deploy user binaries (~/.local/bin)
+mkdir -p "${HOME}/.local/bin"
+cp "${HOME}/.config/hypr/scripts/carbon-screenshot-"*.sh "${HOME}/.local/bin/" 2>/dev/null || true
+chmod +x "${HOME}/.local/bin/carbon-screenshot-"*.sh 2>/dev/null || true
 
 # Restore default wallpaper symlink
 if [ -f "${WALLPAPER_DIR}/wallhaven-6ly7yw.png" ]; then
@@ -187,6 +291,18 @@ fi
 # Clean up any deprecated config keys (e.g. dwindle.pseudotile, misc.vfr)
 sed -i '/dwindle\.pseudotile/d; /misc\.vfr/d' "${HOME}/.config/hypr/"*.lua "${HOME}/.config/hypr/hyprland/"*.lua 2>/dev/null || true
 
+# Dynamic portability sanitization: ensure any residual developer paths are mapped to current user
+echo -e "      Ensuring 100% path portability for user: ${USER} (${HOME})..."
+find "${HOME}/.local/share/quickshell/carbon" "${HOME}/.config/hypr" "${HOME}/.config/fastfetch" "${HOME}/.config/systemd/user" -type f \( -name "*.qml" -o -name "*.conf" -o -name "*.lua" -o -name "*.json" -o -name "*.jsonc" -o -name "*.sh" -o -name "*.py" -o -name "*.service" \) -exec sed -i "s|/home/shogun|${HOME}|g" {} + 2>/dev/null || true
+
+# Install & enable carbon-quickshell systemd user service
+mkdir -p "${HOME}/.config/systemd/user"
+if [ -f "${REPO_DIR}/systemd/carbon-quickshell.service" ]; then
+    cp "${REPO_DIR}/systemd/carbon-quickshell.service" "${HOME}/.config/systemd/user/"
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
+    systemctl --user enable carbon-quickshell.service >/dev/null 2>&1 || true
+fi
+
 echo -e "\n${GREEN}==============================================================================${RESET}"
 echo -e "${GREEN}  ✓ Carbon Shell installation completed successfully!${RESET}"
 echo -e "${GREEN}==============================================================================${RESET}\n"
@@ -202,9 +318,7 @@ read -r -p "> " reload_choice
 if [[ -z "$reload_choice" || "$reload_choice" =~ ^[Yy]$ ]]; then
     echo -e "Reloading Hyprland..."
     hyprctl reload >/dev/null 2>&1 || true
-    echo -e "Restarting Quickshell..."
-    killall quickshell 2>/dev/null || true
-    sleep 0.5
-    nohup quickshell --config "${HOME}/.local/share/quickshell/carbon" >/dev/null 2>&1 &
+    echo -e "Restarting Quickshell service..."
+    systemctl --user restart carbon-quickshell.service >/dev/null 2>&1 || (killall quickshell 2>/dev/null; nohup quickshell --config "${HOME}/.local/share/quickshell/carbon" >/dev/null 2>&1 &)
     echo -e "${GREEN}Carbon Shell is live! Enjoy your desktop!${RESET}"
 fi

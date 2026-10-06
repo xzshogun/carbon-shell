@@ -24,17 +24,29 @@ NotchContainer {
     signal closeMusicHover()
     signal toggleMusic()
     signal openMusic()
+    signal toggleControls()
+    signal toggleCenterDashboard()
+    signal openCenterDashboard()
+    signal closeCenterDashboard()
+
+    readonly property bool hudActive: HudService.active
 
     mouseArea.hoverEnabled: true
     mouseArea.cursorShape: Qt.PointingHandCursor
     mouseArea.acceptedButtons: Qt.LeftButton | Qt.RightButton
-    // mouseArea.onEntered: root.openMusicHover()
-    // mouseArea.onExited: root.closeMusicHover()
+    mouseArea.onEntered: {
+        if (!root.hudActive) root.openCenterDashboard()
+    }
+    mouseArea.onExited: root.closeCenterDashboard()
     mouseArea.onClicked: (mouse) => {
+        if (root.hudActive) {
+            HudService.dismiss()
+            return
+        }
         if (mouse.button === Qt.RightButton) {
             root.togglePlayPause()
         } else {
-            root.toggleMusic()
+            root.toggleCenterDashboard()
         }
     }
 
@@ -98,11 +110,60 @@ NotchContainer {
 
     /* ── Content Inside Notch ────────────────────────────────────────── */
     content: [
-        /* 1. Center Island Clock (Dynamic Design) */
-        CenterClock {
+        Item {
+            id: notchContentContainer
             anchors.verticalCenter: parent.verticalCenter
+            implicitHeight: 26
+            implicitWidth: root.hudActive ? dynamicPill.implicitWidth : normalNotchRow.implicitWidth
+
+            Behavior on implicitWidth {
+                NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
+            }
+
+            /* HUD Mode: Dynamic Island Pill */
+            DynamicIslandPill {
+                id: dynamicPill
+                anchors.centerIn: parent
+                opacity: root.hudActive ? 1.0 : 0.0
+                visible: opacity > 0.01
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 220; easing.type: Easing.OutQuad }
+                }
+            }
+
+            /* Normal Mode: Clock & Music Row */
+            Row {
+                id: normalNotchRow
+                anchors.centerIn: parent
+                spacing: 8
+                opacity: root.hudActive ? 0.0 : 1.0
+                visible: opacity > 0.01
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+                }
+
+                /* 1. Center Island Clock (Dynamic Design - Click to toggle Dashboard) */
+                Item {
+            anchors.verticalCenter: parent.verticalCenter
+            implicitWidth: centerClockItem.implicitWidth
+            implicitHeight: centerClockItem.implicitHeight
             visible: root.barContent !== "music"
-        },
+            z: 10
+
+            CenterClock {
+                id: centerClockItem
+                anchors.centerIn: parent
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.toggleCenterDashboard()
+            }
+        }
 
         /* 2. Vertical Divider */
         Rectangle {
@@ -111,7 +172,7 @@ NotchContainer {
             color: Qt.alpha(Theme.fg, 0.22)
             anchors.verticalCenter: parent.verticalCenter
             visible: root.barContent === "both"
-        },
+        }
 
         /* 3. Music Section (Disc + Track Info) */
         Item {
@@ -159,32 +220,52 @@ NotchContainer {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "\uf51f" // Vinyl record icon
-                            font.family: Theme.font
-                            font.pixelSize: 12
+                            text: "music_note"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 14
                             color: Theme.accent
                         }
+                    }
+                }
 
-                        // Subtle inner core
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width: 6
-                            height: 6
-                            radius: 3
-                            color: Theme.bg
-                            border.color: Theme.accentLit
-                            border.width: 1
-                        }
+                /* Dynamic Island 4-Bar Equalizer Waveform */
+                Row {
+                    id: eqWaveform
+                    spacing: 2
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.hasTrack
 
-                        // Smooth continuous rotation animation when music is playing
-                        NumberAnimation {
-                            target: vinylDisc
-                            property: "rotation"
-                            from: 0
-                            to: 360
-                            duration: 4000
-                            loops: Animation.Infinite
-                            running: root.isPlaying
+                    Repeater {
+                        model: [
+                            { minH: 3, maxH: 13, dur: 380 },
+                            { minH: 4, maxH: 15, dur: 520 },
+                            { minH: 3, maxH: 11, dur: 440 },
+                            { minH: 4, maxH: 14, dur: 610 }
+                        ]
+
+                        delegate: Rectangle {
+                            id: eqBar
+                            required property var modelData
+                            required property int index
+
+                            width: 2.5
+                            radius: 1.25
+                            color: Theme.accent
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            height: root.isPlaying ? modelData.minH : 2.5
+
+                            SequentialAnimation on height {
+                                running: root.isPlaying
+                                loops: Animation.Infinite
+                                NumberAnimation { to: eqBar.modelData.maxH; duration: eqBar.modelData.dur; easing.type: Easing.InOutQuad }
+                                NumberAnimation { to: eqBar.modelData.minH; duration: eqBar.modelData.dur * 0.85; easing.type: Easing.InOutQuad }
+                            }
+
+                            Behavior on height {
+                                enabled: !root.isPlaying
+                                NumberAnimation { duration: 250; easing.type: Easing.OutQuad }
+                            }
                         }
                     }
                 }
@@ -217,5 +298,8 @@ NotchContainer {
                 }
             }
         }
+    }
+    }
     ]
 }
+

@@ -29,8 +29,8 @@ hl.on("hyprland.start", function()
 
     -- Start shell
     -- switch-shells:START
-    hl.exec_cmd("quickshell --config " .. (os.getenv("HOME") or "") .. "/.local/share/quickshell/carbon")
--- switch-shells:END
+    hl.exec_cmd("systemctl --user is-active --quiet carbon-quickshell.service || systemctl --user start carbon-quickshell.service")
+    -- switch-shells:END
 end)
 
 -- Resizer listener

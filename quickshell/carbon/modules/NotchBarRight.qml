@@ -23,7 +23,7 @@ import "../components"
 NotchContainer {
     id: root
 
-    implicitHeight: 34
+    implicitHeight: root.barHeight
     earWidth: 20
     contentSpacing: 7
 

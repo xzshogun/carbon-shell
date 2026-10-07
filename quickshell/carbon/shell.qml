@@ -650,6 +650,7 @@ ShellRoot {
             "import json, os; p=os.path.expanduser('~/.config/hypr/carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {}; d['islandPersistent']=" + (p ? "True" : "False") + "; json.dump(d, open(p,'w'), indent=2)"])
     }
 
+    property int barHeight: 34
     property string barEdge: "top"
     property string mainBarEdge: "top"
     property string musicBarEdge: "top"
@@ -662,11 +663,8 @@ ShellRoot {
     property string rightEdge: "top"
 
     /* Panel corner placement for Quick Settings:
-     * - Pill / Minimal mode on bottom -> "top_left"
-     * - Notch mode on bottom -> "top_left"
-     * - Notch mode on right -> "bottom_left"
-     * - Notch mode on left -> "bottom_right"
-     * - Default (top) -> "bottom_right"
+     * - Bottom edge -> "top_left"
+     * - Top edge (default) -> "bottom_right"
      */
     readonly property string controlsCorner: {
         return (root.mainBarEdge === "bottom" || root.barEdge === "bottom") ? "top_left" : "bottom_right"
@@ -686,35 +684,27 @@ ShellRoot {
         if (!txt) return
         try {
             var d = JSON.parse(txt)
-            if (d.mainBarEdge) {
-                root.mainBarEdge = d.mainBarEdge
-                root.barEdge = d.mainBarEdge
-            } else if (d.edge) {
-                root.mainBarEdge = d.edge
-                root.barEdge = d.edge
+            var chosenEdge = "top"
+            if (d.mainBarEdge === "bottom" || d.edge === "bottom") {
+                chosenEdge = "bottom"
             }
-            if (d.musicBarEdge) {
-                root.musicBarEdge = d.musicBarEdge
-            } else if (d.edge) {
-                root.musicBarEdge = (d.edge === "bottom" ? "bottom" : "top")
-            }
-            if (root.barMode === "pill" || root.barMode === "notch") {
-                if (root.mainBarEdge !== "top" && root.mainBarEdge !== "bottom") {
-                    root.mainBarEdge = "top"
-                    root.barEdge = "top"
-                }
-                if (root.musicBarEdge !== "top" && root.musicBarEdge !== "bottom") {
-                    root.musicBarEdge = "top"
-                }
-            }
-            if (d.musicBarContent) root.musicBarContent = d.musicBarContent
+            root.mainBarEdge = chosenEdge
+            root.musicBarEdge = chosenEdge
+            root.barEdge = chosenEdge
+            root.leftEdge = chosenEdge
+            root.centerEdge = chosenEdge
+            root.rightEdge = chosenEdge
 
+            if (d.musicBarContent) root.musicBarContent = d.musicBarContent
             if (d.leftAlign) root.leftAlign = d.leftAlign
             if (d.centerAlign) root.centerAlign = d.centerAlign
             if (d.rightAlign) root.rightAlign = d.rightAlign
-            if (d.leftEdge) root.leftEdge = d.leftEdge
-            if (d.centerEdge) root.centerEdge = d.centerEdge
-            if (d.rightEdge) root.rightEdge = d.rightEdge
+
+            if (d.barHeight && d.barHeight >= 26 && d.barHeight <= 54) {
+                root.barHeight = d.barHeight
+            } else {
+                root.barHeight = (root.barMode === "pill" ? 38 : 34)
+            }
         } catch (e) {}
     }
 
@@ -1085,8 +1075,8 @@ ShellRoot {
     readonly property bool hasLeftReserve: false
     readonly property bool hasRightReserve: false
 
-    readonly property int topReserveHeight: root.hasTopReserve ? (root.barMode === "notch" ? 38 : (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 38 : 46) : 54)) : 0
-    readonly property int bottomReserveHeight: root.hasBottomReserve ? (root.barMode === "notch" ? 38 : (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 38 : 46) : 54)) : 0
+    readonly property int topReserveHeight: root.hasTopReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0
+    readonly property int bottomReserveHeight: root.hasBottomReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0
     readonly property int leftReserveWidth: root.hasLeftReserve ? 38 : 0
     readonly property int rightReserveWidth: root.hasRightReserve ? 38 : 0
 
@@ -1201,13 +1191,13 @@ ShellRoot {
                 right: 12
             }
 
-            implicitHeight: 38
+            implicitHeight: root.barHeight
             visible: root.barMode === "pill" && root.mainBarEdge !== "left" && root.mainBarEdge !== "right"
 
             Rectangle {
                 id: pillFullCapsule
                 anchors.fill: parent
-                radius: 19
+                radius: root.barHeight / 2
                 color: Theme.bg
                 border.color: Theme.outline
                 border.width: 1
@@ -1220,6 +1210,7 @@ ShellRoot {
                     /* Left: Workspaces & App Launcher */
                     BarLeft {
                         id: pillLeftItem
+                        barHeight: root.barHeight
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         showBackground: false
@@ -1243,6 +1234,7 @@ ShellRoot {
                     /* Right: System Tray & Controls */
                     BarRight {
                         id: pillRightItem
+                        barHeight: root.barHeight
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         showBackground: false
@@ -1435,7 +1427,7 @@ ShellRoot {
                 bottom: 0
             }
 
-            implicitHeight: 52
+            implicitHeight: root.barHeight + 18
             implicitWidth: 600
             visible: root.barMode === "minimal"
 
@@ -1475,6 +1467,7 @@ ShellRoot {
 
             MinimalIsland {
                 id: minimalIslandItem
+                barHeight: root.barHeight
                 attachedBottom: root.mainBarEdge === "bottom"
                 islandStyle: root.islandStyle
                 notifCount: (notificationServer && notificationServer.trackedNotifications) ? notificationServer.trackedNotifications.values.length : 0
@@ -1576,8 +1569,8 @@ ShellRoot {
                 bottom: root.mainBarEdge === "bottom"
             }
             margins {
-                top: root.mainBarEdge !== "bottom" ? (root.barMode === "notch" ? 42 : (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 34 : 42) : 50)) : 0
-                bottom: root.mainBarEdge === "bottom" ? (root.barMode === "notch" ? 42 : (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 34 : 42) : 50)) : 0
+                top: root.mainBarEdge !== "bottom" ? (root.barHeight + 8) : 0
+                bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
             }
 
             implicitWidth: 340
@@ -1687,7 +1680,7 @@ ShellRoot {
                 bottom: 0
             }
 
-            implicitHeight: 34
+            implicitHeight: root.barHeight
             visible: root.barMode === "notch"
 
             mask: notchMask
@@ -1715,6 +1708,7 @@ ShellRoot {
 
             NotchBarLeft {
                 id: notchLeftItem
+                barHeight: root.barHeight
                 attachedBottom: root.mainBarEdge === "bottom"
                 anchors.top: root.mainBarEdge !== "bottom" ? parent.top : undefined
                 anchors.bottom: root.mainBarEdge === "bottom" ? parent.bottom : undefined
@@ -1726,6 +1720,7 @@ ShellRoot {
 
             NotchBarCenter {
                 id: notchCenterItem
+                barHeight: root.barHeight
                 visible: root.musicBarEdge === root.mainBarEdge
                 barContent: root.musicBarContent
                 attachedBottom: root.mainBarEdge === "bottom"
@@ -1745,6 +1740,7 @@ ShellRoot {
 
             NotchBarRight {
                 id: notchRightItem
+                barHeight: root.barHeight
                 attachedBottom: root.mainBarEdge === "bottom"
                 anchors.top: root.mainBarEdge !== "bottom" ? parent.top : undefined
                 anchors.bottom: root.mainBarEdge === "bottom" ? parent.bottom : undefined
@@ -1786,12 +1782,13 @@ ShellRoot {
                 top: root.musicBarEdge !== "bottom"
                 bottom: root.musicBarEdge === "bottom"
             }
-            implicitHeight: 34
+            implicitHeight: root.barHeight
             implicitWidth: separateNotchCenter.implicitWidth
             visible: root.barMode === "notch" && (root.musicBarEdge !== root.mainBarEdge || root.mainBarEdge === "left" || root.mainBarEdge === "right")
 
             NotchBarCenter {
                 id: separateNotchCenter
+                barHeight: root.barHeight
                 barContent: root.musicBarContent
                 attachedBottom: root.musicBarEdge === "bottom"
                 anchors.fill: parent
@@ -1987,9 +1984,9 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: (root.mainBarEdge === "bottom" || root.mainBarEdge === "right") ? 0 : (root.barMode === "notch" ? 40 : (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 34 : 42) : 54))
-            bottom: root.mainBarEdge === "right" ? 14 : (root.mainBarEdge === "bottom" ? (root.barMode === "notch" ? 40 : 54) : 0)
-            right: root.barMode === "minimal" ? 0 : (root.mainBarEdge === "right" ? (root.barMode === "notch" ? 38 : 54) : 16)
+            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
+            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
+            right: root.barMode === "minimal" ? 0 : 16
         }
 
         implicitWidth: mixerItem.implicitWidth
@@ -2031,9 +2028,9 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: (root.mainBarEdge === "bottom" || root.mainBarEdge === "right") ? 0 : (root.barMode === "notch" ? 40 : (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 34 : 42) : 54))
-            bottom: root.mainBarEdge === "right" ? 14 : (root.mainBarEdge === "bottom" ? (root.barMode === "notch" ? 40 : 54) : 0)
-            right: root.barMode === "minimal" ? 0 : (root.mainBarEdge === "right" ? (root.barMode === "notch" ? 38 : 54) : 16)
+            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
+            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
+            right: root.barMode === "minimal" ? 0 : 16
         }
 
         implicitWidth: brightnessItem.implicitWidth
@@ -2075,9 +2072,9 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: (root.mainBarEdge === "bottom" || root.mainBarEdge === "right") ? 0 : (root.barMode === "notch" ? 40 : (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 34 : 42) : 54))
-            bottom: root.mainBarEdge === "right" ? 14 : (root.mainBarEdge === "bottom" ? (root.barMode === "notch" ? 40 : 54) : 0)
-            right: root.barMode === "minimal" ? 0 : (root.mainBarEdge === "right" ? (root.barMode === "notch" ? 38 : 54) : 24)
+            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
+            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
+            right: root.barMode === "minimal" ? 0 : 24
         }
 
         implicitWidth: batteryItem.implicitWidth
@@ -2119,9 +2116,9 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: (root.mainBarEdge === "bottom" || root.mainBarEdge === "right") ? 0 : (root.barMode === "notch" ? 40 : (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 34 : 42) : 54))
-            bottom: root.mainBarEdge === "right" ? 14 : (root.mainBarEdge === "bottom" ? (root.barMode === "notch" ? 40 : 54) : 0)
-            right: root.barMode === "minimal" ? 0 : (root.mainBarEdge === "right" ? (root.barMode === "notch" ? 38 : 54) : 16)
+            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
+            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
+            right: root.barMode === "minimal" ? 0 : 16
         }
 
         implicitWidth: 250
@@ -2168,9 +2165,9 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: (root.mainBarEdge === "bottom" || root.mainBarEdge === "right") ? 0 : (root.barMode === "notch" ? 40 : (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 34 : 42) : 54))
-            bottom: root.mainBarEdge === "right" ? 14 : (root.mainBarEdge === "bottom" ? (root.barMode === "notch" ? 40 : 54) : 0)
-            right: root.barMode === "minimal" ? 0 : (root.mainBarEdge === "right" ? (root.barMode === "notch" ? 38 : 54) : 16)
+            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
+            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
+            right: root.barMode === "minimal" ? 0 : 16
         }
 
         implicitWidth: 250
@@ -2217,9 +2214,9 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: (root.mainBarEdge === "bottom" || root.mainBarEdge === "right") ? 0 : (root.barMode === "notch" ? 40 : (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 34 : 42) : 54))
-            bottom: root.mainBarEdge === "right" ? 14 : (root.mainBarEdge === "bottom" ? (root.barMode === "notch" ? 40 : 54) : 0)
-            right: root.barMode === "minimal" ? 0 : (root.mainBarEdge === "right" ? (root.barMode === "notch" ? 38 : 54) : 16)
+            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
+            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
+            right: root.barMode === "minimal" ? 0 : 16
         }
 
         implicitWidth: trayItem.implicitWidth
@@ -2261,8 +2258,8 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: (root.mainBarEdge === "bottom" || root.mainBarEdge === "right") ? 0 : (root.barMode === "notch" ? 40 : (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 34 : 42) : 54))
-            bottom: root.mainBarEdge === "right" ? 14 : (root.mainBarEdge === "bottom" ? (root.barMode === "notch" ? 40 : 54) : 0)
+            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
+            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
             right: root.barMode === "minimal" ? 0 : 16
         }
 
@@ -2306,8 +2303,8 @@ ShellRoot {
             bottom: root.mainBarEdge === "bottom"
         }
         margins {
-            top: root.mainBarEdge !== "bottom" ? (root.barMode === "notch" ? 44 : (root.barMode === "minimal" ? 44 : 52)) : 0
-            bottom: root.mainBarEdge === "bottom" ? (root.barMode === "minimal" ? (root.islandStyle === "notch" ? 44 : 54) : (root.barMode === "notch" ? 44 : 52)) : 0
+            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
+            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
         }
 
         implicitWidth: centerDashboardItem.implicitWidth

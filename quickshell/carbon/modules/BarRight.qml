@@ -22,7 +22,8 @@ import "../components"
 Item {
     id: root
 
-    implicitHeight: root.vertical ? (verticalCol.implicitHeight + (root.attachedEdge !== "" ? 24 : (root.showBackground ? 16 : 8))) : 38
+    property real barHeight: 38
+    implicitHeight: root.vertical ? (verticalCol.implicitHeight + (root.attachedEdge !== "" ? 24 : (root.showBackground ? 16 : 8))) : root.barHeight
     implicitWidth: root.vertical ? (root.attachedEdge !== "" ? 34 : 38) : pill.width
 
     property var anchorWindow: null
@@ -109,9 +110,9 @@ Item {
         id: pill
         anchors.top: parent.top
         anchors.right: parent.right
-        height: root.vertical ? (verticalCol.implicitHeight + (root.attachedEdge !== "" ? 28 : (root.showBackground ? 16 : 8))) : 38
+        height: root.vertical ? (verticalCol.implicitHeight + (root.attachedEdge !== "" ? 28 : (root.showBackground ? 16 : 8))) : root.barHeight
         width: root.vertical ? (root.attachedEdge !== "" ? 34 : 38) : (contentRow.implicitWidth + (root.showBackground ? 20 : 8))
-        radius: root.attachedEdge !== "" ? 0 : 19
+        radius: root.attachedEdge !== "" ? 0 : (root.barHeight / 2)
         color: (root.attachedEdge === "" && root.showBackground) ? Theme.bg : "transparent"
         border.color: (root.attachedEdge === "" && root.showBackground) ? Theme.outline : "transparent"
         border.width: (root.attachedEdge === "" && root.showBackground) ? 1 : 0

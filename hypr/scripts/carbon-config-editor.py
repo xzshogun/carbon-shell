@@ -142,26 +142,30 @@ def read_bar_position():
         "rightEdge": "top",
         "mainBarEdge": "top",
         "musicBarEdge": "top",
-        "musicBarContent": "both"
+        "musicBarContent": "both",
+        "barHeight": 34
     }
     if os.path.isfile(BAR_POS_PATH):
         try:
             with open(BAR_POS_PATH, "r", encoding="utf-8") as f:
                 d = json.load(f)
                 default_pos.update(d)
-                if "mainBarEdge" not in d and "edge" in d:
-                    default_pos["mainBarEdge"] = d["edge"]
-                if "musicBarEdge" not in d and "edge" in d:
-                    default_pos["musicBarEdge"] = d["edge"]
+                chosen = d.get("mainBarEdge", d.get("edge", "top"))
+                if chosen not in ["top", "bottom"]:
+                    chosen = "top"
+                default_pos["edge"] = chosen
+                default_pos["mainBarEdge"] = chosen
+                default_pos["musicBarEdge"] = chosen
+                default_pos["leftEdge"] = chosen
+                default_pos["centerEdge"] = chosen
+                default_pos["rightEdge"] = chosen
+                try:
+                    bh = int(d.get("barHeight", 34))
+                    default_pos["barHeight"] = max(28, min(48, bh))
+                except Exception:
+                    default_pos["barHeight"] = 34
         except Exception:
             pass
-    curr_m = read_bar_mode()
-    if curr_m == "pill":
-        if default_pos.get("mainBarEdge") not in ["top", "bottom"]:
-            default_pos["mainBarEdge"] = "top"
-            default_pos["edge"] = "top"
-        if default_pos.get("musicBarEdge") not in ["top", "bottom"]:
-            default_pos["musicBarEdge"] = "top"
     return default_pos
 
 
@@ -1349,6 +1353,8 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         self.current_clock_style = read_clock_style()
         self.clock_rows = {}
         self.bar_pos = read_bar_position()
+        self.bar_height_scales = []
+        self.bar_height_labels = []
         self.pill_edge_buttons = {}
         self.pill_content_buttons = {}
         self.notch_edge_buttons = {}
@@ -1813,6 +1819,41 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
         return Gdk.EVENT_STOP
 
+    def make_bar_height_row(self):
+        row_size = Adw.ActionRow()
+        row_size.set_title("Bar Size / Height")
+        row_size.set_subtitle("Adjust the vertical height and thickness of the bars (28px – 48px)")
+        icon = Gtk.Image.new_from_icon_name("zoom-fit-best-symbolic")
+        icon.set_pixel_size(20)
+        row_size.add_prefix(icon)
+
+        box_size = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box_size.set_valign(Gtk.Align.CENTER)
+
+        curr_h = int(self.bar_pos.get("barHeight", 34))
+
+        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 28, 48, 2)
+        scale.set_value(curr_h)
+        scale.set_size_request(130, -1)
+        scale.set_draw_value(False)
+
+        lbl_val = Gtk.Label(label=f"{curr_h} px")
+        lbl_val.add_css_class("accent")
+        lbl_val.set_width_chars(6)
+
+        def on_scale_changed(sc):
+            v = int(sc.get_value())
+            self.set_bar_height(v)
+
+        scale.connect("value-changed", on_scale_changed)
+
+        box_size.append(scale)
+        box_size.append(lbl_val)
+        row_size.add_suffix(box_size)
+        self.bar_height_scales.append(scale)
+        self.bar_height_labels.append(lbl_val)
+        return row_size
+
     # ── Page 1: Bar & Bar Modes ─────────────────────────────────────
     def build_bar_page(self):
         page = Adw.PreferencesPage()
@@ -1886,6 +1927,9 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         row_pill_edge.add_suffix(box_pill_edge)
         grp_pill.add(row_pill_edge)
 
+        # Bar Size / Height slider
+        grp_pill.add(self.make_bar_height_row())
+
         # Pill Center Module Content (Clock + Music / Clock Only / Music Only)
         row_pill_content = Adw.ActionRow()
         row_pill_content.set_title("Center Module Content")
@@ -1899,9 +1943,9 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         box_pill_content.set_valign(Gtk.Align.CENTER)
 
         content_options = [
-            ("both", "Clock + Music"),
-            ("clock", "Clock Only"),
-            ("music", "Music Only")
+            ("both", "Both"),
+            ("clock", "Clock"),
+            ("music", "Music")
         ]
         for cvalue, clabel in content_options:
             btn = Gtk.Button(label=clabel)
@@ -1927,15 +1971,15 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         # ── Section 2: Notch Mode Configuration ─────────────────────────────
         grp_notch = Adw.PreferencesGroup(
             title="Notch Mode",
-            description="Configuration for screen-attached curved notch bars with separate islands"
+            description="Configuration for screen-attached curved notch bars with synchronized islands"
         )
         page.add(grp_notch)
         self.grp_notch = grp_notch
 
-        # Notch Main Bar Edge (Top / Bottom / Left / Right)
+        # Notch Main Bar Edge (Top / Bottom)
         row_notch_edge = Adw.ActionRow()
-        row_notch_edge.set_title("Notch Workspaces and Controls Placement")
-        row_notch_edge.set_subtitle("Select screen edge for the outer workspaces notch and system controls notch")
+        row_notch_edge.set_title("Shift Whole Notch Bar Edge")
+        row_notch_edge.set_subtitle("Shift the connected notch bars between the Top or Bottom screen edge")
         picon_notch_edge = Gtk.Image.new_from_icon_name("user-desktop-symbolic")
         picon_notch_edge.set_pixel_size(20)
         row_notch_edge.add_prefix(picon_notch_edge)
@@ -1944,7 +1988,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         box_notch_edge.add_css_class("linked")
         box_notch_edge.set_valign(Gtk.Align.CENTER)
 
-        notch_edges = [("top", "Top"), ("bottom", "Bottom"), ("left", "Left"), ("right", "Right")]
+        notch_edges = [("top", "Top"), ("bottom", "Bottom")]
         for evalue, elabel in notch_edges:
             btn = Gtk.Button(label=elabel)
             def make_notch_edge_handler(ev):
@@ -1956,28 +2000,8 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         row_notch_edge.add_suffix(box_notch_edge)
         grp_notch.add(row_notch_edge)
 
-        # Separate Center Music Island Placement (Top / Bottom)
-        row_notch_music_edge = Adw.ActionRow()
-        row_notch_music_edge.set_title("Separate Center Music Island Placement")
-        row_notch_music_edge.set_subtitle("Place the independent curved center music notch on Top or Bottom edge")
-        picon_notch_music = Gtk.Image.new_from_icon_name("preferences-desktop-display-symbolic")
-        picon_notch_music.set_pixel_size(20)
-        row_notch_music_edge.add_prefix(picon_notch_music)
-
-        box_notch_music = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
-        box_notch_music.add_css_class("linked")
-        box_notch_music.set_valign(Gtk.Align.CENTER)
-
-        for evalue, elabel in [("top", "Top"), ("bottom", "Bottom")]:
-            btn = Gtk.Button(label=elabel)
-            def make_notch_music_handler(ev):
-                return lambda b: self.set_notch_music_edge(ev)
-            btn.connect("clicked", make_notch_music_handler(evalue))
-            box_notch_music.append(btn)
-            self.notch_music_edge_buttons[evalue] = btn
-
-        row_notch_music_edge.add_suffix(box_notch_music)
-        grp_notch.add(row_notch_music_edge)
+        # Bar Size / Height slider
+        grp_notch.add(self.make_bar_height_row())
 
         # Notch Island Displayed Content
         row_notch_content = Adw.ActionRow()
@@ -2037,7 +2061,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         box_status_action = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         box_status_action.set_valign(Gtk.Align.CENTER)
 
-        btn_activate = Gtk.Button(label="Activate Minimal Mode")
+        btn_activate = Gtk.Button(label="Activate")
         btn_activate.add_css_class("suggested-action")
         btn_activate.connect("clicked", lambda b: self.select_bar_mode("minimal"))
         box_status_action.append(btn_activate)
@@ -2065,11 +2089,11 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         box_convert = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         box_convert.set_valign(Gtk.Align.CENTER)
 
-        btn_to_pill = Gtk.Button(label="Switch to Pill Bar")
+        btn_to_pill = Gtk.Button(label="Pill Bar")
         btn_to_pill.connect("clicked", lambda b: self.select_bar_mode("pill"))
         box_convert.append(btn_to_pill)
 
-        btn_to_notch = Gtk.Button(label="Switch to Notch Bar")
+        btn_to_notch = Gtk.Button(label="Notch Bar")
         btn_to_notch.connect("clicked", lambda b: self.select_bar_mode("notch"))
         box_convert.append(btn_to_notch)
 
@@ -2154,6 +2178,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
         row_edge.add_suffix(box_edge)
         grp_edge.add(row_edge)
+        grp_edge.add(self.make_bar_height_row())
 
         # Group 3: Low Resource Optimization Metrics
         grp_metrics = Adw.PreferencesGroup(
@@ -3664,12 +3689,12 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             else:
                 btn.remove_css_class("suggested-action")
 
-        curr_music_edge = self.bar_pos.get("musicBarEdge", "top")
-        for edge_val, btn in self.notch_music_edge_buttons.items():
-            if edge_val == curr_music_edge:
-                btn.add_css_class("suggested-action")
-            else:
-                btn.remove_css_class("suggested-action")
+        curr_h = int(self.bar_pos.get("barHeight", 34))
+        for sc in self.bar_height_scales:
+            if int(sc.get_value()) != curr_h:
+                sc.set_value(curr_h)
+        for lbl in self.bar_height_labels:
+            lbl.set_label(f"{curr_h} px")
 
         curr_content = self.bar_pos.get("musicBarContent", "both")
         for content_val, btn in self.pill_content_buttons.items():
@@ -3684,13 +3709,24 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             else:
                 btn.remove_css_class("suggested-action")
 
+    def set_bar_height(self, height):
+        h = max(28, min(48, int(height)))
+        self.bar_pos["barHeight"] = h
+        save_bar_position(self.bar_pos)
+        for sc in self.bar_height_scales:
+            if int(sc.get_value()) != h:
+                sc.set_value(h)
+        for lbl in self.bar_height_labels:
+            lbl.set_label(f"{h} px")
+
     def set_pill_bar_edge(self, edge):
-        if self.current_bar_mode not in ["pill", "minimal"] or edge not in ["top", "bottom"]:
+        if edge not in ["top", "bottom"]:
             return
         self.bar_pos["mainBarEdge"] = edge
         self.bar_pos["musicBarEdge"] = edge
         self.bar_pos["edge"] = edge
         self.bar_pos["leftEdge"] = edge
+        self.bar_pos["centerEdge"] = edge
         self.bar_pos["rightEdge"] = edge
         save_bar_position(self.bar_pos)
         self.update_pos_buttons_ui()
@@ -3701,31 +3737,23 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         ], check=False)
 
     def set_notch_bar_edge(self, edge):
-        if self.current_bar_mode != "notch":
+        if edge not in ["top", "bottom"]:
             return
         self.bar_pos["mainBarEdge"] = edge
-        if edge in ["top", "bottom"]:
-            self.bar_pos["edge"] = edge
-            self.bar_pos["leftEdge"] = edge
-            self.bar_pos["rightEdge"] = edge
+        self.bar_pos["musicBarEdge"] = edge
+        self.bar_pos["edge"] = edge
+        self.bar_pos["leftEdge"] = edge
+        self.bar_pos["centerEdge"] = edge
+        self.bar_pos["rightEdge"] = edge
         save_bar_position(self.bar_pos)
         self.update_pos_buttons_ui()
         subprocess.run([
             "notify-send", "-a", "Carbon Config", "-i", "preferences-system",
-            "Notch Bar Edge", f"Placed notch workspaces & controls at: {edge.capitalize()} Edge"
+            "Notch Bar Edge", f"Shifted notch bar to: {edge.capitalize()} Edge"
         ], check=False)
 
     def set_notch_music_edge(self, edge):
-        if self.current_bar_mode != "notch":
-            return
-        self.bar_pos["musicBarEdge"] = edge
-        self.bar_pos["centerEdge"] = edge
-        save_bar_position(self.bar_pos)
-        self.update_pos_buttons_ui()
-        subprocess.run([
-            "notify-send", "-a", "Carbon Config", "-i", "preferences-system",
-            "Notch Music Island", f"Placed center notch island at: {edge.capitalize()} Edge"
-        ], check=False)
+        self.set_notch_bar_edge(edge)
 
     def set_main_bar_edge(self, edge):
         self.set_notch_bar_edge(edge)

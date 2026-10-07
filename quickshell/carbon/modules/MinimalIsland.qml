@@ -28,10 +28,11 @@ Item {
     id: root
 
     readonly property string home: Quickshell.env("HOME") || ""
-    implicitHeight: 34
+    property real barHeight: 34
+    implicitHeight: barHeight
     implicitWidth: capsule.width
     width: capsule.width
-    height: 34
+    height: barHeight
 
     property bool attachedBottom: false
     property string islandStyle: "pill" // "pill" or "notch"
@@ -208,8 +209,8 @@ Item {
     }
 
     /* ── Notch Geometry Fillets ── */
-    property real filletRadius: 14
-    property real bottomRadius: 14
+    property real filletRadius: Math.min(14, Math.max(8, root.barHeight * 0.35))
+    property real bottomRadius: Math.min(14, Math.max(8, root.barHeight * 0.35))
 
     readonly property string notchFillPath: {
         const rTopLeft = root.filletRadius
@@ -217,7 +218,7 @@ Item {
         const rBotLeft = root.bottomRadius
         const rBotRight = root.bottomRadius
         const w = capsule.width
-        const h = 34
+        const h = root.barHeight
 
         if (root.attachedBottom) {
             let p = `M 0 ${h} `
@@ -254,7 +255,7 @@ Item {
         const rBotLeft = root.bottomRadius
         const rBotRight = root.bottomRadius
         const w = capsule.width
-        const h = 34
+        const h = root.barHeight
 
         if (root.attachedBottom) {
             let p = `M 0 ${h} `
@@ -417,7 +418,7 @@ Item {
     /* ── Dynamic Container ── */
     Item {
         id: capsule
-        height: 34
+        height: root.barHeight
         anchors.centerIn: parent
 
         property bool musicHovered: false
@@ -449,7 +450,7 @@ Item {
             id: pillBg
             anchors.fill: parent
             visible: root.islandStyle !== "notch"
-            radius: 17
+            radius: root.barHeight / 2
             color: Theme.bg
             border.color: Theme.outline
             border.width: 1
@@ -743,8 +744,8 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             text: root.volumeGlyph
-                            font.family: Theme.font
-                            font.pixelSize: 12
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 14
                             color: root.muted ? Theme.err : (volArea.containsMouse ? Theme.accent : Theme.fg)
                         }
 
@@ -879,8 +880,8 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             text: root.batteryGlyph
-                            font.family: Theme.font
-                            font.pixelSize: 12
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 14
                             color: root.isCharging ? Theme.accentLit : (root.batteryPct < 0.2 ? Theme.err : (batArea.containsMouse ? Theme.accent : Theme.fg))
                         }
 

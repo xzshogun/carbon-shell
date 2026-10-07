@@ -79,8 +79,8 @@ Item {
         width: parent.width
         height: parent.height
         radius: 14
-        color: Qt.rgba(0.08, 0.09, 0.12, 0.90)
-        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Qt.rgba(1, 1, 1, 0.12)
+        color: Theme.isDark ? Qt.rgba(0.08, 0.09, 0.12, 0.90) : Theme.m3surfaceContainerLowest
+        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : (Theme.isDark ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(0, 0, 0, 0.12))
         border.width: 1
 
         /* VisionOS Specular Rim highlight */
@@ -90,7 +90,7 @@ Item {
             radius: card.radius - 1
             color: "transparent"
             border.width: 1
-            border.color: Qt.rgba(1, 1, 1, root.open ? 0.20 : 0.06)
+            border.color: Theme.isDark ? Qt.rgba(1, 1, 1, root.open ? 0.20 : 0.06) : Qt.rgba(0, 0, 0, root.open ? 0.08 : 0.03)
             z: 99
         }
 

@@ -52,8 +52,8 @@ Item {
         id: bgCard
         anchors.fill: parent
         radius: 18
-        color: Qt.rgba(0.08, 0.09, 0.12, 0.95)
-        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.35) : Qt.rgba(1, 1, 1, 0.08)
+        color: Theme.isDark ? Qt.rgba(0.08, 0.09, 0.12, 0.95) : Theme.m3surfaceContainerLowest
+        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.35) : (Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.12))
         border.width: 1
         clip: true
 

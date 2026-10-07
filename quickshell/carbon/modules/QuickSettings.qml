@@ -649,8 +649,8 @@ Item {
         width: root.cardW
         height: root.cardH
         radius: 24
-        color: Qt.rgba(0.08, 0.09, 0.12, 0.96)
-        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.35) : Qt.rgba(1, 1, 1, 0.08)
+        color: Theme.isDark ? Qt.rgba(0.08, 0.09, 0.12, 0.96) : Theme.m3surfaceContainerLowest
+        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.35) : (Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.12))
         border.width: 1
         clip: true
         Behavior on border.color { ColorAnimation { duration: root.open ? 350 : 150; easing.type: Easing.OutQuad } }
@@ -660,7 +660,7 @@ Item {
             anchors.fill: parent
             radius: 24
             color: "transparent"
-            border.color: Qt.rgba(1, 1, 1, 0.08)
+            border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.06)
             border.width: 1
             z: 90
         }
@@ -712,7 +712,7 @@ Item {
                 Layout.fillWidth: true
                 height: 30
                 radius: 15
-                color: Qt.rgba(1, 1, 1, 0.06)
+                color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.06)
 
                 RowLayout {
                     anchors.fill: parent
@@ -851,7 +851,7 @@ Item {
                         y: root.activeCardDrag === "media" ? y : root.getTargetCardY("media")
                         radius: 18
                         color: mediaDrag.drag.active ? Theme.bgAlt : Qt.rgba(Theme.bgAlt.r, Theme.bgAlt.g, Theme.bgAlt.b, 0.70)
-                        border.color: mediaDrag.drag.active ? Theme.accent : Qt.rgba(1, 1, 1, 0.08)
+                        border.color: mediaDrag.drag.active ? Theme.accent : (Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.08))
                         border.width: 1
                         z: mediaDrag.drag.active ? 50 : 1
                         scale: mediaDrag.drag.active ? 1.02 : 1.0
@@ -1052,7 +1052,7 @@ Item {
                         y: root.activeCardDrag === "toggles" ? y : root.getTargetCardY("toggles")
                         radius: 18
                         color: togglesDrag.drag.active ? Theme.bgAlt : Qt.rgba(Theme.bgAlt.r, Theme.bgAlt.g, Theme.bgAlt.b, 0.70)
-                        border.color: togglesDrag.drag.active ? Theme.accent : Qt.rgba(1, 1, 1, 0.08)
+                        border.color: togglesDrag.drag.active ? Theme.accent : (Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.08))
                         border.width: 1
                         z: togglesDrag.drag.active ? 50 : 1
                         scale: togglesDrag.drag.active ? 1.02 : 1.0
@@ -1376,7 +1376,7 @@ Item {
                         y: root.activeCardDrag === "recorder" ? y : root.getTargetCardY("recorder")
                         radius: 18
                         color: recDrag.drag.active ? Theme.bgAlt : Qt.rgba(Theme.bgAlt.r, Theme.bgAlt.g, Theme.bgAlt.b, 0.70)
-                        border.color: recDrag.drag.active ? Theme.accent : Qt.rgba(1, 1, 1, 0.08)
+                        border.color: recDrag.drag.active ? Theme.accent : (Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.08))
                         border.width: 1
                         z: recDrag.drag.active ? 50 : 1
                         scale: recDrag.drag.active ? 1.02 : 1.0

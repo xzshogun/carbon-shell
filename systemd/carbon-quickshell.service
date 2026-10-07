@@ -5,7 +5,7 @@ After=graphical-session.target
 [Service]
 Type=simple
 EnvironmentFile=-%h/.config/hypr/carbon-shell.env
-ExecStart=/usr/bin/quickshell --config %h/.local/share/quickshell/carbon
+ExecStart=/usr/bin/bash -c 'if [ -x %h/.local/bin/quickshell ]; then exec %h/.local/bin/quickshell --config %h/.local/share/quickshell/carbon; else exec /usr/bin/quickshell --config %h/.local/share/quickshell/carbon; fi'
 Restart=always
 RestartSec=2
 Environment=QT_QPA_PLATFORM=wayland

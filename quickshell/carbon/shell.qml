@@ -1046,7 +1046,7 @@ ShellRoot {
             screen: modelData
             color: "#000000"
             WlrLayershell.namespace: "carbon-wallpaper"
-            WlrLayershell.layer: WlrLayer.Bottom
+            WlrLayershell.layer: WlrLayer.Background
             exclusionMode: ExclusionMode.Ignore
             anchors { top: true; left: true; right: true; bottom: true }
 
@@ -1087,6 +1087,7 @@ ShellRoot {
             screen: modelData
             color: "transparent"
             WlrLayershell.namespace: "carbon-reserve-top"
+            WlrLayershell.layer: WlrLayer.Bottom
             exclusionMode: ExclusionMode.Normal
             exclusiveZone: root.topReserveHeight
             anchors { top: true; left: true; right: true }
@@ -1108,6 +1109,7 @@ ShellRoot {
             screen: modelData
             color: "transparent"
             WlrLayershell.namespace: "carbon-reserve-bottom"
+            WlrLayershell.layer: WlrLayer.Bottom
             exclusionMode: ExclusionMode.Normal
             exclusiveZone: root.bottomReserveHeight
             anchors { bottom: true; left: true; right: true }
@@ -1129,6 +1131,7 @@ ShellRoot {
             screen: modelData
             color: "transparent"
             WlrLayershell.namespace: "carbon-reserve-left"
+            WlrLayershell.layer: WlrLayer.Bottom
             exclusionMode: ExclusionMode.Normal
             exclusiveZone: root.leftReserveWidth
             anchors { left: true; top: true; bottom: true }
@@ -1150,6 +1153,7 @@ ShellRoot {
             screen: modelData
             color: "transparent"
             WlrLayershell.namespace: "carbon-reserve-right"
+            WlrLayershell.layer: WlrLayer.Bottom
             exclusionMode: ExclusionMode.Normal
             exclusiveZone: root.rightReserveWidth
             anchors { right: true; top: true; bottom: true }

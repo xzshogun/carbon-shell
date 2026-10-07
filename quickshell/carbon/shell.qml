@@ -1206,7 +1206,6 @@ ShellRoot {
                     /* Left: Workspaces & App Launcher */
                     BarLeft {
                         id: pillLeftItem
-                        barHeight: root.barHeight
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         showBackground: false
@@ -1230,7 +1229,6 @@ ShellRoot {
                     /* Right: System Tray & Controls */
                     BarRight {
                         id: pillRightItem
-                        barHeight: root.barHeight
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         showBackground: false
@@ -1463,7 +1461,6 @@ ShellRoot {
 
             MinimalIsland {
                 id: minimalIslandItem
-                barHeight: root.barHeight
                 attachedBottom: root.mainBarEdge === "bottom"
                 islandStyle: root.islandStyle
                 notifCount: (notificationServer && notificationServer.trackedNotifications) ? notificationServer.trackedNotifications.values.length : 0

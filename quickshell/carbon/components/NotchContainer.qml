@@ -171,7 +171,7 @@ Item {
         // Clean border outline
         ShapePath {
             strokeWidth: 1.2
-            strokeColor: Qt.alpha(Theme.outline, 0.45)
+            strokeColor: Theme.isDark ? Qt.alpha(Theme.outline, 0.45) : Qt.rgba(0, 0, 0, 0.12)
             fillColor: "transparent"
             capStyle: ShapePath.RoundCap
             joinStyle: ShapePath.RoundJoin

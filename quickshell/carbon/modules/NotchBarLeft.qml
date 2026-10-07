@@ -211,7 +211,7 @@ NotchContainer {
                         shape: wsBtn.isActive ? root.getShapeForWs(wsBtn.wsId) : (wsMouse.containsMouse ? root.getShapeForWs(wsBtn.wsId) : MaterialShape.Circle)
                         animationDuration: 280
                         animationEasing: Easing.OutBack
-                        color: wsBtn.isActive ? Theme.accent : (wsMouse.containsMouse ? Theme.bgHover : (wsBtn.isOccupied ? Qt.alpha(Theme.fg, 0.16) : Qt.alpha(Theme.fg, 0.05)))
+                        color: wsBtn.isActive ? Theme.accent : (wsMouse.containsMouse ? Theme.bgHover : (wsBtn.isOccupied ? (Theme.isDark ? Qt.alpha(Theme.fg, 0.16) : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.10)) : (Theme.isDark ? Qt.alpha(Theme.fg, 0.05) : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.06))))
                         Behavior on color { ColorAnimation { duration: 120 } }
                     }
 
@@ -221,7 +221,7 @@ NotchContainer {
                         anchors.fill: parent
                         radius: width / 2
                         color: "transparent"
-                        border.color: Qt.alpha(Theme.fg, 0.18)
+                        border.color: Theme.isDark ? Qt.alpha(Theme.fg, 0.18) : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.15)
                         border.width: 1
                     }
 
@@ -231,7 +231,7 @@ NotchContainer {
                         font.family: "Valley Sans"
                         font.pixelSize: 10
                         font.weight: wsBtn.isActive ? Font.Bold : Font.Medium
-                        color: wsBtn.isActive ? (Theme.isDark ? "#111111" : "#ffffff") : (wsBtn.isOccupied ? Theme.fg : Theme.fgFaint)
+                        color: wsBtn.isActive ? (Theme.isDark ? "#111111" : "#ffffff") : (wsBtn.isOccupied ? Theme.fg : (Theme.isDark ? Theme.fgFaint : Theme.fgDim))
                     }
 
                     MouseArea {
@@ -249,7 +249,7 @@ NotchContainer {
         Rectangle {
             width: 1
             height: 14
-            color: Qt.alpha(Theme.fg, 0.18)
+            color: Theme.isDark ? Qt.alpha(Theme.fg, 0.18) : Qt.alpha(Theme.fg, 0.25)
             anchors.verticalCenter: parent.verticalCenter
         },
 
@@ -277,7 +277,7 @@ NotchContainer {
                     font.family: "Valley Sans"
                     font.pixelSize: 8
                     font.weight: Font.Medium
-                    color: Theme.fgFaint
+                    color: Theme.isDark ? Theme.fgFaint : Theme.fgDim
                 }
 
                 Text {

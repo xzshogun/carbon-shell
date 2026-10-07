@@ -265,8 +265,8 @@ Item {
         id: mainCard
         anchors.fill: parent
         radius: 20
-        color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.94)
-        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.25) : Theme.outline
+        color: Theme.isDark ? Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.94) : Theme.m3surfaceContainerLowest
+        border.color: root.open ? (Theme.isDark ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.25) : Qt.rgba(0, 0, 0, 0.12)) : Theme.outline
         border.width: 1
         clip: true
 
@@ -1103,9 +1103,9 @@ Item {
                             if (i === 0) ctx.moveTo(px, py)
                             else ctx.lineTo(px, py)
                         }
-                        ctx.strokeStyle = Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.18)
-                        ctx.lineWidth = 1.3
-                        ctx.setLineDash([4, 6])
+                        ctx.strokeStyle = Theme.isDark ? Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.35) : "#000000"
+                        ctx.lineWidth = Theme.isDark ? 1.3 : 1.5
+                        ctx.setLineDash([4, 5])
                         ctx.stroke()
                     }
                     Component.onCompleted: requestPaint()
@@ -1118,6 +1118,7 @@ Item {
                         target: Theme
                         function onFgChanged() { orbitCanvas.requestPaint() }
                         function onAccentChanged() { orbitCanvas.requestPaint() }
+                        function onIsDarkChanged() { orbitCanvas.requestPaint() }
                     }
                 }
 
@@ -1183,9 +1184,9 @@ Item {
                         height: 42
                         radius: 16
                         anchors.centerIn: parent
-                        color: Theme.accentLit
-                        border.color: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.40)
-                        border.width: 1
+                        color: Theme.isDark ? Theme.accentLit : Theme.accent
+                        border.color: Theme.isDark ? Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.40) : "#000000"
+                        border.width: Theme.isDark ? 1 : 1.2
 
                         // Rotates tangentially along the planetary ellipse
                         rotation: centerCol.tangentAngle + 90

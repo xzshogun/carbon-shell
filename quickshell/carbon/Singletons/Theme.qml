@@ -120,26 +120,44 @@ Singleton {
                 root.m3successContainer = col(c.successContainer, "#374B3E")
 
                 /* Map to Carbon Theme variables with Caelestia's subtle alpha layering */
-                root.bg = Qt.rgba(root.m3surfaceContainer.r, root.m3surfaceContainer.g, root.m3surfaceContainer.b, 0.92)
-                root.bgAlt = Qt.rgba(root.m3surfaceContainerHigh.r, root.m3surfaceContainerHigh.g, root.m3surfaceContainerHigh.b, 0.75)
-                root.bgHover = Qt.rgba(root.m3surfaceContainerHighest.r, root.m3surfaceContainerHighest.g, root.m3surfaceContainerHighest.b, 0.90)
-                root.bgActive = Qt.rgba(root.m3primaryContainer.r, root.m3primaryContainer.g, root.m3primaryContainer.b, 0.85)
+                if (root.isDark) {
+                    root.bg = Qt.rgba(root.m3surfaceContainer.r, root.m3surfaceContainer.g, root.m3surfaceContainer.b, 0.92)
+                    root.bgAlt = Qt.rgba(root.m3surfaceContainerHigh.r, root.m3surfaceContainerHigh.g, root.m3surfaceContainerHigh.b, 0.75)
+                    root.bgHover = Qt.rgba(root.m3surfaceContainerHighest.r, root.m3surfaceContainerHighest.g, root.m3surfaceContainerHighest.b, 0.90)
+                    root.bgActive = Qt.rgba(root.m3primaryContainer.r, root.m3primaryContainer.g, root.m3primaryContainer.b, 0.85)
 
-                root.fg = root.m3onSurface
-                root.fgDim = root.m3onSurfaceVariant
-                root.fgFaint = Qt.rgba(root.m3outline.r, root.m3outline.g, root.m3outline.b, 0.70)
+                    root.fg = root.m3onSurface
+                    root.fgDim = root.m3onSurfaceVariant
+                    root.fgFaint = Qt.rgba(root.m3outline.r, root.m3outline.g, root.m3outline.b, 0.70)
 
-                root.accent = root.m3primary
-                root.accentLit = root.m3onPrimaryContainer
-                root.accentFg = root.m3onPrimary
-                root.accentContrast = root.m3onPrimary
-                root.outline = Qt.rgba(root.m3outlineVariant.r, root.m3outlineVariant.g, root.m3outlineVariant.b, 0.40)
+                    root.accent = root.m3primary
+                    root.accentLit = root.m3onPrimaryContainer
+                    root.accentFg = root.m3onPrimary
+                    root.accentContrast = root.m3onPrimary
+                    root.outline = Qt.rgba(root.m3outlineVariant.r, root.m3outlineVariant.g, root.m3outlineVariant.b, 0.40)
+                } else {
+                    /* Crisp, luminous porcelain light mode */
+                    root.bg = Qt.rgba(root.m3surfaceContainerLowest.r, root.m3surfaceContainerLowest.g, root.m3surfaceContainerLowest.b, 0.96)
+                    root.bgAlt = Qt.rgba(root.m3surfaceContainerLow.r, root.m3surfaceContainerLow.g, root.m3surfaceContainerLow.b, 0.90)
+                    root.bgHover = Qt.rgba(root.m3surfaceContainer.r, root.m3surfaceContainer.g, root.m3surfaceContainer.b, 0.95)
+                    root.bgActive = Qt.rgba(root.m3primaryContainer.r, root.m3primaryContainer.g, root.m3primaryContainer.b, 0.90)
+
+                    root.fg = root.m3onSurface
+                    root.fgDim = root.m3onSurfaceVariant
+                    root.fgFaint = Qt.rgba(root.m3onSurfaceVariant.r, root.m3onSurfaceVariant.g, root.m3onSurfaceVariant.b, 0.85)
+
+                    root.accent = root.m3primary
+                    root.accentLit = root.m3primaryContainer
+                    root.accentFg = root.m3onPrimary
+                    root.accentContrast = root.m3onPrimary
+                    root.outline = Qt.rgba(0, 0, 0, 0.12)
+                }
 
                 root.ok = root.m3success
                 root.warn = root.m3tertiary
                 root.err = root.m3error
 
-                console.log("[Theme] Synchronized with Caelestia Scheme:", root.schemeName, "Primary:", root.accent)
+                console.log("[Theme] Synchronized with Caelestia Scheme:", root.schemeName, "Mode:", parsed.mode || (root.isDark ? "dark" : "light"), "Primary:", root.accent)
                 return
             }
 

@@ -45,14 +45,14 @@ Item {
             ctx.beginPath()
             ctx.arc(cx, cy, outerR, 0, 2 * Math.PI)
             ctx.lineWidth = 1.0
-            ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${root.hovered ? 0.65 : 0.35})`
+            ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${root.hovered ? 0.65 : (Theme.isDark ? 0.35 : 0.60)})`
             ctx.stroke()
 
             // 2. Draw Inner Orbit Ring (K-shell)
             ctx.beginPath()
             ctx.arc(cx, cy, innerR, 0, 2 * Math.PI)
             ctx.lineWidth = 1.0
-            ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${root.hovered ? 0.75 : 0.45})`
+            ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${root.hovered ? 0.75 : (Theme.isDark ? 0.45 : 0.70)})`
             ctx.stroke()
 
             // Helper to draw filled electron dot
@@ -93,6 +93,7 @@ Item {
     Connections {
         target: Theme
         function onAccentChanged() { canvas.requestPaint() }
+        function onIsDarkChanged() { canvas.requestPaint() }
     }
 
     onHoveredChanged: canvas.requestPaint()

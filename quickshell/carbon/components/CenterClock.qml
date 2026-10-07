@@ -91,8 +91,8 @@ Item {
                 font.pixelSize: 15
                 font.weight: Font.Black
                 color: Theme.fg
-                style: Text.Raised
-                styleColor: "#40000000"
+                style: Theme.isDark ? Text.Raised : Text.Normal
+                styleColor: Theme.isDark ? "#40000000" : "transparent"
             }
 
             Text {
@@ -101,8 +101,8 @@ Item {
                 font.pixelSize: 15
                 font.weight: Font.Black
                 color: Theme.accent
-                style: Text.Raised
-                styleColor: "#40000000"
+                style: Theme.isDark ? Text.Raised : Text.Normal
+                styleColor: Theme.isDark ? "#40000000" : "transparent"
             }
 
             Text {
@@ -111,8 +111,8 @@ Item {
                 font.pixelSize: 15
                 font.weight: Font.Black
                 color: Theme.accent
-                style: Text.Raised
-                styleColor: "#40000000"
+                style: Theme.isDark ? Text.Raised : Text.Normal
+                styleColor: Theme.isDark ? "#40000000" : "transparent"
             }
         }
     }

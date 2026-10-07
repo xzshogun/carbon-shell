@@ -1003,9 +1003,9 @@ Item {
             /* Vertical Divider 1 */
             Rectangle {
                 visible: !root.minimalCalendarOnly
-                Layout.preferredWidth: 1
+                Layout.preferredWidth: 1.5
                 Layout.fillHeight: true
-                color: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.08)
+                color: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.16)
             }
 
             /* ========================================================= */
@@ -1222,9 +1222,9 @@ Item {
             /* Vertical Divider 2 */
             Rectangle {
                 visible: !root.minimalCalendarOnly
-                Layout.preferredWidth: 1
+                Layout.preferredWidth: 1.5
                 Layout.fillHeight: true
-                color: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.08)
+                color: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.16)
             }
 
             /* ========================================================= */

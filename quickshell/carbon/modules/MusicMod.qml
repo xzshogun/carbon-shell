@@ -306,10 +306,10 @@ Item {
 
             /* Divider */
             Rectangle {
-                Layout.preferredWidth: 1
+                Layout.preferredWidth: 1.5
                 Layout.preferredHeight: 14
                 Layout.alignment: Qt.AlignVCenter
-                color: "#35FFFFFF"
+                color: "#55FFFFFF"
             }
 
             /* ── Center: Circular Artwork + Progress Ring ───────────── */

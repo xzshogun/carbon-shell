@@ -167,9 +167,9 @@ NotchContainer {
 
         /* 2. Vertical Divider */
         Rectangle {
-            width: 1
+            width: 1.5
             height: 16
-            color: Qt.alpha(Theme.fg, 0.22)
+            color: Qt.alpha(Theme.fg, 0.40)
             anchors.verticalCenter: parent.verticalCenter
             visible: root.barContent === "both"
         }

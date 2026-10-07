@@ -1066,7 +1066,7 @@ ShellRoot {
     }
 
     /* ── Dynamic Edge Reservation Windows (Prevents App Overlap) ────────── */
-    readonly property bool hasTopReserve: (root.barMode === "atomic") ? true :
+    readonly property bool hasTopReserve: (root.barMode === "atomic") ? false :
         ((root.barMode === "pill" || (root.barMode === "minimal" && root.islandPersistent))
         ? (root.mainBarEdge === "top")
         : (root.barMode === "minimal" ? false : (root.mainBarEdge === "top" || root.musicBarEdge === "top")))
@@ -1076,7 +1076,7 @@ ShellRoot {
     readonly property bool hasLeftReserve: false
     readonly property bool hasRightReserve: false
 
-    readonly property int topReserveHeight: root.barMode === "atomic" ? 50 : (root.hasTopReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0)
+    readonly property int topReserveHeight: root.barMode === "atomic" ? 0 : (root.hasTopReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0)
     readonly property int bottomReserveHeight: root.hasBottomReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0
     readonly property int leftReserveWidth: root.hasLeftReserve ? 38 : 0
     readonly property int rightReserveWidth: root.hasRightReserve ? 38 : 0
@@ -1768,44 +1768,36 @@ ShellRoot {
         model: Quickshell.screens
 
         PanelWindow {
-            id: atomicBarWindow
+            id: atomicOrbWindow
             required property var modelData
 
             screen: modelData
             color: "transparent"
-            WlrLayershell.namespace: "carbon-bar-atomic"
+            WlrLayershell.namespace: "carbon-atomic-orb"
             WlrLayershell.layer: WlrLayer.Top
             exclusionMode: ExclusionMode.Ignore
             aboveWindows: true
             anchors {
-                top: true
-                left: true
-                right: true
-            }
-            margins {
-                top: 4
-                left: 12
-                right: 12
+                top: false
+                bottom: false
+                left: false
+                right: false
             }
 
-            implicitHeight: 46
+            implicitWidth: 104
+            implicitHeight: 104
             visible: root.barMode === "atomic"
 
-            AtomicValenceBar {
-                id: atomicBarItem
-                anchors.fill: parent
-                onOpenLauncher: root.openLauncher()
+            mask: Region {
+                item: atomicOrbItem.hitBox
+            }
+
+            AtomicOrb {
+                id: atomicOrbItem
+                anchors.centerIn: parent
                 onToggleCenterDashboard: root.toggleCenterDashboard()
-                onOpenCenterDashboard: root.openCenterDashboard()
-                onCloseCenterDashboard: centerDashboardLeaveTimer.restart()
-                onToggleControls: root.toggleControls()
-                onOpenMixer: root.openMixer()
+                onOpenLauncher: root.openLauncher()
                 onToggleMixer: root.toggleMixer()
-                onOpenWifi: root.openWifi()
-                onToggleWifi: root.toggleWifi()
-                onOpenBattery: root.openBattery()
-                onToggleBattery: root.toggleBattery()
-                onOpenPower: root.openPower()
             }
         }
     }

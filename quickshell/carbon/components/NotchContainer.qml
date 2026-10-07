@@ -11,9 +11,8 @@ Item {
 
     property bool leftFillet: true
     property bool rightFillet: true
-    property real barHeight: 34
-    property real filletRadius: Math.min(14, Math.max(8, root.barHeight * 0.35))
-    property real bottomRadius: Math.min(14, Math.max(8, root.barHeight * 0.35))
+    property real filletRadius: 12
+    property real bottomRadius: 12
     property real contentSpacing: 7
     property real horizontalPadding: 10
     property real earWidth: 0
@@ -21,7 +20,7 @@ Item {
     default property alias content: contentRow.data
     readonly property real contentImplicitWidth: contentRow.implicitWidth
 
-    implicitHeight: barHeight
+    implicitHeight: 34
     implicitWidth: Math.max(80, contentRow.implicitWidth 
                    + (leftFillet ? filletRadius : 0) 
                    + (rightFillet ? filletRadius : 0) 

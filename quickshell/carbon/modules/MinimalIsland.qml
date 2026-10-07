@@ -28,11 +28,10 @@ Item {
     id: root
 
     readonly property string home: Quickshell.env("HOME") || ""
-    property real barHeight: 34
-    implicitHeight: barHeight
+    implicitHeight: 34
     implicitWidth: capsule.width
     width: capsule.width
-    height: barHeight
+    height: 34
 
     property bool attachedBottom: false
     property string islandStyle: "pill" // "pill" or "notch"
@@ -209,8 +208,8 @@ Item {
     }
 
     /* ── Notch Geometry Fillets ── */
-    property real filletRadius: Math.min(14, Math.max(8, root.barHeight * 0.35))
-    property real bottomRadius: Math.min(14, Math.max(8, root.barHeight * 0.35))
+    property real filletRadius: 14
+    property real bottomRadius: 14
 
     readonly property string notchFillPath: {
         const rTopLeft = root.filletRadius
@@ -218,7 +217,7 @@ Item {
         const rBotLeft = root.bottomRadius
         const rBotRight = root.bottomRadius
         const w = capsule.width
-        const h = root.barHeight
+        const h = 34
 
         if (root.attachedBottom) {
             let p = `M 0 ${h} `
@@ -255,7 +254,7 @@ Item {
         const rBotLeft = root.bottomRadius
         const rBotRight = root.bottomRadius
         const w = capsule.width
-        const h = root.barHeight
+        const h = 34
 
         if (root.attachedBottom) {
             let p = `M 0 ${h} `
@@ -418,7 +417,7 @@ Item {
     /* ── Dynamic Container ── */
     Item {
         id: capsule
-        height: root.barHeight
+        height: 34
         anchors.centerIn: parent
 
         property bool musicHovered: false
@@ -450,7 +449,7 @@ Item {
             id: pillBg
             anchors.fill: parent
             visible: root.islandStyle !== "notch"
-            radius: root.barHeight / 2
+            radius: 17
             color: Theme.bg
             border.color: Theme.outline
             border.width: 1

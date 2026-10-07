@@ -700,11 +700,7 @@ ShellRoot {
             if (d.centerAlign) root.centerAlign = d.centerAlign
             if (d.rightAlign) root.rightAlign = d.rightAlign
 
-            if (d.barHeight && d.barHeight >= 26 && d.barHeight <= 54) {
-                root.barHeight = d.barHeight
-            } else {
-                root.barHeight = (root.barMode === "pill" ? 38 : 34)
-            }
+            root.barHeight = (root.barMode === "pill" ? 38 : 34)
         } catch (e) {}
     }
 
@@ -1680,7 +1676,7 @@ ShellRoot {
                 bottom: 0
             }
 
-            implicitHeight: root.barHeight
+            implicitHeight: 34
             visible: root.barMode === "notch"
 
             mask: notchMask
@@ -1708,7 +1704,6 @@ ShellRoot {
 
             NotchBarLeft {
                 id: notchLeftItem
-                barHeight: root.barHeight
                 attachedBottom: root.mainBarEdge === "bottom"
                 anchors.top: root.mainBarEdge !== "bottom" ? parent.top : undefined
                 anchors.bottom: root.mainBarEdge === "bottom" ? parent.bottom : undefined
@@ -1720,7 +1715,6 @@ ShellRoot {
 
             NotchBarCenter {
                 id: notchCenterItem
-                barHeight: root.barHeight
                 visible: root.musicBarEdge === root.mainBarEdge
                 barContent: root.musicBarContent
                 attachedBottom: root.mainBarEdge === "bottom"
@@ -1740,7 +1734,6 @@ ShellRoot {
 
             NotchBarRight {
                 id: notchRightItem
-                barHeight: root.barHeight
                 attachedBottom: root.mainBarEdge === "bottom"
                 anchors.top: root.mainBarEdge !== "bottom" ? parent.top : undefined
                 anchors.bottom: root.mainBarEdge === "bottom" ? parent.bottom : undefined
@@ -1782,13 +1775,12 @@ ShellRoot {
                 top: root.musicBarEdge !== "bottom"
                 bottom: root.musicBarEdge === "bottom"
             }
-            implicitHeight: root.barHeight
+            implicitHeight: 34
             implicitWidth: separateNotchCenter.implicitWidth
             visible: root.barMode === "notch" && (root.musicBarEdge !== root.mainBarEdge || root.mainBarEdge === "left" || root.mainBarEdge === "right")
 
             NotchBarCenter {
                 id: separateNotchCenter
-                barHeight: root.barHeight
                 barContent: root.musicBarContent
                 attachedBottom: root.musicBarEdge === "bottom"
                 anchors.fill: parent

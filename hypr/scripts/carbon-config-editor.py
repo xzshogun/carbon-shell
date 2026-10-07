@@ -131,6 +131,28 @@ def read_clock_style():
     return "titan"
 
 
+def read_shell_scale():
+    env_path = os.path.expanduser("~/.config/hypr/carbon-shell.env")
+    if os.path.isfile(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("QT_SCALE_FACTOR="):
+                        val = float(line.split("=")[1].strip())
+                        return max(0.75, min(1.50, round(val, 2)))
+        except Exception:
+            pass
+    if os.path.isfile(BAR_POS_PATH):
+        try:
+            with open(BAR_POS_PATH, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                if "scale" in d:
+                    return max(0.75, min(1.50, round(float(d["scale"]), 2)))
+        except Exception:
+            pass
+    return 1.0
+
+
 def read_bar_position():
     default_pos = {
         "edge": "top",
@@ -143,7 +165,7 @@ def read_bar_position():
         "mainBarEdge": "top",
         "musicBarEdge": "top",
         "musicBarContent": "both",
-        "barHeight": 34
+        "scale": read_shell_scale()
     }
     if os.path.isfile(BAR_POS_PATH):
         try:
@@ -159,11 +181,7 @@ def read_bar_position():
                 default_pos["leftEdge"] = chosen
                 default_pos["centerEdge"] = chosen
                 default_pos["rightEdge"] = chosen
-                try:
-                    bh = int(d.get("barHeight", 34))
-                    default_pos["barHeight"] = max(28, min(48, bh))
-                except Exception:
-                    default_pos["barHeight"] = 34
+                default_pos["scale"] = read_shell_scale()
         except Exception:
             pass
     return default_pos
@@ -1353,8 +1371,9 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         self.current_clock_style = read_clock_style()
         self.clock_rows = {}
         self.bar_pos = read_bar_position()
-        self.bar_height_scales = []
-        self.bar_height_labels = []
+        self.ui_scale_scales = []
+        self.ui_scale_labels = []
+        self.scale_apply_timer = None
         self.pill_edge_buttons = {}
         self.pill_content_buttons = {}
         self.notch_edge_buttons = {}
@@ -1819,40 +1838,40 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
         return Gdk.EVENT_STOP
 
-    def make_bar_height_row(self):
-        row_size = Adw.ActionRow()
-        row_size.set_title("Bar Size / Height")
-        row_size.set_subtitle("Adjust the vertical height and thickness of the bars (28px – 48px)")
+    def make_ui_scale_row(self):
+        row_scale = Adw.ActionRow()
+        row_scale.set_title("Shell UI Scale")
+        row_scale.set_subtitle("Scale the entire desktop interface, bars, menus, and widgets (0.75x – 1.50x)")
         icon = Gtk.Image.new_from_icon_name("zoom-fit-best-symbolic")
         icon.set_pixel_size(20)
-        row_size.add_prefix(icon)
+        row_scale.add_prefix(icon)
 
-        box_size = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        box_size.set_valign(Gtk.Align.CENTER)
+        box_scale = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box_scale.set_valign(Gtk.Align.CENTER)
 
-        curr_h = int(self.bar_pos.get("barHeight", 34))
+        curr_s = float(self.bar_pos.get("scale", 1.0))
 
-        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 28, 48, 2)
-        scale.set_value(curr_h)
+        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.75, 1.50, 0.05)
+        scale.set_value(curr_s)
         scale.set_size_request(130, -1)
         scale.set_draw_value(False)
 
-        lbl_val = Gtk.Label(label=f"{curr_h} px")
+        lbl_val = Gtk.Label(label=f"{curr_s:.2f}x")
         lbl_val.add_css_class("accent")
         lbl_val.set_width_chars(6)
 
         def on_scale_changed(sc):
-            v = int(sc.get_value())
-            self.set_bar_height(v)
+            v = round(sc.get_value(), 2)
+            self.set_ui_scale(v)
 
         scale.connect("value-changed", on_scale_changed)
 
-        box_size.append(scale)
-        box_size.append(lbl_val)
-        row_size.add_suffix(box_size)
-        self.bar_height_scales.append(scale)
-        self.bar_height_labels.append(lbl_val)
-        return row_size
+        box_scale.append(scale)
+        box_scale.append(lbl_val)
+        row_scale.add_suffix(box_scale)
+        self.ui_scale_scales.append(scale)
+        self.ui_scale_labels.append(lbl_val)
+        return row_scale
 
     # ── Page 1: Bar & Bar Modes ─────────────────────────────────────
     def build_bar_page(self):
@@ -1927,8 +1946,8 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         row_pill_edge.add_suffix(box_pill_edge)
         grp_pill.add(row_pill_edge)
 
-        # Bar Size / Height slider
-        grp_pill.add(self.make_bar_height_row())
+        # Shell UI Scale slider
+        grp_pill.add(self.make_ui_scale_row())
 
         # Pill Center Module Content (Clock + Music / Clock Only / Music Only)
         row_pill_content = Adw.ActionRow()
@@ -2000,8 +2019,8 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         row_notch_edge.add_suffix(box_notch_edge)
         grp_notch.add(row_notch_edge)
 
-        # Bar Size / Height slider
-        grp_notch.add(self.make_bar_height_row())
+        # Shell UI Scale slider
+        grp_notch.add(self.make_ui_scale_row())
 
         # Notch Island Displayed Content
         row_notch_content = Adw.ActionRow()
@@ -2178,7 +2197,8 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
         row_edge.add_suffix(box_edge)
         grp_edge.add(row_edge)
-        grp_edge.add(self.make_bar_height_row())
+        # Shell UI Scale slider
+        grp_edge.add(self.make_ui_scale_row())
 
         # Group 3: Low Resource Optimization Metrics
         grp_metrics = Adw.PreferencesGroup(
@@ -3689,12 +3709,12 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             else:
                 btn.remove_css_class("suggested-action")
 
-        curr_h = int(self.bar_pos.get("barHeight", 34))
-        for sc in self.bar_height_scales:
-            if int(sc.get_value()) != curr_h:
-                sc.set_value(curr_h)
-        for lbl in self.bar_height_labels:
-            lbl.set_label(f"{curr_h} px")
+        curr_s = float(self.bar_pos.get("scale", 1.0))
+        for sc in self.ui_scale_scales:
+            if abs(sc.get_value() - curr_s) > 0.01:
+                sc.set_value(curr_s)
+        for lbl in self.ui_scale_labels:
+            lbl.set_label(f"{curr_s:.2f}x")
 
         curr_content = self.bar_pos.get("musicBarContent", "both")
         for content_val, btn in self.pill_content_buttons.items():
@@ -3709,15 +3729,36 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             else:
                 btn.remove_css_class("suggested-action")
 
-    def set_bar_height(self, height):
-        h = max(28, min(48, int(height)))
-        self.bar_pos["barHeight"] = h
+    def set_ui_scale(self, scale_val):
+        s = max(0.75, min(1.50, round(float(scale_val), 2)))
+        self.bar_pos["scale"] = s
         save_bar_position(self.bar_pos)
-        for sc in self.bar_height_scales:
-            if int(sc.get_value()) != h:
-                sc.set_value(h)
-        for lbl in self.bar_height_labels:
-            lbl.set_label(f"{h} px")
+        for sc in self.ui_scale_scales:
+            if abs(sc.get_value() - s) > 0.01:
+                sc.set_value(s)
+        for lbl in self.ui_scale_labels:
+            lbl.set_label(f"{s:.2f}x")
+
+        env_path = os.path.expanduser("~/.config/hypr/carbon-shell.env")
+        try:
+            with open(env_path, "w") as f:
+                f.write(f"QT_SCALE_FACTOR={s:.2f}\n")
+        except Exception as e:
+            print("Error writing carbon-shell.env:", e)
+
+        if self.scale_apply_timer is not None:
+            GLib.source_remove(self.scale_apply_timer)
+
+        def do_restart():
+            self.scale_apply_timer = None
+            subprocess.run(["systemctl", "--user", "restart", "carbon-quickshell.service"], check=False)
+            subprocess.run([
+                "notify-send", "-a", "Carbon Config", "-i", "preferences-system",
+                "UI Scale Updated", f"Shell interface scaled to {s:.2f}x"
+            ], check=False)
+            return False
+
+        self.scale_apply_timer = GLib.timeout_add(350, do_restart)
 
     def set_pill_bar_edge(self, edge):
         if edge not in ["top", "bottom"]:

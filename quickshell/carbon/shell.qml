@@ -700,7 +700,7 @@ ShellRoot {
             if (d.centerAlign) root.centerAlign = d.centerAlign
             if (d.rightAlign) root.rightAlign = d.rightAlign
 
-            root.barHeight = (root.barMode === "pill" ? 38 : 34)
+            root.barHeight = (root.barMode === "atomic" ? 46 : (root.barMode === "pill" ? 38 : 34))
         } catch (e) {}
     }
 
@@ -921,6 +921,10 @@ ShellRoot {
                         root.closeOverview()
                     else if (cmd === "theme-reload" || cmd === "reload-theme")
                         Theme.reload()
+                    else if (cmd === "atomic" || cmd === "mode-atomic" || cmd === "toggle-atomic") {
+                        if (root.barMode === "atomic") root.switchBarMode("notch")
+                        else root.switchBarMode("atomic")
+                    }
                     else if (cmd === "calendar" || cmd === "center-dashboard" || cmd === "center" || cmd === "time-weather" || cmd === "toggle-dashboard" || cmd === "dashboard")
                         root.toggleCenterDashboard()
                     else if (cmd === "calendar-events") {
@@ -1062,16 +1066,17 @@ ShellRoot {
     }
 
     /* ── Dynamic Edge Reservation Windows (Prevents App Overlap) ────────── */
-    readonly property bool hasTopReserve: (root.barMode === "pill" || (root.barMode === "minimal" && root.islandPersistent))
+    readonly property bool hasTopReserve: (root.barMode === "atomic") ? true :
+        ((root.barMode === "pill" || (root.barMode === "minimal" && root.islandPersistent))
         ? (root.mainBarEdge === "top")
-        : (root.barMode === "minimal" ? false : (root.mainBarEdge === "top" || root.musicBarEdge === "top"))
+        : (root.barMode === "minimal" ? false : (root.mainBarEdge === "top" || root.musicBarEdge === "top")))
     readonly property bool hasBottomReserve: (root.barMode === "pill" || (root.barMode === "minimal" && root.islandPersistent))
         ? (root.mainBarEdge === "bottom")
         : (root.barMode === "minimal" ? false : (root.mainBarEdge === "bottom" || root.musicBarEdge === "bottom"))
     readonly property bool hasLeftReserve: false
     readonly property bool hasRightReserve: false
 
-    readonly property int topReserveHeight: root.hasTopReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0
+    readonly property int topReserveHeight: root.barMode === "atomic" ? 50 : (root.hasTopReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0)
     readonly property int bottomReserveHeight: root.hasBottomReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0
     readonly property int leftReserveWidth: root.hasLeftReserve ? 38 : 0
     readonly property int rightReserveWidth: root.hasRightReserve ? 38 : 0
@@ -1753,6 +1758,53 @@ ShellRoot {
                 onOpenTray: root.openTray()
                 onCloseTray: trayLeaveTimer.restart()
                 onToggleTray: root.toggleTray()
+                onOpenPower: root.openPower()
+            }
+        }
+    }
+
+    /* ── Atomic Valence Mode: Quantum Orbital Shell Preview ────────────── */
+    Variants {
+        model: Quickshell.screens
+
+        PanelWindow {
+            id: atomicBarWindow
+            required property var modelData
+
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-bar-atomic"
+            WlrLayershell.layer: WlrLayer.Top
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
+            anchors {
+                top: true
+                left: true
+                right: true
+            }
+            margins {
+                top: 4
+                left: 12
+                right: 12
+            }
+
+            implicitHeight: 46
+            visible: root.barMode === "atomic"
+
+            AtomicValenceBar {
+                id: atomicBarItem
+                anchors.fill: parent
+                onOpenLauncher: root.openLauncher()
+                onToggleCenterDashboard: root.toggleCenterDashboard()
+                onOpenCenterDashboard: root.openCenterDashboard()
+                onCloseCenterDashboard: centerDashboardLeaveTimer.restart()
+                onToggleControls: root.toggleControls()
+                onOpenMixer: root.openMixer()
+                onToggleMixer: root.toggleMixer()
+                onOpenWifi: root.openWifi()
+                onToggleWifi: root.toggleWifi()
+                onOpenBattery: root.openBattery()
+                onToggleBattery: root.toggleBattery()
                 onOpenPower: root.openPower()
             }
         }

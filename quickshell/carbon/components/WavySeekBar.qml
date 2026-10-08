@@ -62,7 +62,9 @@ Item {
         height: root.waveHeight + 2
 
         renderTarget: Canvas.Image
-        renderStrategy: Canvas.Threaded
+        renderStrategy: Canvas.Immediate
+        opacity: (root.isPlaying || root.isDragging) ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: 150 } }
 
         readonly property bool isWindowVisible: Window.window ? (Window.window.visible && Window.window.opacity > 0.01) : true
         readonly property bool shouldAnimate: (root.isPlaying || root.isDragging) && root.visible && isWindowVisible && width > 0 && height > 0

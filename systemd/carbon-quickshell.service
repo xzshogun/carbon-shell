@@ -4,12 +4,13 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-EnvironmentFile=-%h/.config/hypr/carbon-shell.env
-ExecStart=/usr/bin/bash -c 'if [ -x %h/.local/bin/quickshell ]; then exec %h/.local/bin/quickshell --config %h/.local/share/quickshell/carbon; else exec /usr/bin/quickshell --config %h/.local/share/quickshell/carbon; fi'
-Restart=always
-RestartSec=2
+EnvironmentFile=-%h/.config/carbon/carbon-shell.env
+Environment=CARBON_CONFIG_DIR=%h/.config/carbon
 Environment=QT_QPA_PLATFORM=wayland
 Environment=XDG_CURRENT_DESKTOP=Hyprland
+ExecStart=/usr/bin/bash -c 'if [ -x %h/.local/bin/quickshell ]; then exec %h/.local/bin/quickshell --config %h/.local/share/quickshell/carbon; elif command -v quickshell >/dev/null 2>&1; then exec quickshell --config %h/.local/share/quickshell/carbon; else exec /usr/bin/quickshell --config %h/.local/share/quickshell/carbon; fi'
+Restart=always
+RestartSec=2
 
 [Install]
 WantedBy=default.target

@@ -32,13 +32,45 @@
 
 ---
 
-## 🚀 One-Line Installation
+## 🚀 Installation & Setup
+
+Clone the repository and run the interactive installer:
 
 ```bash
 git clone https://github.com/<YOUR_USERNAME>/carbon-shell.git
 cd carbon-shell
 chmod +x install.sh
 ./install.sh
+```
+
+### Installation Options
+The installer interactively guides you through:
+- **Keybinding Selection**:
+  - `[1] Carbon Keybindings`: Full desktop setup (Super+Return terminal, Super+Tab overview, Super+Space launcher, Super+1..0 workspaces).
+  - `[2] Keep Existing Keybindings`: Retains all your custom hyprland keybindings untouched and only loads non-conflicting Carbon shell triggers.
+- **Dependency Checks**: Automatic package manager detection (`pacman`, `dnf`, `apt`, `zypper`, `xbps`, `apk`).
+- **Safe Non-Destructive Configs**: Deploys to `~/.config/carbon` with **zero symlinks** and preserves your existing `~/.config/hypr/hyprland.conf`.
+
+---
+
+## 🔄 Updating Carbon Shell
+
+To update Carbon Shell to the latest version at any time, run from any terminal:
+
+```bash
+carbon-update
+```
+
+Or from the repository root:
+
+```bash
+./update.sh
+```
+
+To check for updates without applying:
+
+```bash
+carbon-update --check
 ```
 
 ---

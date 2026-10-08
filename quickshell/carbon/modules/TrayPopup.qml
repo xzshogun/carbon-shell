@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.SystemTray
@@ -18,6 +19,8 @@ Item {
     property string barEdge: "top"
     property bool hovered: hoverHandler.hovered
     signal requestedClose()
+
+    clip: true
 
     // 1. Native StatusNotifierItem (SNI) tray items
     readonly property var sniItems: SystemTray.items.values.filter(function (it) {
@@ -59,13 +62,23 @@ Item {
         }
     }
 
+    property bool animatingOut: false
     onOpenChanged: {
         if (root.open) {
             if (!bgAppsProbe.running) bgAppsProbe.running = true
+            root.animatingOut = false
+            animatingOutTimer.stop()
         } else {
             root.hoveredAppName = ""
             root.hoveredAppSub = ""
+            root.animatingOut = true
+            animatingOutTimer.restart()
         }
+    }
+    Timer {
+        id: animatingOutTimer
+        interval: 200
+        onTriggered: root.animatingOut = false
     }
 
     Component.onCompleted: {
@@ -129,32 +142,96 @@ Item {
     implicitWidth: 190
     implicitHeight: (allItems.length === 0) ? 74 : (rows * 38 + 58)
 
-    opacity: root.open ? 1.0 : 0.0
-    scale: root.open ? 1.0 : 0.92
-    visible: opacity > 0.01
-
-    Behavior on opacity {
-        NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized }
-    }
-    Behavior on scale {
-        NumberAnimation { duration: Theme.motionDurationShort3; easing.type: Theme.easingEmphasized }
-    }
-
     HoverHandler {
         id: hoverHandler
     }
 
-    Rectangle {
+    property string barMode: "notch"
+    property real notchOpacity: 0.96
+
+    readonly property string fillPath: {
+        const w = bgCard.width
+        const h = bgCard.height
+        if (root.barMode === "notch") {
+            const r = 16
+            if (root.barEdge === "bottom") {
+                return `M 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`
+            }
+            return `M 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 L ${w} 0 L ${w} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} Z`
+        }
+        const r = 16
+        return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
+    }
+
+    readonly property string strokePath: {
+        const w = bgCard.width
+        const h = bgCard.height
+        if (root.barMode === "notch") {
+            const r = 16
+            if (root.barEdge === "bottom") {
+                return `M 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 L ${w} 0`
+            }
+            return `M 0 ${r} L 0 ${h - r} A ${r} ${r} 0 0 0 ${r} ${h} L ${w} ${h}`
+        }
+        const r = 16
+        return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
+    }
+
+    Item {
         id: bgCard
         anchors.fill: parent
-        radius: Theme.shapeCornerLarge
-        color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.94)
-        border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.35)
-        border.width: 1
+
+        Shape {
+            id: cardBgShape
+            anchors.fill: parent
+            preferredRendererType: Shape.GeometryRenderer
+            antialiasing: true
+            asynchronous: false
+
+            ShapePath {
+                fillColor: root.barMode === "notch" ? (Theme.isDark ? Qt.rgba(0.04, 0.04, 0.06, root.notchOpacity) : Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, root.notchOpacity)) : Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.shellOpacity)
+                strokeColor: "transparent"
+                strokeWidth: 0
+                PathSvg { path: root.fillPath }
+            }
+
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Theme.outline
+                strokeWidth: 1
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+                PathSvg { path: root.strokePath }
+            }
+        }
+
+        opacity: root.open ? 1.0 : 0.0
+        scale: root.open ? 1.0 : 0.95
+        y: root.open ? 0 : (root.barEdge === "bottom" ? -6 : 6)
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: root.open ? 200 : 140
+                easing.bezierCurve: Theme.animCurves.expressiveDefaultEffects
+            }
+        }
+        Behavior on scale {
+            NumberAnimation {
+                duration: root.open ? 280 : 160
+                easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel
+            }
+        }
+        Behavior on y {
+            NumberAnimation {
+                duration: root.open ? 280 : 160
+                easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel
+            }
+        }
 
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 10
+            anchors.leftMargin: root.barMode === "notch" ? 22 : 10
             spacing: 6
 
             // Header: "Background Apps"

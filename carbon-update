@@ -1,0 +1,399 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Carbon Shell — Interactive Updater
+# ==============================================================================
+
+set -euo pipefail
+
+# Directory paths
+CONFIG_DIR="${CARBON_CONFIG_DIR:-$HOME/.config/carbon}"
+QUICKSHELL_DIR="$HOME/.local/share/quickshell/carbon"
+BIN_DIR="$HOME/.local/bin"
+SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
+REPO_PATH_FILE="$CONFIG_DIR/repo_path"
+
+# Flags
+FORCE=0
+AUTO_YES=0
+NO_RELOAD=0
+CHECK_ONLY=0
+BRANCH=""
+
+# Colors
+if [[ -t 1 ]]; then
+    C_BLUE="\033[1;34m"
+    C_GREEN="\033[1;32m"
+    C_YELLOW="\033[1;33m"
+    C_RED="\033[1;31m"
+    C_CYAN="\033[1;36m"
+    C_BOLD="\033[1m"
+    C_DIM="\033[2m"
+    C_RESET="\033[0m"
+else
+    C_BLUE=""
+    C_GREEN=""
+    C_YELLOW=""
+    C_RED=""
+    C_CYAN=""
+    C_BOLD=""
+    C_DIM=""
+    C_RESET=""
+fi
+
+msg()    { printf "${C_BLUE}::${C_RESET} ${C_BOLD}%s${C_RESET}\n" "$*"; }
+info()   { printf " ${C_GREEN}->${C_RESET} %s\n" "$*"; }
+warn()   { printf " ${C_YELLOW}!${C_RESET} %s\n" "$*"; }
+err()    { printf " ${C_RED}error:${C_RESET} %s\n" "$*" >&2; }
+ok()     { printf "   ${C_GREEN}[✓]${C_RESET} %s\n" "$*"; }
+fail()   { printf "   ${C_RED}[✗]${C_RESET} %s\n" "$*"; }
+notice() { printf "   ${C_YELLOW}[!]${C_RESET} %s\n" "$*"; }
+die()    { err "$@"; exit 1; }
+
+prompt_confirm() {
+    local prompt_msg="$1"
+    local default_val="${2:-Y}" # Y or N
+    local choice=""
+
+    if [[ "$AUTO_YES" -eq 1 || ! -t 0 ]]; then
+        [[ "$default_val" =~ ^[Yy]$ ]] && return 0 || return 1
+    fi
+
+    printf "${prompt_msg}" >&2
+    read -r choice
+    choice="${choice:-$default_val}"
+    [[ "$choice" =~ ^[Yy]$ ]] && return 0 || return 1
+}
+
+usage() {
+    cat << EOF
+Usage: ./update.sh [OPTIONS]
+   or: carbon-update [OPTIONS]
+
+Interactive updater for Carbon Shell. Fetches the latest updates from git,
+synchronizes Quickshell components, scripts, and configurations without
+overwriting your custom keybindings or theme settings.
+
+Options:
+  -c, --check       Check for available updates without applying them
+  -y, --yes         Non-interactive mode (accept all prompts)
+  -f, --force       Force update even if working tree has local modifications
+  -b, --branch <B>  Switch to or pull from specified branch
+  --no-reload       Do not restart Quickshell or reload Hyprland after updating
+  -h, --help        Show this help message and exit
+
+Examples:
+  carbon-update               # Interactive update
+  carbon-update --check       # Check if an update is available
+  carbon-update -y            # Update immediately without prompts
+EOF
+    exit 0
+}
+
+# Parse options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            usage
+            ;;
+        -c|--check)
+            CHECK_ONLY=1
+            shift
+            ;;
+        -y|--yes)
+            AUTO_YES=1
+            shift
+            ;;
+        -f|--force)
+            FORCE=1
+            shift
+            ;;
+        -b|--branch)
+            [[ -n "${2:-}" ]] || die "Option $1 requires a branch argument"
+            BRANCH="$2"
+            shift 2
+            ;;
+        --no-reload)
+            NO_RELOAD=1
+            shift
+            ;;
+        *)
+            die "Unknown option: $1 (see --help)"
+            ;;
+    esac
+done
+
+printf "\n"
+msg "Carbon Shell Updater"
+
+# ------------------------------------------------------------------------------
+# 1. Locate Git Repository
+# ------------------------------------------------------------------------------
+REPO_DIR=""
+
+if [[ -n "${CARBON_REPO_DIR:-}" && -d "$CARBON_REPO_DIR/.git" ]]; then
+    REPO_DIR="$CARBON_REPO_DIR"
+elif [[ -f "$REPO_PATH_FILE" ]]; then
+    SAVED_PATH="$(head -n 1 "$REPO_PATH_FILE" 2>/dev/null || true)"
+    if [[ -n "$SAVED_PATH" && -d "$SAVED_PATH/.git" ]]; then
+        REPO_DIR="$SAVED_PATH"
+    fi
+fi
+
+if [[ -z "$REPO_DIR" ]]; then
+    # Try current directory or parent directory of this script
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -d "$SCRIPT_DIR/.git" && -f "$SCRIPT_DIR/quickshell/carbon/shell.qml" ]]; then
+        REPO_DIR="$SCRIPT_DIR"
+    elif [[ -d "$PWD/.git" && -f "$PWD/quickshell/carbon/shell.qml" ]]; then
+        REPO_DIR="$PWD"
+    fi
+fi
+
+if [[ -z "$REPO_DIR" ]]; then
+    warn "Carbon repository could not be located automatically."
+    DEFAULT_CLONE_DIR="$HOME/.local/share/carbon-shell"
+    if [[ -d "$DEFAULT_CLONE_DIR/.git" ]]; then
+        REPO_DIR="$DEFAULT_CLONE_DIR"
+    else
+        if prompt_confirm "  Clone repository to $DEFAULT_CLONE_DIR? [Y/n]: " "Y"; then
+            mkdir -p "$(dirname "$DEFAULT_CLONE_DIR")"
+            git clone https://github.com/reduct-sh/carbon-shell.git "$DEFAULT_CLONE_DIR" 2>/dev/null || \
+                die "Failed to clone repository. Please check your internet connection."
+            REPO_DIR="$DEFAULT_CLONE_DIR"
+        else
+            die "Cannot update without a local repository clone."
+        fi
+    fi
+    mkdir -p "$CONFIG_DIR"
+    echo "$REPO_DIR" > "$REPO_PATH_FILE"
+fi
+
+info "Repository: $REPO_DIR"
+
+# ------------------------------------------------------------------------------
+# 2. Check Remote Updates
+# ------------------------------------------------------------------------------
+cd "$REPO_DIR"
+
+if [[ -n "$BRANCH" ]]; then
+    info "Switching to branch: $BRANCH"
+    git checkout "$BRANCH" 2>/dev/null || die "Could not checkout branch $BRANCH"
+fi
+
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")"
+info "Checking for remote updates ($CURRENT_BRANCH)..."
+
+git fetch origin "$CURRENT_BRANCH" --quiet 2>/dev/null || {
+    warn "Could not reach remote repository (offline or remote unreachable)."
+}
+
+LOCAL_HASH="$(git rev-parse HEAD 2>/dev/null || echo "")"
+REMOTE_HASH="$(git rev-parse "origin/$CURRENT_BRANCH" 2>/dev/null || echo "$LOCAL_HASH")"
+
+if [[ "$LOCAL_HASH" == "$REMOTE_HASH" ]]; then
+    if [[ "$CHECK_ONLY" -eq 1 ]]; then
+        ok "Carbon Shell is up to date (${LOCAL_HASH:0:8})."
+        exit 0
+    fi
+    if [[ "$FORCE" -eq 0 ]]; then
+        ok "Carbon Shell is already up to date (${LOCAL_HASH:0:8})."
+        if ! prompt_confirm "  Re-synchronize components and restart services anyway? [y/N]: " "N"; then
+            info "No action needed. Exiting."
+            exit 0
+        fi
+    fi
+else
+    # Update available!
+    msg "Updates available:"
+    printf "   Current commit : %s\n" "${LOCAL_HASH:0:8}"
+    printf "   Latest commit  : %s\n\n" "${REMOTE_HASH:0:8}"
+
+    printf "  Recent changes:\n"
+    git log --oneline --no-merges -n 5 "$LOCAL_HASH..$REMOTE_HASH" 2>/dev/null | sed 's/^/    * /' || true
+    printf "\n"
+
+    if [[ "$CHECK_ONLY" -eq 1 ]]; then
+        exit 0
+    fi
+
+    if ! prompt_confirm "  Apply these updates now? [Y/n]: " "Y"; then
+        info "Update cancelled by user."
+        exit 0
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 3. Pull Repository Updates
+# ------------------------------------------------------------------------------
+if [[ "$LOCAL_HASH" != "$REMOTE_HASH" || "$FORCE" -eq 1 ]]; then
+    msg "Updating repository working tree..."
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+        if [[ "$FORCE" -eq 1 ]]; then
+            warn "Stashing local modifications due to --force..."
+            git stash --quiet
+        else
+            warn "Uncommitted changes detected in $REPO_DIR."
+            if prompt_confirm "  Stash local changes and proceed with update? [Y/n]: " "Y"; then
+                git stash --quiet
+            else
+                die "Update aborted to prevent overwriting uncommitted changes."
+            fi
+        fi
+    fi
+
+    if git merge-base --is-ancestor HEAD "origin/$CURRENT_BRANCH" 2>/dev/null; then
+        git merge --ff-only "origin/$CURRENT_BRANCH" --quiet
+    else
+        git pull --ff-only origin "$CURRENT_BRANCH" --quiet || {
+            die "Could not fast-forward repository. Resolve git conflicts manually in $REPO_DIR."
+        }
+    fi
+    NEW_HASH="$(git rev-parse HEAD)"
+    ok "Working tree updated to ${NEW_HASH:0:8}"
+fi
+
+# ------------------------------------------------------------------------------
+# 4. Synchronize Quickshell Components (Zero Symlinks)
+# ------------------------------------------------------------------------------
+msg "Synchronizing Quickshell components..."
+mkdir -p "$QUICKSHELL_DIR"
+cp -rf "$REPO_DIR/quickshell/carbon/"* "$QUICKSHELL_DIR/"
+ok "Quickshell components updated in $QUICKSHELL_DIR"
+
+# ------------------------------------------------------------------------------
+# 5. Synchronize Runtime Scripts (Zero Symlinks)
+# ------------------------------------------------------------------------------
+msg "Synchronizing runtime scripts..."
+mkdir -p "$CONFIG_DIR/scripts"
+cp -rf "$REPO_DIR/hypr/scripts/"* "$CONFIG_DIR/scripts/"
+chmod +x "$CONFIG_DIR/scripts/"* 2>/dev/null || true
+ok "Scripts updated in $CONFIG_DIR/scripts"
+
+# ------------------------------------------------------------------------------
+# 6. Synchronize Configuration Non-Destructively
+# ------------------------------------------------------------------------------
+msg "Preserving user configurations..."
+mkdir -p "$CONFIG_DIR"
+echo "$REPO_DIR" > "$REPO_PATH_FILE"
+
+# Window rules and looknfeel
+if [[ -f "$REPO_DIR/hypr/windowrules.conf" ]]; then
+    cp -f "$REPO_DIR/hypr/windowrules.conf" "$CONFIG_DIR/windowrules.conf"
+fi
+if [[ -f "$REPO_DIR/hypr/looknfeel.conf" ]]; then
+    cp -f "$REPO_DIR/hypr/looknfeel.conf" "$CONFIG_DIR/looknfeel.conf"
+fi
+
+# Keybinding configs: do NOT overwrite existing user customizations
+if [[ -f "$REPO_DIR/hypr/keybinds.conf" ]]; then
+    if [[ ! -f "$CONFIG_DIR/keybinds.conf" ]]; then
+        cp -f "$REPO_DIR/hypr/keybinds.conf" "$CONFIG_DIR/keybinds.conf"
+    else
+        cp -f "$REPO_DIR/hypr/keybinds.conf" "$CONFIG_DIR/keybinds.conf.dist" 2>/dev/null || true
+    fi
+fi
+
+if [[ -f "$REPO_DIR/hypr/keybinds-shell-only.conf" ]]; then
+    if [[ ! -f "$CONFIG_DIR/keybinds-shell-only.conf" ]]; then
+        cp -f "$REPO_DIR/hypr/keybinds-shell-only.conf" "$CONFIG_DIR/keybinds-shell-only.conf"
+    else
+        cp -f "$REPO_DIR/hypr/keybinds-shell-only.conf" "$CONFIG_DIR/keybinds-shell-only.conf.dist" 2>/dev/null || true
+    fi
+fi
+
+# Preserve carbon.conf active keybind source
+if [[ -f "$REPO_DIR/hypr/carbon.conf" ]]; then
+    if [[ -f "$CONFIG_DIR/carbon.conf" ]]; then
+        ACTIVE_BIND="$(grep -E 'source\s*=\s*~/.config/carbon/keybinds' "$CONFIG_DIR/carbon.conf" | head -n 1 || true)"
+        cp -f "$REPO_DIR/hypr/carbon.conf" "$CONFIG_DIR/carbon.conf"
+        if [[ -n "$ACTIVE_BIND" ]]; then
+            sed -i -E "s|source\s*=\s*~/.config/carbon/keybinds.*|$ACTIVE_BIND|" "$CONFIG_DIR/carbon.conf"
+        fi
+    else
+        cp -f "$REPO_DIR/hypr/carbon.conf" "$CONFIG_DIR/carbon.conf"
+    fi
+fi
+
+ok "Configurations preserved in $CONFIG_DIR"
+
+# ------------------------------------------------------------------------------
+# 7. Update User Binaries (~/.local/bin)
+# ------------------------------------------------------------------------------
+msg "Updating binaries in $BIN_DIR..."
+mkdir -p "$BIN_DIR"
+
+if [[ -f "$REPO_DIR/update.sh" ]]; then
+    cp -f "$REPO_DIR/update.sh" "$BIN_DIR/carbon-update"
+    cp -f "$REPO_DIR/update.sh" "$BIN_DIR/carbon-shell-update"
+elif [[ -f "$REPO_DIR/carbon-update" ]]; then
+    cp -f "$REPO_DIR/carbon-update" "$BIN_DIR/carbon-update"
+    cp -f "$REPO_DIR/carbon-update" "$BIN_DIR/carbon-shell-update"
+fi
+chmod +x "$BIN_DIR/carbon-update" "$BIN_DIR/carbon-shell-update" 2>/dev/null || true
+
+cp -f "$CONFIG_DIR/scripts/carbon-config-editor" "$BIN_DIR/carbon-config-editor"
+cp -f "$CONFIG_DIR/scripts/carbon-pomodoro" "$BIN_DIR/carbon-pomodoro"
+
+for s in "$CONFIG_DIR/scripts/carbon-screenshot-"*.sh; do
+    if [[ -f "$s" ]]; then
+        base="$(basename "$s" .sh)"
+        cp -f "$s" "$BIN_DIR/$base"
+        cp -f "$s" "$BIN_DIR/$base.sh"
+    fi
+done
+
+chmod +x "$BIN_DIR/carbon-"* 2>/dev/null || true
+ok "Binaries up to date in $BIN_DIR"
+
+# ------------------------------------------------------------------------------
+# 8. Update Fonts
+# ------------------------------------------------------------------------------
+if [[ -d "$REPO_DIR/fonts" ]]; then
+    USER_FONT_DIR="$HOME/.local/share/fonts"
+    mkdir -p "$USER_FONT_DIR"
+    cp -f "$REPO_DIR/fonts/"*.ttf "$USER_FONT_DIR/" 2>/dev/null || true
+fi
+
+# ------------------------------------------------------------------------------
+# 9. Update Systemd User Service
+# ------------------------------------------------------------------------------
+if [[ -f "$REPO_DIR/systemd/carbon-quickshell.service" ]]; then
+    mkdir -p "$SYSTEMD_USER_DIR"
+    cp -f "$REPO_DIR/systemd/carbon-quickshell.service" "$SYSTEMD_USER_DIR/"
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user daemon-reload >/dev/null 2>&1 || true
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 10. Reload Desktop Services
+# ------------------------------------------------------------------------------
+if [[ "$NO_RELOAD" -eq 0 ]]; then
+    if prompt_confirm "Restart Carbon Quickshell and reload Hyprland now? [Y/n]: " "Y"; then
+        info "Restarting desktop services..."
+        if command -v systemctl >/dev/null 2>&1 && systemctl --user is-enabled carbon-quickshell.service >/dev/null 2>&1; then
+            systemctl --user restart carbon-quickshell.service >/dev/null 2>&1 || {
+                pkill -x quickshell 2>/dev/null || true
+                sleep 0.5
+                nohup quickshell --config "$QUICKSHELL_DIR" >/dev/null 2>&1 &
+            }
+            ok "Carbon Quickshell service restarted"
+        else
+            pkill -x quickshell 2>/dev/null || true
+            sleep 0.5
+            nohup quickshell --config "$QUICKSHELL_DIR" >/dev/null 2>&1 &
+            ok "Quickshell daemon restarted"
+        fi
+
+        if command -v hyprctl >/dev/null 2>&1; then
+            if hyprctl instances >/dev/null 2>&1; then
+                hyprctl reload >/dev/null 2>&1 || true
+                ok "Hyprland configuration reloaded"
+            fi
+        fi
+    fi
+fi
+
+printf "\n"
+msg "Carbon Shell update complete!"
+printf "\n"

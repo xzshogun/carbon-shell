@@ -78,12 +78,9 @@ Item {
     onOpenChanged: {
         root.cancelDrag()
         if (root.open) {
-            Quickshell.execDetached(["sh", "-c", "hyprctl eval 'hl.config({ decoration = { blur = { enabled = true, passes = 2, size = 5 } } })'"])
             if (!dataProbe.running) dataProbe.running = true
             animProgress.restart()
             root.forceActiveFocus()
-        } else {
-            Quickshell.execDetached(["sh", "-c", "hyprctl eval 'hl.config({ decoration = { blur = { enabled = false } } })'"])
         }
     }
 

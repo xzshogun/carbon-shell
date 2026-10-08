@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
@@ -32,8 +33,7 @@ Item {
 
     implicitWidth: 260
     implicitHeight: 330
-
-    readonly property bool animatingOut: !root.open && card.opacity > 0.001
+    clip: true
 
     readonly property bool pwReady: Pipewire.ready
 
@@ -227,57 +227,112 @@ Item {
         else if (root.view === 1) root.refreshInputPorts()
     }
 
+    property bool animatingOut: false
     onOpenChanged: {
         if (root.open) {
             root.view = 0
             root.refreshOutputPorts()
             root.refreshInputPorts()
+            root.animatingOut = false
+            animatingOutTimer.stop()
+        } else {
+            root.animatingOut = true
+            animatingOutTimer.restart()
         }
     }
+    Timer {
+        id: animatingOutTimer
+        interval: 200
+        onTriggered: root.animatingOut = false
+    }
 
-    Rectangle {
+    property string barMode: "notch"
+    property real notchOpacity: 0.96
+
+    readonly property string fillPath: {
+        const w = card.width
+        const h = card.height
+        if (root.barMode === "notch") {
+            const r = 16
+            if (root.barEdge === "bottom") {
+                return `M 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 L ${w} 0 L ${w} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} Z`
+            }
+            return `M 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 L ${w} 0 L ${w} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} Z`
+        }
+        const r = 16
+        return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
+    }
+
+    readonly property string strokePath: {
+        const w = card.width
+        const h = card.height
+        if (root.barMode === "notch") {
+            const r = 16
+            if (root.barEdge === "bottom") {
+                return `M 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 L ${w} 0`
+            }
+            return `M 0 ${r} L 0 ${h - r} A ${r} ${r} 0 0 0 ${r} ${h} L ${w} ${h}`
+        }
+        const r = 16
+        return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
+    }
+
+    Item {
         id: card
         width: parent.width
         height: parent.height
-        radius: 16
-        color: Theme.bg
-        border.color: root.open ? Theme.accentLit : Theme.outline
-        border.width: 1
-        Behavior on border.color { ColorAnimation { duration: root.open ? 350 : 150; easing.type: Easing.OutQuad } }
 
-        opacity: root.open ? 1 : 0
-        x: root.open ? 0 : (root.barEdge === "left" ? -28 : (root.barEdge === "right" ? 28 : 0))
-        y: root.open ? 0 : (root.barEdge === "top" ? -28 : (root.barEdge === "bottom" ? 28 : 0))
-        scale: root.open ? 1.0 : 0.90
-        transformOrigin: root.barEdge === "left" ? Item.BottomLeft :
-                         (root.barEdge === "right" ? Item.BottomRight :
-                         (root.barEdge === "bottom" ? Item.BottomRight : Item.TopRight))
+        Shape {
+            id: cardBgShape
+            anchors.fill: parent
+            preferredRendererType: Shape.GeometryRenderer
+            antialiasing: true
+            asynchronous: false
 
-        Behavior on opacity {
-            NumberAnimation { duration: root.open ? 200 : 140; easing.type: root.open ? Easing.OutCubic : Easing.InQuad }
-        }
-        Behavior on x {
-            NumberAnimation {
-                duration: root.open ? 280 : 160
-                easing.type: root.open ? Easing.OutExpo : Easing.InQuad
+            ShapePath {
+                fillColor: root.barMode === "notch" ? (Theme.isDark ? Qt.rgba(0.04, 0.04, 0.06, root.notchOpacity) : Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, root.notchOpacity)) : Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.shellOpacity)
+                strokeColor: "transparent"
+                strokeWidth: 0
+                PathSvg { path: root.fillPath }
+            }
+
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Theme.outline
+                strokeWidth: 1
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+                PathSvg { path: root.strokePath }
             }
         }
-        Behavior on y {
+
+        opacity: root.open ? 1.0 : 0.0
+        scale: root.open ? 1.0 : 0.95
+        y: root.open ? 0 : (root.barEdge === "bottom" ? -6 : 6)
+
+        Behavior on opacity {
             NumberAnimation {
-                duration: root.open ? 280 : 160
-                easing.type: root.open ? Easing.OutExpo : Easing.InQuad
+                duration: root.open ? 200 : 150
+                easing.bezierCurve: Theme.animCurves.expressiveDefaultEffects
             }
         }
         Behavior on scale {
             NumberAnimation {
                 duration: root.open ? 280 : 160
-                easing.type: root.open ? Easing.OutExpo : Easing.InQuad
+                easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel
+            }
+        }
+        Behavior on y {
+            NumberAnimation {
+                duration: root.open ? 280 : 160
+                easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel
             }
         }
 
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 8
+            anchors.leftMargin: root.barMode === "notch" ? 20 : 8
             spacing: 6
 
             /* ============ Header: speaker + mic ============ */

@@ -1,3 +1,6 @@
 #!/usr/bin/env bash
-# Carbon Pomodoro & Tracker launcher
-exec /usr/bin/python3 "${HOME}/.config/hypr/scripts/carbon-pomodoro.py" "$@"
+CONFIG_DIR="${CARBON_CONFIG_DIR:-$HOME/.config/carbon}"
+SCRIPT="$CONFIG_DIR/scripts/carbon-pomodoro.py"
+[ -f "$SCRIPT" ] || SCRIPT="$HOME/.config/hypr/scripts/carbon-pomodoro.py"
+exec /usr/bin/python3 "$SCRIPT" "$@"
+

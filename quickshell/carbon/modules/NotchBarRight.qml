@@ -28,6 +28,7 @@ NotchContainer {
     contentSpacing: 7
 
     property int notifCount: 0
+    implicitWidth: contentImplicitWidth + (leftFillet ? filletRadius : 0) + (horizontalPadding * 2)
 
     signal openMixer()
     signal closeMixer()

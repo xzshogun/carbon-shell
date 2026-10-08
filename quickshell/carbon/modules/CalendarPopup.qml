@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import "../Singletons"
 
@@ -21,6 +22,7 @@ Item {
     implicitHeight: 206
     width: 216
     height: 206
+    clip: true
 
     readonly property var now: new Date()
     property int year: now.getFullYear()
@@ -74,57 +76,75 @@ Item {
     onMonthChanged: root.rebuild()
     onYearChanged: root.rebuild()
 
-    Rectangle {
+    property bool animatingOut: false
+    onOpenChanged: {
+        if (root.open) {
+            root.animatingOut = false
+            animatingOutTimer.stop()
+        } else {
+            root.animatingOut = true
+            animatingOutTimer.restart()
+        }
+    }
+    Timer {
+        id: animatingOutTimer
+        interval: 200
+        onTriggered: root.animatingOut = false
+    }
+
+    Item {
         id: card
         width: parent.width
         height: parent.height
-        radius: 14
-        color: Theme.isDark ? Qt.rgba(0.08, 0.09, 0.12, 0.90) : Theme.m3surfaceContainerLowest
-        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : (Theme.isDark ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(0, 0, 0, 0.12))
-        border.width: 1
 
-        /* VisionOS Specular Rim highlight */
-        Rectangle {
+        Shape {
+            id: cardBgShape
             anchors.fill: parent
-            anchors.margins: 1
-            radius: card.radius - 1
-            color: "transparent"
-            border.width: 1
-            border.color: Theme.isDark ? Qt.rgba(1, 1, 1, root.open ? 0.20 : 0.06) : Qt.rgba(0, 0, 0, root.open ? 0.08 : 0.03)
-            z: 99
+            layer.enabled: true
+            layer.smooth: true
+            preferredRendererType: Shape.CurveRenderer
+
+            // 1. Fill background (Seamlessly attached: square top, rounded bottom)
+            ShapePath {
+                fillColor: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.shellOpacity)
+                strokeColor: "transparent"
+                strokeWidth: 0
+                startX: 0; startY: 0
+                PathLine { x: card.width; y: 0 }
+                PathLine { x: card.width; y: card.height - 20 }
+                PathArc { x: card.width - 20; y: card.height; radiusX: 20; radiusY: 20 }
+                PathLine { x: 20; y: card.height }
+                PathArc { x: 0; y: card.height - 20; radiusX: 20; radiusY: 20 }
+                PathLine { x: 0; y: 0 }
+            }
+
+            // 2. Continuous stroke (Right, Bottom, Left - NO stroke on top edge to blend seamlessly into the bar)
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Theme.outline
+                strokeWidth: 1
+                startX: card.width; startY: 0
+                PathLine { x: card.width; y: card.height - 20 }
+                PathArc { x: card.width - 20; y: card.height; radiusX: 20; radiusY: 20 }
+                PathLine { x: 20; y: card.height }
+                PathArc { x: 0; y: card.height - 20; radiusX: 20; radiusY: 20 }
+                PathLine { x: 0; y: 0 }
+            }
         }
 
-        opacity: root.open ? 1 : 0
-        x: root.open ? 0 : (root.barEdge === "left" ? -28 : (root.barEdge === "right" ? 28 : 0))
-        y: root.open ? 0 : (root.barEdge === "top" ? -20 : (root.barEdge === "bottom" ? 20 : 0))
-        scale: root.open ? 1.0 : 0.88
-        transformOrigin: root.barEdge === "left" ? Item.BottomLeft :
-                         (root.barEdge === "right" ? Item.BottomRight :
-                         (root.barEdge === "bottom" ? Item.BottomRight : Item.TopRight))
+        opacity: root.open ? 1.0 : 0.0
+        y: root.open ? 0 : (root.barEdge === "bottom" ? height : -height)
 
-        Behavior on border.color { ColorAnimation { duration: 200 } }
         Behavior on opacity {
-            NumberAnimation { duration: root.open ? 220 : 140; easing.type: Easing.OutCubic }
-        }
-        Behavior on x {
             NumberAnimation {
-                duration: root.open ? 320 : 160
-                easing.type: root.open ? Easing.OutBack : Easing.OutCubic
-                easing.overshoot: 1.35
+                duration: root.open ? 180 : 140
+                easing.bezierCurve: Theme.animCurves.expressiveDefaultEffects
             }
         }
         Behavior on y {
             NumberAnimation {
-                duration: root.open ? 320 : 160
-                easing.type: root.open ? Easing.OutBack : Easing.OutCubic
-                easing.overshoot: 1.35
-            }
-        }
-        Behavior on scale {
-            NumberAnimation {
-                duration: root.open ? 300 : 150
-                easing.type: root.open ? Easing.OutBack : Easing.OutCubic
-                easing.overshoot: 1.38
+                duration: root.open ? 240 : 160
+                easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel
             }
         }
 

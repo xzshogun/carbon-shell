@@ -12,7 +12,11 @@ import uuid
 import argparse
 from datetime import datetime
 
-EVENTS_FILE = os.path.expanduser("~/.config/hypr/carbon-calendar-events.json")
+CARBON_CONFIG_DIR = os.environ.get("CARBON_CONFIG_DIR", os.path.expanduser("~/.config/carbon"))
+EVENTS_FILE = os.path.join(CARBON_CONFIG_DIR, "carbon-calendar-events.json")
+if not os.path.exists(EVENTS_FILE) and os.path.exists(os.path.expanduser("~/.config/hypr/carbon-calendar-events.json")):
+    EVENTS_FILE = os.path.expanduser("~/.config/hypr/carbon-calendar-events.json")
+
 
 # ── Indian Calendar Festivals & Holidays Database ─────────────────────────────
 # Fixed annual national/cultural holidays (month, day)

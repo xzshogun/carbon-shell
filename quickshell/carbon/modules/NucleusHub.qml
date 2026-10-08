@@ -31,6 +31,7 @@ Item {
     /* ── Signals ── */
     signal openLauncher()
     signal openWallpapers()
+    signal closingStarted()
     signal closeRequested()
 
     /* ── Properties & State ── */
@@ -66,6 +67,7 @@ Item {
     }
 
     function open() {
+        closeFinishTimer.stop()
         root.randomizeOrbitalPositions()
         root.hubOpen = true
         root.activeMode = "hub"
@@ -75,13 +77,17 @@ Item {
     Timer {
         id: closeFinishTimer
         interval: 380
-        onTriggered: root.closeRequested()
+        onTriggered: {
+            root.activeMode = "hub"
+            root.closeRequested()
+        }
     }
 
     function close() {
+        if (!root.hubOpen) return
         root.hubOpen = false
-        root.activeMode = "hub"
         root.focusedLobe = ""
+        root.closingStarted()
         closeFinishTimer.restart()
     }
 
@@ -407,6 +413,28 @@ Item {
                 readonly property real targetAlpha: isThisFocused ? 1.0 : (isAnyFocused ? 0.35 : 1.0)
 
                 property real bloomAnim: 0.0
+
+                Connections {
+                    target: root
+                    function onHubOpenChanged() {
+                        if (root.hubOpen && root.activeMode !== "wallpapers") {
+                            lobeRetractAnim.stop()
+                            lobeBloomSeq.restart()
+                        } else {
+                            lobeBloomSeq.stop()
+                            lobeRetractAnim.restart()
+                        }
+                    }
+                }
+
+                NumberAnimation {
+                    id: lobeRetractAnim
+                    target: lobeItem
+                    property: "bloomAnim"
+                    to: 0.0
+                    duration: 260
+                    easing.type: Easing.InCubic
+                }
 
                 SequentialAnimation {
                     id: lobeBloomSeq
@@ -783,6 +811,70 @@ Item {
            - Vibrant crisp core disc (White with neon accent border)
            - Inner bright dot when resting; clear bold time display when open
            ══════════════════════════════════════════════════════════════════════ */
+
+        // Resting Carbon Valence Orbit Rings & 6 Electrons (fades in as core disc shrinks)
+        Item {
+            id: hubRestingElectrons
+            z: -1
+            anchors.centerIn: parent
+            visible: root.hubProgress < 0.65 && root.activeMode === "hub"
+            opacity: Math.max(0.0, Math.min(1.0, (0.65 - root.hubProgress) / 0.65))
+
+            // Ring 1 (Inner, 2 electrons)
+            Rectangle {
+                anchors.centerIn: parent
+                width: 40; height: 40; radius: 20
+                color: "transparent"
+                border.color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.22)
+                border.width: 1
+
+                Item {
+                    anchors.centerIn: parent
+                    width: parent.width; height: parent.height
+                    NumberAnimation on rotation {
+                        from: 0; to: 360; duration: 18000; loops: Animation.Infinite; running: hubRestingElectrons.visible
+                    }
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: -3.5; width: 6; height: 6; radius: 3; color: root.colTeal
+                    }
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: parent.height - 2.5; width: 6; height: 6; radius: 3; color: root.colTeal
+                    }
+                }
+            }
+
+            // Ring 2 (Outer, 4 electrons)
+            Rectangle {
+                anchors.centerIn: parent
+                width: 72; height: 72; radius: 36
+                color: "transparent"
+                border.color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.16)
+                border.width: 1
+
+                Item {
+                    anchors.centerIn: parent
+                    width: parent.width; height: parent.height
+                    rotation: 45
+                    NumberAnimation on rotation {
+                        from: 45; to: -315; duration: 28000; loops: Animation.Infinite; running: hubRestingElectrons.visible
+                    }
+                    Repeater {
+                        model: 4
+                        delegate: Item {
+                            anchors.fill: parent
+                            rotation: index * 90
+                            Rectangle {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                y: -3.5; width: 6; height: 6; radius: 3; color: root.colTeal
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         Item {
             id: nucleusCore
             anchors.centerIn: parent
@@ -814,7 +906,7 @@ Item {
                 anchors.centerIn: parent
                 width: 140
                 height: 140
-                hostVisible: root.hubOpen && (root.activeMode === "hub")
+                hostVisible: (root.hubOpen || root.hubProgress > 0.05) && (root.activeMode === "hub")
                 opacity: (root.hubProgress > 0.35 && root.activeMode === "hub") ? 1.0 : 0.0
                 scale: 0.7 + (0.3 * root.hubProgress)
                 Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
@@ -830,12 +922,12 @@ Item {
                 color: "#FFFFFF"
                 border.color: root.colTeal
                 border.width: root.hubOpen ? 2.4 : 1.5
-
+                Behavior on border.width { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
 
                 // Time readout inside disc when open
                 Text {
                     anchors.centerIn: parent
-                    visible: root.hubOpen
+                    visible: opacity > 0.01
                     opacity: root.hubProgress
                     text: root.timeStr
                     font.family: "Valley Sans"
@@ -866,7 +958,7 @@ Item {
             anchors.centerIn: parent
             width: 116
             height: 116
-            visible: root.hubOpen && LyricsService.hasTrack && root.activeMode === "hub"
+            visible: (opacity > 0.01) && LyricsService.hasTrack && root.activeMode === "hub"
             opacity: (root.hubProgress > 0.35 && LyricsService.hasTrack && root.activeMode === "hub") ? 1.0 : 0.0
             scale: 0.7 + (0.3 * root.hubProgress)
             Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
@@ -978,7 +1070,7 @@ Item {
             anchors.topMargin: 56
             width: 320
             height: 84
-            visible: root.hubOpen && LyricsService.hasTrack && root.activeMode === "hub"
+            visible: (opacity > 0.01) && LyricsService.hasTrack && root.activeMode === "hub"
             opacity: (root.hubProgress > 0.25 && LyricsService.hasTrack && root.activeMode === "hub") ? 1.0 : 0.0
             Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 

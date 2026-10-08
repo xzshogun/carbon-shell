@@ -1978,6 +1978,7 @@ ShellRoot {
     /* ── Nucleus Mode: Fullscreen Radial Desktop Layer ── */
     readonly property QtObject nucleusHubItem: QtObject {
         property bool hubOpen: false
+        property bool isClosing: false
         signal toggleRequested()
         signal openRequested()
         signal closeRequested()
@@ -1986,41 +1987,47 @@ ShellRoot {
         signal launcherModeRequested()
 
         function toggle() { 
-            if (!hubOpen) {
+            if (!hubOpen || isClosing) {
+                isClosing = false
                 hubOpen = true
                 openRequested()
             } else {
-                hubOpen = false
-                closeRequested()
+                close()
             }
         }
         function open() { 
+            isClosing = false
             hubOpen = true
             openRequested() 
         }
         function close() { 
-            hubOpen = false
-            closeRequested() 
+            if (hubOpen && !isClosing) {
+                isClosing = true
+                closeRequested()
+            }
         }
         function focusLobe(l) { 
+            isClosing = false
             hubOpen = true
             focusLobeRequested(l) 
         }
         function openWallpaperMode() { 
+            isClosing = false
             hubOpen = true
             wallpaperModeRequested() 
         }
         function openLauncherMode() { 
+            isClosing = false
             hubOpen = true
             launcherModeRequested() 
         }
         function toggleLauncher() {
-            if (!hubOpen) {
+            if (!hubOpen || isClosing) {
+                isClosing = false
                 hubOpen = true
                 launcherModeRequested()
             } else {
-                hubOpen = false
-                closeRequested()
+                close()
             }
         }
         signal toggleLyricsRequested()
@@ -2145,7 +2152,7 @@ ShellRoot {
             color: "transparent"
             WlrLayershell.namespace: "carbon-nucleus-hub"
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: (root.barMode === "nucleus" && root.nucleusHubItem.hubOpen) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: (root.barMode === "nucleus" && root.nucleusHubItem.hubOpen && !root.nucleusHubItem.isClosing) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             exclusionMode: ExclusionMode.Ignore
             aboveWindows: true
             anchors {
@@ -2162,8 +2169,12 @@ ShellRoot {
                 anchors.fill: parent
                 onOpenLauncher: root.openLauncher()
                 onOpenWallpapers: root.openWallpaperPicker()
+                onClosingStarted: {
+                    root.nucleusHubItem.isClosing = true
+                }
                 onCloseRequested: {
                     root.nucleusHubItem.hubOpen = false
+                    root.nucleusHubItem.isClosing = false
                 }
 
                 Connections {

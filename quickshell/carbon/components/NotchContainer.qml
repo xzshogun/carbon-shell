@@ -65,7 +65,9 @@ Item {
 
         Rectangle {
             anchors.left: parent.left
+            anchors.leftMargin: (!root.leftFillet && root.rightFillet) ? -root.bottomRadius : 0
             anchors.right: parent.right
+            anchors.rightMargin: (!root.rightFillet && root.leftFillet) ? -root.bottomRadius : 0
             anchors.top: root.attachedBottom ? undefined : parent.top
             anchors.topMargin: root.attachedBottom ? 0 : -root.bottomRadius
             anchors.bottom: root.attachedBottom ? parent.bottom : undefined

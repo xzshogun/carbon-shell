@@ -10,6 +10,7 @@ import sys
 import json
 import subprocess
 import shutil
+import re
 
 # Ensure fast GTK4 launch without GPU enumeration stalls
 os.environ.setdefault("GSK_RENDERER", "cairo")
@@ -98,6 +99,71 @@ def write_variable(key, val):
             f.writelines(new_lines)
     except Exception as e:
         print(f"Error updating variables.lua: {e}", file=sys.stderr)
+
+def apply_hyprland_layer_blur(enable: bool):
+    blur_conf = os.path.expanduser("~/.config/hypr/configs/carbon-layer-blur.conf")
+    try:
+        with open(blur_conf, "w", encoding="utf-8") as f:
+            if enable:
+                f.write(
+                    "layerrule = blur, carbon-.*\n"
+                    "layerrule = ignorezero, carbon-.*\n"
+                    "layerrule = blur, quickshell\n"
+                    "layerrule = ignorezero, quickshell\n"
+                    "layerrule = blur, tide-island\n"
+                    "layerrule = ignorezero, tide-island\n"
+                )
+            else:
+                f.write("# blur disabled\n")
+        # Ensure windowrules.lua reloads with the new state
+        subprocess.run(["hyprctl", "eval", 'dofile("/home/reduct/.config/hypr/carbon/windowrules.lua")'], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["hyprctl", "reload"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"Error updating layer blur: {e}", file=sys.stderr)
+
+def is_layer_blur_enabled():
+    try:
+        bp = read_json(BAR_POS_PATH, {})
+        if "shellBlur" in bp:
+            return bool(bp["shellBlur"])
+    except Exception:
+        pass
+    blur_conf = os.path.expanduser("~/.config/hypr/configs/carbon-layer-blur.conf")
+    if os.path.exists(blur_conf):
+        try:
+            with open(blur_conf, "r", encoding="utf-8") as f:
+                content = f.read()
+            return "layerrule = blur" in content
+        except Exception:
+            pass
+    return True
+
+def update_looknfeel_setting(key: str, val_str: str):
+    look_path = os.path.expanduser("~/.config/hypr/configs/looknfeel.conf")
+    if os.path.exists(look_path):
+        try:
+            with open(look_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            pattern = rf"({key}\s*=\s*)([^\n]+)"
+            if re.search(pattern, content):
+                new_content = re.sub(pattern, rf"\g<1>{val_str}", content)
+                with open(look_path, "w", encoding="utf-8") as f:
+                    f.write(new_content)
+        except Exception as e:
+            print(f"Error updating looknfeel.conf: {e}", file=sys.stderr)
+
+    lua_path = os.path.expanduser("~/.config/hypr/carbon/looknfeel.lua")
+    if os.path.exists(lua_path):
+        try:
+            with open(lua_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            pattern = rf"({key}\s*=\s*)([^\n,]+)(,?)"
+            if re.search(pattern, content):
+                new_content = re.sub(pattern, rf"\g<1>{val_str}\g<3>", content)
+                with open(lua_path, "w", encoding="utf-8") as f:
+                    f.write(new_content)
+        except Exception as e:
+            print(f"Error updating looknfeel.lua: {e}", file=sys.stderr)
 
 # ── Config App Window ────────────────────────────────────────────────────
 class CarbonConfigApp(Adw.Application):
@@ -692,15 +758,22 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         # Opacity
         cur_o = int(float(self.bar_pos.get("notchOpacity", 0.96)) * 100)
         def on_o_changed(v):
-            self.bar_pos["notchOpacity"] = round(v / 100.0, 2)
+            val = round(v / 100.0, 2)
+            self.bar_pos["notchOpacity"] = val
+            self.bar_pos["shellOpacity"] = val
+            self.bar_pos["pillOpacity"] = val
+            self.bar_pos["minimalOpacity"] = val
             write_json(BAR_POS_PATH, self.bar_pos)
         self.add_slider_row(card, "Background Opacity", "Surface darkness / transparency", 20, 100, 5, cur_o, "%", on_o_changed)
 
         # Background Blur
-        cur_blur = bool(self.bar_pos.get("notchBlur", True))
+        cur_blur = is_layer_blur_enabled()
         def on_blur_toggle(act):
             self.bar_pos["notchBlur"] = act
+            self.bar_pos["shellBlur"] = act
+            self.bar_pos["pillBlur"] = act
             write_json(BAR_POS_PATH, self.bar_pos)
+            apply_hyprland_layer_blur(act)
         self.add_switch_row(card, "Frosted Glass Blur", "Enable backdrop blur behind the bar", cur_blur, on_blur_toggle)
 
         page.append(card)
@@ -775,25 +848,32 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         card = self.create_settings_card()
 
         # Window Opacity
-        cur_w_o = int(float(self.var_data.get("windowOpacity", 0.90)) * 100)
+        cur_w_o = int(float(self.var_data.get("windowOpacity", 0.95)) * 100)
         def on_wo_changed(v):
             val = round(v / 100.0, 2)
             self.var_data["windowOpacity"] = val
             write_variable("windowOpacity", val)
+            update_looknfeel_setting("active_opacity", f"{val:.2f}")
+            update_looknfeel_setting("inactive_opacity", f"{val:.2f}")
+            subprocess.run(["hyprctl", "eval", f"hl.config({{ decoration = {{ active_opacity = {val:.2f}, inactive_opacity = {val:.2f} }} }})"], check=False, stdout=subprocess.DEVNULL)
         self.add_slider_row(card, "Window Opacity", "Hyprland active window transparency", 50, 100, 5, cur_w_o, "%", on_wo_changed)
 
         # Window Corner Rounding
-        cur_r = int(self.var_data.get("rounding", 12))
+        cur_r = int(self.var_data.get("rounding", 15))
         def on_r_changed(v):
             self.var_data["rounding"] = v
             write_variable("rounding", v)
+            update_looknfeel_setting("rounding", str(int(v)))
+            subprocess.run(["hyprctl", "eval", f"hl.config({{ decoration = {{ rounding = {int(v)} }} }})"], check=False, stdout=subprocess.DEVNULL)
         self.add_slider_row(card, "Corner Rounding", "Radius of window corners", 0, 24, 1, cur_r, "px", on_r_changed)
 
         # Window Border Size
-        cur_b = int(self.var_data.get("borderSize", 2))
+        cur_b = int(self.var_data.get("borderSize", 1))
         def on_b_changed(v):
             self.var_data["borderSize"] = v
             write_variable("borderSize", v)
+            update_looknfeel_setting("border_size", str(int(v)))
+            subprocess.run(["hyprctl", "eval", f"hl.config({{ general = {{ border_size = {int(v)} }} }})"], check=False, stdout=subprocess.DEVNULL)
         self.add_slider_row(card, "Border Width", "Thickness of active window border", 0, 6, 1, cur_b, "px", on_b_changed)
 
         # Shell UI Scale
@@ -816,6 +896,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         def on_reduce(act):
             self.motion_cfg["reduceMotion"] = act
             write_json(MOTION_CONFIG_PATH, self.motion_cfg)
+            subprocess.run(["hyprctl", "eval", f"hl.config({{ animations = {{ enabled = {'false' if act else 'true'} }} }})"], check=False, stdout=subprocess.DEVNULL)
         self.add_switch_row(card, "Reduce motion", None, reduce_act, on_reduce)
 
         # Movement (size / position)
@@ -959,11 +1040,21 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         self.add_combo_row(card, "Lock Screen Layout", "Visual layout of hyprlock interface", layouts, idx, on_l_changed)
 
         # Background Blur Radius
-        blur_r = int(self.lock_cfg.get("blurRadius", 10))
+        blur_r = int(self.lock_cfg.get("blurRadius", 2))
         def on_blur_r(v):
             self.lock_cfg["blurRadius"] = v
             write_json(LOCKSCREEN_CONFIG_PATH, self.lock_cfg)
-        self.add_slider_row(card, "Background Blur", "Amount of backdrop blur when locked", 0, 20, 1, blur_r, "passes", on_blur_r)
+            h_path = os.path.expanduser("~/.config/hypr/hyprlock.conf")
+            if os.path.exists(h_path):
+                try:
+                    with open(h_path, "r", encoding="utf-8") as f:
+                        c = f.read()
+                    c = re.sub(r"(blur_passes\s*=\s*)\d+", rf"\g<1>{int(v)}", c)
+                    with open(h_path, "w", encoding="utf-8") as f:
+                        f.write(c)
+                except Exception:
+                    pass
+        self.add_slider_row(card, "Background Blur", "Amount of backdrop blur when locked", 0, 10, 1, blur_r, "passes", on_blur_r)
 
         # Media Player
         media_act = bool(self.lock_cfg.get("showMedia", True))

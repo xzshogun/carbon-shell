@@ -147,10 +147,18 @@ Item {
     }
 
     property string barMode: "notch"
+    property real notchOpacity: 0.96
 
     readonly property string fillPath: {
         const w = bgCard.width
         const h = bgCard.height
+        if (root.barMode === "notch") {
+            const r = 16
+            if (root.barEdge === "bottom") {
+                return `M 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`
+            }
+            return `M 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 L ${w} 0 L ${w} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} Z`
+        }
         const r = 16
         return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
     }
@@ -158,6 +166,13 @@ Item {
     readonly property string strokePath: {
         const w = bgCard.width
         const h = bgCard.height
+        if (root.barMode === "notch") {
+            const r = 16
+            if (root.barEdge === "bottom") {
+                return `M 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 L ${w} 0`
+            }
+            return `M 0 ${r} L 0 ${h - r} A ${r} ${r} 0 0 0 ${r} ${h} L ${w} ${h}`
+        }
         const r = 16
         return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
     }
@@ -169,12 +184,12 @@ Item {
         Shape {
             id: cardBgShape
             anchors.fill: parent
-            layer.enabled: true
-            layer.smooth: true
-            preferredRendererType: Shape.CurveRenderer
+            preferredRendererType: Shape.GeometryRenderer
+            antialiasing: true
+            asynchronous: false
 
             ShapePath {
-                fillColor: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.shellOpacity)
+                fillColor: root.barMode === "notch" ? (Theme.isDark ? Qt.rgba(0.04, 0.04, 0.06, root.notchOpacity) : Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, root.notchOpacity)) : Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.shellOpacity)
                 strokeColor: "transparent"
                 strokeWidth: 0
                 PathSvg { path: root.fillPath }

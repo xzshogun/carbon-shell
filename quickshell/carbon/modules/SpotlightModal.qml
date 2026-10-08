@@ -25,23 +25,23 @@ Item {
     /* Caelestia Shell bottom slide-up & fluid pop-in animation */
     readonly property bool animatingOut: !root.open && (root.opacity > 0.005 || opacityAnim.running || slideAnim.running)
 
-    property real yOffset: root.open ? 0 : 32
+    property real yOffset: root.open ? 0 : 20
     transform: Translate { y: root.yOffset }
     transformOrigin: Item.Center
-    scale: root.open ? 1.0 : 0.96
+    scale: root.open ? 1.0 : 0.97
     opacity: root.open ? 1.0 : 0.0
 
     Behavior on yOffset {
         NumberAnimation {
             id: slideAnim
-            duration: root.open ? 170 : 130
+            duration: root.open ? 130 : 95
             easing.type: root.open ? Easing.OutCubic : Easing.InCubic
         }
     }
 
     Behavior on scale {
         NumberAnimation {
-            duration: root.open ? 170 : 130
+            duration: root.open ? 130 : 95
             easing.type: root.open ? Easing.OutCubic : Easing.InCubic
         }
     }
@@ -49,7 +49,7 @@ Item {
     Behavior on opacity {
         NumberAnimation {
             id: opacityAnim
-            duration: root.open ? 160 : 110
+            duration: root.open ? 120 : 85
             easing.type: Easing.OutCubic
         }
     }
@@ -88,12 +88,12 @@ Item {
     SequentialAnimation {
         id: tabSwitchAnim
         ParallelAnimation {
-            NumberAnimation { target: root; property: "tabContentOpacity"; to: 0.35; duration: 45; easing.type: Easing.OutQuad }
-            NumberAnimation { target: root; property: "tabContentY"; to: 5; duration: 45; easing.type: Easing.OutQuad }
+            NumberAnimation { target: root; property: "tabContentOpacity"; to: 0.20; duration: 40; easing.type: Easing.OutQuad }
+            NumberAnimation { target: root; property: "tabContentY"; to: 6; duration: 40; easing.type: Easing.OutQuad }
         }
         ParallelAnimation {
-            NumberAnimation { target: root; property: "tabContentOpacity"; to: 1.0; duration: 130; easing.type: Easing.OutCubic }
-            NumberAnimation { target: root; property: "tabContentY"; to: 0; duration: 130; easing.type: Easing.OutCubic }
+            NumberAnimation { target: root; property: "tabContentOpacity"; to: 1.0; duration: 120; easing.type: Easing.OutCubic }
+            NumberAnimation { target: root; property: "tabContentY"; to: 0; duration: 120; easing.type: Easing.OutCubic }
         }
     }
 

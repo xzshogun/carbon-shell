@@ -694,22 +694,26 @@ ShellRoot {
         return (root.mainBarEdge === "bottom" || root.barEdge === "bottom") ? "top_left" : "bottom_right"
     }
 
+    property int notchEarRadius: 10
+    property int notchBottomRadius: 14
+    property int sideNotchBottomRadius: Math.min(8, root.notchBottomRadius)
+
     readonly property int popupTopMargin: {
         if (root.mainBarEdge === "bottom") return 0
-        if (root.barMode === "notch") return root.notchHeight + 6
-        if (root.barMode === "pill") return root.pillHeight + 14
+        if (root.barMode === "notch") return -1
+        if (root.barMode === "pill") return root.pillHeight + 10
         return 0
     }
 
     readonly property int popupBottomMargin: {
         if (root.mainBarEdge !== "bottom") return 0
-        if (root.barMode === "notch") return root.notchHeight + 6
-        if (root.barMode === "pill") return root.pillHeight + 14
+        if (root.barMode === "notch") return -1
+        if (root.barMode === "pill") return root.pillHeight + 10
         return 0
     }
 
     readonly property int popupRightMargin: {
-        if (root.barMode === "notch") return 10
+        if (root.barMode === "notch") return 0
         if (root.barMode === "pill") return 12
         return 0
     }
@@ -746,6 +750,8 @@ ShellRoot {
 
             if (d.pillHeight !== undefined) root.pillHeight = parseInt(d.pillHeight) || 36
             if (d.notchHeight !== undefined) root.notchHeight = parseInt(d.notchHeight) || 32
+            if (d.notchEarRadius !== undefined) root.notchEarRadius = parseInt(d.notchEarRadius) || 10
+            if (d.notchBottomRadius !== undefined) root.notchBottomRadius = parseInt(d.notchBottomRadius) || 14
             if (d.appGap !== undefined) root.appGap = (!isNaN(parseInt(d.appGap))) ? parseInt(d.appGap) : 1
             if (d.pillAppGap !== undefined) root.pillAppGap = (!isNaN(parseInt(d.pillAppGap))) ? parseInt(d.pillAppGap) : root.appGap
             else root.pillAppGap = root.appGap
@@ -1856,6 +1862,8 @@ ShellRoot {
             NotchBarLeft {
                 id: notchLeftItem
                 notchOpacity: root.notchOpacity
+                filletRadius: root.notchEarRadius
+                bottomRadius: root.sideNotchBottomRadius
                 height: root.notchHeight
                 implicitHeight: root.notchHeight
                 attachedBottom: root.mainBarEdge === "bottom"
@@ -1870,6 +1878,8 @@ ShellRoot {
             NotchBarCenter {
                 id: notchCenterItem
                 notchOpacity: root.notchOpacity
+                filletRadius: root.notchEarRadius
+                bottomRadius: root.notchBottomRadius
                 isExpanded: root.centerDashboardOpen
                 visible: root.musicBarEdge === root.mainBarEdge
                 barContent: root.musicBarContent
@@ -1890,6 +1900,8 @@ ShellRoot {
             NotchBarRight {
                 id: notchRightItem
                 notchOpacity: root.notchOpacity
+                filletRadius: root.notchEarRadius
+                bottomRadius: root.sideNotchBottomRadius
                 height: root.notchHeight
                 implicitHeight: root.notchHeight
                 attachedBottom: root.mainBarEdge === "bottom"
@@ -2158,6 +2170,7 @@ ShellRoot {
             id: mixerItem
             barMode: root.barMode
             barEdge: root.mainBarEdge
+            notchOpacity: root.notchOpacity
             open: root.mixerOpen
             onCloseRequested: root.closeMixer()
             onAnyHoverChanged: {
@@ -2203,6 +2216,7 @@ ShellRoot {
             id: brightnessItem
             barMode: root.barMode
             barEdge: root.mainBarEdge
+            notchOpacity: root.notchOpacity
             open: root.brightnessOpen
             onCloseRequested: root.closeBrightness()
             onAnyHoverChanged: {
@@ -2248,6 +2262,7 @@ ShellRoot {
             id: batteryItem
             barMode: root.barMode
             barEdge: root.mainBarEdge
+            notchOpacity: root.notchOpacity
             open: root.batteryOpen
             onHoveredChanged: {
                 root.batteryHovered = batteryItem.hovered
@@ -2293,6 +2308,7 @@ ShellRoot {
             id: wifiItem
             barMode: root.barMode
             barEdge: root.mainBarEdge
+            notchOpacity: root.notchOpacity
             open: root.wifiOpen
             powerOn: root.wifiOn
             wifiName: root.wifiName
@@ -2344,6 +2360,7 @@ ShellRoot {
             id: btItem
             barMode: root.barMode
             barEdge: root.mainBarEdge
+            notchOpacity: root.notchOpacity
             open: root.btOpen
             powerOn: root.btOn
             btName: root.btName
@@ -2395,6 +2412,7 @@ ShellRoot {
             id: trayItem
             barMode: root.barMode
             barEdge: root.mainBarEdge
+            notchOpacity: root.notchOpacity
             open: root.trayOpen
             onHoveredChanged: {
                 root.trayHovered = trayItem.hovered

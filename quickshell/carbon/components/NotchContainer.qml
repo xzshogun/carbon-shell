@@ -3,25 +3,27 @@ import QtQuick.Shapes
 import "../Singletons"
 
 /**
- * Top-Attached Notch Container with Nebula-Style Concave Top Fillets
- * and Smoothly Curved Convex Bottom Corners.
+ * Top-Attached Notch Container matching SaneAspect / Tide Island exact geometry:
+ * - Native Rectangle body with clipped top corners and smooth convex bottom corners
+ * - Native PathArc ear fillets curving outward seamlessly into the screen edge
+ * - No fuzzy SVG approximations, no stroke outlines
  */
 Item {
     id: root
 
     property bool leftFillet: true
     property bool rightFillet: true
-    property real filletRadius: 12
-    property real bottomRadius: 12
+    property real filletRadius: 10
+    property real bottomRadius: 14
     property real contentSpacing: 7
-    property real horizontalPadding: 10
+    property real horizontalPadding: 12
     property real earWidth: 0
 
     default property alias content: contentRow.data
     readonly property real contentImplicitWidth: contentRow.implicitWidth
 
-    implicitHeight: 34
-    implicitWidth: Math.max(80, contentRow.implicitWidth 
+    implicitHeight: 32
+    implicitWidth: Math.max(70, contentRow.implicitWidth 
                    + (leftFillet ? filletRadius : 0) 
                    + (rightFillet ? filletRadius : 0) 
                    + (horizontalPadding * 2))
@@ -29,227 +31,113 @@ Item {
 
     Behavior on width {
         NumberAnimation {
-            duration: 240
+            duration: 220
             easing.type: Easing.OutCubic
         }
     }
     height: implicitHeight
     Behavior on height {
         NumberAnimation {
-            duration: 240
+            duration: 220
             easing.type: Easing.OutCubic
         }
     }
 
     property bool attachedBottom: false
     property bool hasAttachedPopup: false
+    property real notchOpacity: 0.96
 
-    readonly property string fillPath: {
-        const rTopLeft = root.leftFillet ? root.filletRadius : 0
-        const rTopRight = root.rightFillet ? root.filletRadius : 0
-        const rBotLeft = root.bottomRadius
-        const rBotRight = root.bottomRadius
-        const minW = rTopLeft + rBotLeft + rBotRight + rTopRight + 4
-        const w = Math.max(root.width, minW)
-        const h = root.height
+    // SaneAspect deep dark OLED notch surface
+    readonly property color notchBgColor: Theme.isDark 
+        ? Qt.rgba(0.04, 0.04, 0.06, root.notchOpacity) 
+        : Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, root.notchOpacity)
 
-        if (root.attachedBottom) {
-            let p = `M 0 ${h} `
-            let curX = 0
-            if (rTopLeft > 0) {
-                p += `A ${rTopLeft} ${rTopLeft} 0 0 0 ${rTopLeft} ${h - rTopLeft} `
-                curX = rTopLeft
-            }
-            p += `L ${curX} ${rBotLeft} `
-            p += `A ${rBotLeft} ${rBotLeft} 0 0 1 ${curX + rBotLeft} 0 `
+    // 1. Central Body: Clipped to hide top rounded corners, showing bottom convex corners
+    Item {
+        id: bodyClip
+        clip: true
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: (root.leftFillet && root.filletRadius > 0) ? root.filletRadius : 0
+        anchors.rightMargin: (root.rightFillet && root.filletRadius > 0) ? root.filletRadius : 0
 
-            const rightWallX = w - rTopRight
-            if (root.hasAttachedPopup) {
-                p += `L ${curX} 0 `
-                p += `L ${rightWallX} 0 `
-                if (rTopRight > 0) {
-                    p += `L ${rightWallX} ${h - rTopRight} `
-                    p += `A ${rTopRight} ${rTopRight} 0 0 0 ${w} ${h} `
-                } else {
-                    p += `L ${w} ${h} `
-                }
-                p += `L 0 ${h} Z`
-                return p
-            }
-
-            p += `L ${curX} ${rBotLeft} `
-            p += `A ${rBotLeft} ${rBotLeft} 0 0 1 ${curX + rBotLeft} 0 `
-
-            p += `L ${rightWallX - rBotRight} 0 `
-            p += `A ${rBotRight} ${rBotRight} 0 0 1 ${rightWallX} ${rBotRight} `
-
-            if (rTopRight > 0) {
-                p += `L ${rightWallX} ${h - rTopRight} `
-                p += `A ${rTopRight} ${rTopRight} 0 0 0 ${w} ${h} `
-            } else {
-                p += `L ${w} ${h} `
-            }
-
-            p += `L 0 ${h} Z`
-            return p
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: root.attachedBottom ? undefined : parent.top
+            anchors.topMargin: root.attachedBottom ? 0 : -root.bottomRadius
+            anchors.bottom: root.attachedBottom ? parent.bottom : undefined
+            anchors.bottomMargin: root.attachedBottom ? -root.bottomRadius : 0
+            height: parent.height + root.bottomRadius
+            radius: root.bottomRadius
+            color: root.notchBgColor
         }
-
-        let p = "M 0 0 "
-        let curX = 0
-        if (rTopLeft > 0) {
-            p += `A ${rTopLeft} ${rTopLeft} 0 0 1 ${rTopLeft} ${rTopLeft} `
-            curX = rTopLeft
-        }
-
-        const rightWallX = w - rTopRight
-        if (root.hasAttachedPopup) {
-            p += `L ${curX} ${h} `
-            p += `L ${rightWallX} ${h} `
-            if (rTopRight > 0) {
-                p += `L ${rightWallX} ${rTopRight} `
-                p += `A ${rTopRight} ${rTopRight} 0 0 1 ${w} 0 `
-            } else {
-                p += `L ${w} 0 `
-            }
-            p += `L 0 0 Z`
-            return p
-        }
-
-        p += `L ${curX} ${h - rBotLeft} `
-        p += `A ${rBotLeft} ${rBotLeft} 0 0 0 ${curX + rBotLeft} ${h} `
-
-        p += `L ${rightWallX - rBotRight} ${h} `
-        p += `A ${rBotRight} ${rBotRight} 0 0 0 ${rightWallX} ${h - rBotRight} `
-
-        if (rTopRight > 0) {
-            p += `L ${rightWallX} ${rTopRight} `
-            p += `A ${rTopRight} ${rTopRight} 0 0 1 ${w} 0 `
-        } else {
-            p += `L ${w} 0 `
-        }
-
-        p += `L 0 0 Z`
-        return p
     }
 
-    readonly property string strokePath: {
-        const rTopLeft = root.leftFillet ? root.filletRadius : 0
-        const rTopRight = root.rightFillet ? root.filletRadius : 0
-        const rBotLeft = root.bottomRadius
-        const rBotRight = root.bottomRadius
-        const minW = rTopLeft + rBotLeft + rBotRight + rTopRight + 4
-        const w = Math.max(root.width, minW)
-        const h = root.height
-
-        if (root.attachedBottom) {
-            let p = `M 0 ${h} `
-            let curX = 0
-            if (rTopLeft > 0) {
-                p += `A ${rTopLeft} ${rTopLeft} 0 0 0 ${rTopLeft} ${h - rTopLeft} `
-                curX = rTopLeft
-            }
-
-            const rightWallX = w - rTopRight
-            if (root.hasAttachedPopup) {
-                p += `L ${curX} 0 `
-                if (rTopRight > 0) {
-                    p += `M ${rightWallX} 0 `
-                    p += `L ${rightWallX} ${h - rTopRight} `
-                    p += `A ${rTopRight} ${rTopRight} 0 0 0 ${w} ${h}`
-                } else {
-                    p += `M ${w} 0 L ${w} ${h}`
-                }
-                return p
-            }
-
-            p += `L ${curX} ${rBotLeft} `
-            p += `A ${rBotLeft} ${rBotLeft} 0 0 1 ${curX + rBotLeft} 0 `
-
-            p += `L ${rightWallX - rBotRight} 0 `
-            p += `A ${rBotRight} ${rBotRight} 0 0 1 ${rightWallX} ${rBotRight} `
-
-            if (rTopRight > 0) {
-                p += `L ${rightWallX} ${h - rTopRight} `
-                p += `A ${rTopRight} ${rTopRight} 0 0 0 ${w} ${h}`
-            } else {
-                p += `L ${w} ${h}`
-            }
-            return p
-        }
-
-        let p = "M 0 0 "
-        let curX = 0
-        if (rTopLeft > 0) {
-            p += `A ${rTopLeft} ${rTopLeft} 0 0 1 ${rTopLeft} ${rTopLeft} `
-            curX = rTopLeft
-        }
-
-        const rightWallX = w - rTopRight
-        if (root.hasAttachedPopup) {
-            // Leave bottom open to seamlessly merge with the attached popup card
-            p += `L ${curX} ${h} `
-            if (rTopRight > 0) {
-                p += `M ${rightWallX} ${h} `
-                p += `L ${rightWallX} ${rTopRight} `
-                p += `A ${rTopRight} ${rTopRight} 0 0 1 ${w} 0`
-            } else {
-                p += `M ${w} ${h} L ${w} 0`
-            }
-            return p
-        }
-
-        p += `L ${curX} ${h - rBotLeft} `
-        p += `A ${rBotLeft} ${rBotLeft} 0 0 0 ${curX + rBotLeft} ${h} `
-
-        p += `L ${rightWallX - rBotRight} ${h} `
-        p += `A ${rBotRight} ${rBotRight} 0 0 0 ${rightWallX} ${h - rBotRight} `
-
-        if (rTopRight > 0) {
-            p += `L ${rightWallX} ${rTopRight} `
-            p += `A ${rTopRight} ${rTopRight} 0 0 1 ${w} 0`
-        } else {
-            p += `L ${w} 0`
-        }
-        return p
-    }
-
-    property real notchOpacity: 0.90
-
+    // 2. Left Ear Fillet (SaneAspect exact PathArc geometry)
     Shape {
-        id: bgShape
-        anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
+        id: leftEar
+        visible: root.leftFillet && root.filletRadius > 0
+        x: 0
+        y: root.attachedBottom ? (root.height - root.filletRadius) : 0
+        width: root.filletRadius
+        height: root.filletRadius
+        preferredRendererType: Shape.GeometryRenderer
+        antialiasing: true
         asynchronous: false
-        layer.enabled: false
 
-        // Filled background body
         ShapePath {
-            strokeWidth: 0
+            fillColor: root.notchBgColor
             strokeColor: "transparent"
-            fillColor: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, root.notchOpacity)
-
-            PathSvg {
-                path: root.fillPath
+            strokeWidth: 0
+            startX: 0
+            startY: root.attachedBottom ? leftEar.height : 0
+            PathLine { x: leftEar.width; y: root.attachedBottom ? leftEar.height : 0 }
+            PathLine { x: leftEar.width; y: root.attachedBottom ? 0 : leftEar.height }
+            PathArc {
+                x: 0
+                y: root.attachedBottom ? leftEar.height : 0
+                radiusX: leftEar.width
+                radiusY: leftEar.height
+                direction: root.attachedBottom ? PathArc.Clockwise : PathArc.Counterclockwise
             }
         }
+    }
 
-        // Clean border outline
+    // 3. Right Ear Fillet (SaneAspect exact PathArc geometry)
+    Shape {
+        id: rightEar
+        visible: root.rightFillet && root.filletRadius > 0
+        x: root.width - root.filletRadius
+        y: root.attachedBottom ? (root.height - root.filletRadius) : 0
+        width: root.filletRadius
+        height: root.filletRadius
+        preferredRendererType: Shape.GeometryRenderer
+        antialiasing: true
+        asynchronous: false
+
         ShapePath {
-            strokeWidth: 1.2
-            strokeColor: Theme.isDark ? Qt.alpha(Theme.outline, 0.45) : Qt.rgba(0, 0, 0, 0.12)
-            fillColor: "transparent"
-            capStyle: ShapePath.RoundCap
-            joinStyle: ShapePath.RoundJoin
-
-            PathSvg {
-                path: root.strokePath
+            fillColor: root.notchBgColor
+            strokeColor: "transparent"
+            strokeWidth: 0
+            startX: 0
+            startY: root.attachedBottom ? 0 : rightEar.height
+            PathLine { x: 0; y: root.attachedBottom ? rightEar.height : 0 }
+            PathLine { x: rightEar.width; y: root.attachedBottom ? rightEar.height : 0 }
+            PathArc {
+                x: 0
+                y: root.attachedBottom ? 0 : rightEar.height
+                radiusX: rightEar.width
+                radiusY: rightEar.height
+                direction: root.attachedBottom ? PathArc.Clockwise : PathArc.Counterclockwise
             }
         }
     }
 
     property bool isPlaying: false
     property string trackTitle: ""
-
     property alias mouseArea: notchMouseArea
 
     MouseArea {
@@ -264,9 +152,9 @@ Item {
         id: contentRow
         z: 1
         anchors.top: root.attachedBottom ? undefined : parent.top
-        anchors.topMargin: root.attachedBottom ? undefined : Math.max(0, (Math.min(root.height, 34) - contentRow.height) / 2)
+        anchors.topMargin: root.attachedBottom ? undefined : Math.max(0, (Math.min(root.height, 32) - contentRow.height) / 2)
         anchors.bottom: root.attachedBottom ? parent.bottom : undefined
-        anchors.bottomMargin: root.attachedBottom ? Math.max(0, (Math.min(root.height, 34) - contentRow.height) / 2) : undefined
+        anchors.bottomMargin: root.attachedBottom ? Math.max(0, (Math.min(root.height, 32) - contentRow.height) / 2) : undefined
         anchors.left: (!root.rightFillet && root.leftFillet) ? undefined : ((root.leftFillet && root.rightFillet) ? undefined : parent.left)
         anchors.leftMargin: (!root.rightFillet && root.leftFillet) ? undefined : ((root.leftFillet && root.rightFillet) ? undefined : ((root.leftFillet ? root.filletRadius : 0) + root.horizontalPadding))
         anchors.right: (!root.rightFillet && root.leftFillet) ? parent.right : undefined
@@ -275,4 +163,3 @@ Item {
         spacing: root.contentSpacing
     }
 }
-

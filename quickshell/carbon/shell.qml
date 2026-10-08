@@ -696,20 +696,20 @@ ShellRoot {
 
     readonly property int popupTopMargin: {
         if (root.mainBarEdge === "bottom") return 0
-        if (root.barMode === "notch") return 0
+        if (root.barMode === "notch") return root.notchHeight + 6
         if (root.barMode === "pill") return root.pillHeight + 14
         return 0
     }
 
     readonly property int popupBottomMargin: {
         if (root.mainBarEdge !== "bottom") return 0
-        if (root.barMode === "notch") return 0
+        if (root.barMode === "notch") return root.notchHeight + 6
         if (root.barMode === "pill") return root.pillHeight + 14
         return 0
     }
 
     readonly property int popupRightMargin: {
-        if (root.barMode === "notch") return 0
+        if (root.barMode === "notch") return 10
         if (root.barMode === "pill") return 12
         return 0
     }
@@ -1893,12 +1893,7 @@ ShellRoot {
                 height: root.notchHeight
                 implicitHeight: root.notchHeight
                 attachedBottom: root.mainBarEdge === "bottom"
-                hasAttachedPopup: (root.mixerOpen || mixerItem.animatingOut)
-                               || (root.wifiOpen || wifiItem.animatingOut)
-                               || (root.btOpen || btItem.animatingOut)
-                               || (root.brightnessOpen || brightnessItem.animatingOut)
-                               || (root.batteryOpen || batteryItem.animatingOut)
-                               || (root.trayOpen || trayItem.animatingOut)
+                hasAttachedPopup: false
                 anchors.top: root.mainBarEdge !== "bottom" ? parent.top : undefined
                 anchors.bottom: root.mainBarEdge === "bottom" ? parent.bottom : undefined
                 anchors.right: parent.right

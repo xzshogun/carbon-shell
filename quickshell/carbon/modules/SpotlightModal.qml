@@ -25,25 +25,32 @@ Item {
     /* Caelestia Shell bottom slide-up & fluid pop-in animation */
     readonly property bool animatingOut: !root.open && (root.opacity > 0.005 || opacityAnim.running || slideAnim.running)
 
-    property real yOffset: root.open ? 0 : (root.height + 60)
+    property real yOffset: root.open ? 0 : 32
     transform: Translate { y: root.yOffset }
-    transformOrigin: Item.Bottom
+    transformOrigin: Item.Center
+    scale: root.open ? 1.0 : 0.96
     opacity: root.open ? 1.0 : 0.0
 
     Behavior on yOffset {
         NumberAnimation {
             id: slideAnim
-            duration: root.open ? 260 : 180
-            easing.type: root.open ? Easing.OutBack : Easing.InCubic
-            easing.overshoot: 1.08
+            duration: root.open ? 170 : 130
+            easing.type: root.open ? Easing.OutCubic : Easing.InCubic
+        }
+    }
+
+    Behavior on scale {
+        NumberAnimation {
+            duration: root.open ? 170 : 130
+            easing.type: root.open ? Easing.OutCubic : Easing.InCubic
         }
     }
 
     Behavior on opacity {
         NumberAnimation {
             id: opacityAnim
-            duration: root.open ? 200 : 140
-            easing.type: root.open ? Easing.OutQuad : Easing.InQuad
+            duration: root.open ? 160 : 110
+            easing.type: Easing.OutCubic
         }
     }
 
@@ -71,6 +78,25 @@ Item {
     }
 
     property string currentTab: "apps" // "apps", "clipboard", "commands"
+    property real tabContentOpacity: 1.0
+    property real tabContentY: 0
+
+    onCurrentTabChanged: {
+        tabSwitchAnim.restart()
+    }
+
+    SequentialAnimation {
+        id: tabSwitchAnim
+        ParallelAnimation {
+            NumberAnimation { target: root; property: "tabContentOpacity"; to: 0.35; duration: 45; easing.type: Easing.OutQuad }
+            NumberAnimation { target: root; property: "tabContentY"; to: 5; duration: 45; easing.type: Easing.OutQuad }
+        }
+        ParallelAnimation {
+            NumberAnimation { target: root; property: "tabContentOpacity"; to: 1.0; duration: 130; easing.type: Easing.OutCubic }
+            NumberAnimation { target: root; property: "tabContentY"; to: 0; duration: 130; easing.type: Easing.OutCubic }
+        }
+    }
+
     property string calcResult: ""
     property bool hasCalcResult: false
 
@@ -524,42 +550,122 @@ Item {
             }
 
             /* 2. Category Filter Tabs */
-            Row {
+            Item {
                 id: modeTabs
                 Layout.fillWidth: true
-                spacing: 6
+                Layout.preferredHeight: 26
 
-                Repeater {
-                    model: [
-                        { id: "apps", label: "Applications" },
-                        { id: "clipboard", label: "Clipboard" },
-                        { id: "commands", label: "Commands" }
-                    ]
+                // Animated sliding background indicator pill
+                Rectangle {
+                    id: tabIndicator
+                    y: 1
+                    height: 24
+                    radius: 12
+                    color: Qt.alpha(Theme.accent, 0.22)
+                    border.color: Qt.alpha(Theme.accent, 0.7)
+                    border.width: 1
+                    x: {
+                        if (root.currentTab === "clipboard") return tabClip.x
+                        if (root.currentTab === "commands") return tabCmd.x
+                        return tabApps.x
+                    }
+                    width: {
+                        if (root.currentTab === "clipboard") return tabClip.width
+                        if (root.currentTab === "commands") return tabCmd.width
+                        return tabApps.width
+                    }
 
-                    delegate: Rectangle {
-                        required property var modelData
-                        width: tabText.implicitWidth + 16
-                        height: 24
-                        radius: 12
-                        color: root.currentTab === modelData.id ? Qt.alpha(Theme.accent, 0.2) : Qt.alpha(Theme.fg, 0.05)
-                        border.color: root.currentTab === modelData.id ? Theme.accent : "transparent"
-                        border.width: 1
+                    Behavior on x {
+                        NumberAnimation {
+                            duration: 180
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                    Behavior on width {
+                        NumberAnimation {
+                            duration: 180
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                }
+
+                Row {
+                    anchors.fill: parent
+                    spacing: 6
+
+                    Item {
+                        id: tabApps
+                        width: tabAppsText.implicitWidth + 20
+                        height: 26
 
                         Text {
-                            id: tabText
+                            id: tabAppsText
                             anchors.centerIn: parent
-                            text: parent.modelData.label
+                            text: "Applications"
                             font.family: "Valley Sans"
                             font.pixelSize: 10
-                            font.weight: root.currentTab === parent.modelData.id ? Font.Bold : Font.Normal
-                            color: root.currentTab === parent.modelData.id ? Theme.accent : Theme.fgDim
+                            font.weight: root.currentTab === "apps" ? Font.Bold : Font.Normal
+                            color: root.currentTab === "apps" ? Theme.accent : Theme.fgDim
+                            Behavior on color { ColorAnimation { duration: 150 } }
                         }
 
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                root.currentTab = parent.modelData.id
+                                root.currentTab = "apps"
+                                root.rebuildResults()
+                            }
+                        }
+                    }
+
+                    Item {
+                        id: tabClip
+                        width: tabClipText.implicitWidth + 20
+                        height: 26
+
+                        Text {
+                            id: tabClipText
+                            anchors.centerIn: parent
+                            text: "Clipboard"
+                            font.family: "Valley Sans"
+                            font.pixelSize: 10
+                            font.weight: root.currentTab === "clipboard" ? Font.Bold : Font.Normal
+                            color: root.currentTab === "clipboard" ? Theme.accent : Theme.fgDim
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                root.currentTab = "clipboard"
+                                root.rebuildResults()
+                            }
+                        }
+                    }
+
+                    Item {
+                        id: tabCmd
+                        width: tabCmdText.implicitWidth + 20
+                        height: 26
+
+                        Text {
+                            id: tabCmdText
+                            anchors.centerIn: parent
+                            text: "Commands"
+                            font.family: "Valley Sans"
+                            font.pixelSize: 10
+                            font.weight: root.currentTab === "commands" ? Font.Bold : Font.Normal
+                            color: root.currentTab === "commands" ? Theme.accent : Theme.fgDim
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                root.currentTab = "commands"
                                 root.rebuildResults()
                             }
                         }
@@ -658,6 +764,8 @@ Item {
                 boundsBehavior: Flickable.StopAtBounds
                 model: resultsModel
                 visible: resultsModel.count > 0
+                opacity: root.tabContentOpacity
+                transform: Translate { y: root.tabContentY }
 
                 delegate: Rectangle {
                     id: rowDelegate
@@ -761,6 +869,8 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 48
                 visible: resultsModel.count === 0 && !root.hasCalcResult
+                opacity: root.tabContentOpacity
+                transform: Translate { y: root.tabContentY }
 
                 Text {
                     anchors.centerIn: parent

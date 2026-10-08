@@ -18,8 +18,8 @@ NotchContainer {
 
     property bool isExpanded: false
     clip: true
-    bottomRadius: isExpanded ? 20 : 12
-    implicitHeight: isExpanded ? 270 : 34
+    bottomRadius: isExpanded ? 20 : 14
+    implicitHeight: isExpanded ? 270 : 32
     implicitWidth: isExpanded ? 860 : (contentImplicitWidth + (leftFillet ? filletRadius : 0) + (rightFillet ? filletRadius : 0) + (horizontalPadding * 2))
 
     earWidth: 20

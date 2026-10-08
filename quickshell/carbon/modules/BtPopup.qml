@@ -192,25 +192,15 @@ Item {
     readonly property string fillPath: {
         const w = sheet.width
         const h = sheet.height
-        if (root.barMode === "pill") {
-            const r = 16
-            return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
-        }
-        const r = 18
-        const leftX = 12
-        return `M ${leftX} 0 L ${w} 0 L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${leftX + r} ${h} A ${r} ${r} 0 0 1 ${leftX} ${h - r} L ${leftX} 0 Z`
+        const r = 16
+        return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
     }
 
     readonly property string strokePath: {
         const w = sheet.width
         const h = sheet.height
-        if (root.barMode === "pill") {
-            const r = 16
-            return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
-        }
-        const r = 18
-        const leftX = 12
-        return `M ${w} 0 L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${leftX + r} ${h} A ${r} ${r} 0 0 1 ${leftX} ${h - r} L ${leftX} 0`
+        const r = 16
+        return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
     }
 
     /* ----------------------------- visuals ----------------------------- */

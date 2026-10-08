@@ -805,31 +805,72 @@ ShellRoot {
                 onRead: function (message) {
                     var cmd = message.trim()
                     if (cmd === "wallpaper" || cmd === "wallpaper-local") {
-                        root.wallpaperSource = "local"
-                        root.toggleWallpaperPicker()
+                        if (root.barMode === "nucleus") {
+                            if (root.nucleusHubItem) root.nucleusHubItem.openWallpaperMode()
+                        } else {
+                            root.wallpaperSource = "local"
+                            root.toggleWallpaperPicker()
+                        }
                     }
                     else if (cmd === "wallpaper-live") {
-                        root.wallpaperSource = "live"
-                        root.openWallpaperPicker()
+                        if (root.barMode === "nucleus") {
+                            if (root.nucleusHubItem) root.nucleusHubItem.openWallpaperMode()
+                        } else {
+                            root.wallpaperSource = "live"
+                            root.openWallpaperPicker()
+                        }
                     }
                     else if (cmd === "wallpaper-online") {
-                        root.wallpaperSource = "wallhaven"
-                        root.openWallpaperPicker()
+                        if (root.barMode === "nucleus") {
+                            if (root.nucleusHubItem) root.nucleusHubItem.openWallpaperMode()
+                        } else {
+                            root.wallpaperSource = "wallhaven"
+                            root.openWallpaperPicker()
+                        }
                     }
-                    else if (cmd === "close-wallpaper")
-                        root.closeWallpaperPicker()
-                    else if (cmd === "launcher")
-                        root.openLauncher()
-                    else if (cmd === "close-launcher")
-                        root.closeLauncher()
-                    else if (cmd === "toggle-launcher")
-                        root.toggleLauncher()
-                    else if (cmd === "spotlight" || cmd === "toggle-spotlight")
-                        root.toggleSpotlight()
-                    else if (cmd === "open-spotlight")
-                        root.openSpotlight()
-                    else if (cmd === "close-spotlight")
-                        root.closeSpotlight()
+                    else if (cmd === "close-wallpaper") {
+                        if (root.barMode === "nucleus") {
+                            if (root.nucleusHubItem) root.nucleusHubItem.close()
+                        } else {
+                            root.closeWallpaperPicker()
+                        }
+                    }
+                    else if (cmd === "launcher" || cmd === "toggle-launcher") {
+                        if (root.barMode === "nucleus") {
+                            if (root.nucleusHubItem) root.nucleusHubItem.toggle()
+                        } else {
+                            if (cmd === "launcher") root.openLauncher()
+                            else root.toggleLauncher()
+                        }
+                    }
+                    else if (cmd === "close-launcher") {
+                        if (root.barMode === "nucleus") {
+                            if (root.nucleusHubItem) root.nucleusHubItem.close()
+                        } else {
+                            root.closeLauncher()
+                        }
+                    }
+                    else if (cmd === "spotlight" || cmd === "toggle-spotlight") {
+                        if (root.barMode === "nucleus") {
+                            if (root.nucleusHubItem) root.nucleusHubItem.toggle()
+                        } else {
+                            root.toggleSpotlight()
+                        }
+                    }
+                    else if (cmd === "open-spotlight") {
+                        if (root.barMode === "nucleus") {
+                            if (root.nucleusHubItem) root.nucleusHubItem.open()
+                        } else {
+                            root.openSpotlight()
+                        }
+                    }
+                    else if (cmd === "close-spotlight") {
+                        if (root.barMode === "nucleus") {
+                            if (root.nucleusHubItem) root.nucleusHubItem.close()
+                        } else {
+                            root.closeSpotlight()
+                        }
+                    }
                     else if (cmd === "test-hud-vol")
                         HudService.trigger("volume", 0.72, "72%", "Volume", "", false, "volume_up", "", 2500)
                     else if (cmd === "test-hud-bright")
@@ -924,6 +965,35 @@ ShellRoot {
                     else if (cmd === "atomic" || cmd === "mode-atomic" || cmd === "toggle-atomic") {
                         if (root.barMode === "atomic") root.switchBarMode("notch")
                         else root.switchBarMode("atomic")
+                    }
+                    else if (cmd === "shard" || cmd === "mode-shard" || cmd === "toggle-shard") {
+                        if (root.barMode === "shard") root.switchBarMode("notch")
+                        else root.switchBarMode("shard")
+                    }
+                    else if (cmd === "bloom" || cmd === "mode-bloom" || cmd === "toggle-bloom") {
+                        if (root.barMode === "bloom") root.switchBarMode("notch")
+                        else root.switchBarMode("bloom")
+                    }
+                    else if (cmd === "nucleus" || cmd === "mode-nucleus" || cmd === "toggle-nucleus") {
+                        if (root.barMode === "nucleus") root.switchBarMode("notch")
+                        else root.switchBarMode("nucleus")
+                    }
+                    else if (cmd === "nucleus toggle") {
+                        if (root.barMode !== "nucleus") root.switchBarMode("nucleus")
+                        if (root.nucleusHubItem) root.nucleusHubItem.toggle()
+                    }
+                    else if (cmd.startsWith("nucleus focus ")) {
+                        if (root.barMode !== "nucleus") root.switchBarMode("nucleus")
+                        var lobeTarget = cmd.substring("nucleus focus ".length).trim()
+                        if (root.nucleusHubItem) root.nucleusHubItem.focusLobe(lobeTarget)
+                    }
+                    else if (cmd === "nucleus wallpapers") {
+                        if (root.barMode !== "nucleus") root.switchBarMode("nucleus")
+                        if (root.nucleusHubItem) root.nucleusHubItem.openWallpaperMode()
+                    }
+                    else if (cmd === "nucleus launcher") {
+                        if (root.barMode !== "nucleus") root.switchBarMode("nucleus")
+                        if (root.nucleusHubItem) root.nucleusHubItem.openLauncherMode()
                     }
                     else if (cmd === "calendar" || cmd === "center-dashboard" || cmd === "center" || cmd === "time-weather" || cmd === "toggle-dashboard" || cmd === "dashboard")
                         root.toggleCenterDashboard()
@@ -1066,17 +1136,18 @@ ShellRoot {
     }
 
     /* ── Dynamic Edge Reservation Windows (Prevents App Overlap) ────────── */
-    readonly property bool hasTopReserve: (root.barMode === "atomic") ? false :
+    readonly property bool hasTopReserve: (root.barMode === "atomic" || root.barMode === "shard" || root.barMode === "bloom" || root.barMode === "nucleus") ? false :
         ((root.barMode === "pill" || (root.barMode === "minimal" && root.islandPersistent))
         ? (root.mainBarEdge === "top")
         : (root.barMode === "minimal" ? false : (root.mainBarEdge === "top" || root.musicBarEdge === "top")))
-    readonly property bool hasBottomReserve: (root.barMode === "pill" || (root.barMode === "minimal" && root.islandPersistent))
+    readonly property bool hasBottomReserve: (root.barMode === "atomic" || root.barMode === "shard" || root.barMode === "bloom" || root.barMode === "nucleus") ? false :
+        ((root.barMode === "pill" || (root.barMode === "minimal" && root.islandPersistent))
         ? (root.mainBarEdge === "bottom")
-        : (root.barMode === "minimal" ? false : (root.mainBarEdge === "bottom" || root.musicBarEdge === "bottom"))
+        : (root.barMode === "minimal" ? false : (root.mainBarEdge === "bottom" || root.musicBarEdge === "bottom")))
     readonly property bool hasLeftReserve: false
     readonly property bool hasRightReserve: false
 
-    readonly property int topReserveHeight: root.barMode === "atomic" ? 0 : (root.hasTopReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0)
+    readonly property int topReserveHeight: (root.barMode === "atomic" || root.barMode === "shard" || root.barMode === "bloom" || root.barMode === "nucleus") ? 0 : (root.hasTopReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0)
     readonly property int bottomReserveHeight: root.hasBottomReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0
     readonly property int leftReserveWidth: root.hasLeftReserve ? 38 : 0
     readonly property int rightReserveWidth: root.hasRightReserve ? 38 : 0
@@ -1784,8 +1855,8 @@ ShellRoot {
                 right: false
             }
 
-            implicitWidth: 104
-            implicitHeight: 104
+            implicitWidth: 260
+            implicitHeight: 260
             visible: root.barMode === "atomic"
 
             mask: Region {
@@ -1801,6 +1872,243 @@ ShellRoot {
             }
         }
     }
+
+
+    /* ── Concept 3: Kinetic Shard (Cybernetic Origami & Asymmetric Crystal) ── */
+    Variants {
+        model: Quickshell.screens
+
+        PanelWindow {
+            id: kineticShardWindow
+            required property var modelData
+
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-kinetic-shard"
+            WlrLayershell.layer: WlrLayer.Top
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
+            anchors {
+                top: true
+            }
+            margins {
+                top: 8
+            }
+
+            implicitWidth: 720
+            implicitHeight: 46
+            visible: root.barMode === "shard"
+
+            KineticShardBar {
+                id: kineticShardItem
+                anchors.centerIn: parent
+                onOpenLauncher: root.openLauncher()
+                onToggleCenterDashboard: root.toggleCenterDashboard()
+                onOpenCenterDashboard: root.openCenterDashboard()
+                onToggleControls: root.toggleControls()
+                onOpenMixer: root.openMixer()
+                onToggleMixer: root.toggleMixer()
+                onOpenWifi: root.openWifi()
+                onToggleWifi: root.toggleWifi()
+                onOpenBattery: root.openBattery()
+                onToggleBattery: root.toggleBattery()
+                onOpenPower: root.openPower()
+            }
+        }
+    }
+
+
+
+
+
+    /* ── Nucleus Mode: Fullscreen Radial Desktop Layer ── */
+    readonly property QtObject nucleusHubItem: QtObject {
+        property bool hubOpen: false
+        signal toggleRequested()
+        signal openRequested()
+        signal closeRequested()
+        signal focusLobeRequested(string lobe)
+        signal wallpaperModeRequested()
+        signal launcherModeRequested()
+
+        function toggle() { 
+            if (!hubOpen) {
+                hubOpen = true
+                openRequested()
+            } else {
+                toggleRequested()
+            }
+        }
+        function open() { 
+            hubOpen = true
+            openRequested() 
+        }
+        function close() { 
+            closeRequested() 
+        }
+        function focusLobe(l) { 
+            hubOpen = true
+            focusLobeRequested(l) 
+        }
+        function openWallpaperMode() { 
+            hubOpen = true
+            wallpaperModeRequested() 
+        }
+        function openLauncherMode() { 
+            hubOpen = true
+            launcherModeRequested() 
+        }
+    }
+
+    Variants {
+        model: Quickshell.screens
+
+        // 1. Resting Dot (Sits on desktop below windows, never blocks apps)
+        PanelWindow {
+            id: nucleusRestingWindow
+            required property var modelData
+
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-nucleus-resting"
+            WlrLayershell.layer: WlrLayer.Bottom
+            exclusionMode: ExclusionMode.Ignore
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
+            }
+
+            visible: root.barMode === "nucleus" && !root.nucleusHubItem.hubOpen
+
+            mask: Region {
+                item: nucleusRestingCenterDot
+            }
+
+            Item {
+                id: nucleusRestingCenterDot
+                anchors.centerIn: parent
+                width: 64
+                height: 64
+
+                // Ring 1 (Inner, 2 electrons)
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 32; height: 32; radius: 16
+                    color: "transparent"
+                    border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22)
+                    border.width: 1
+
+                    Item {
+                        anchors.centerIn: parent
+                        width: parent.width; height: parent.height
+                        NumberAnimation on rotation {
+                            from: 0; to: 360; duration: 18000; loops: Animation.Infinite; running: nucleusRestingWindow.visible
+                        }
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: -3; width: 5; height: 5; radius: 2.5; color: Theme.accent
+                        }
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: parent.height - 2; width: 5; height: 5; radius: 2.5; color: Theme.accent
+                        }
+                    }
+                }
+
+                // Ring 2 (Outer, 4 electrons)
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 56; height: 56; radius: 28
+                    color: "transparent"
+                    border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
+                    border.width: 1
+
+                    Item {
+                        anchors.centerIn: parent
+                        width: parent.width; height: parent.height
+                        rotation: 45
+                        NumberAnimation on rotation {
+                            from: 45; to: -315; duration: 28000; loops: Animation.Infinite; running: nucleusRestingWindow.visible
+                        }
+                        Repeater {
+                            model: 4
+                            delegate: Item {
+                                anchors.fill: parent
+                                rotation: index * 90
+                                Rectangle {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    y: -3; width: 5; height: 5; radius: 2.5; color: Theme.accent
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 14px center nucleus dot
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 14; height: 14; radius: 7
+                    color: Theme.accent
+                    border.color: "#FFFFFF"
+                    border.width: 1.0
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.nucleusHubItem.open()
+                    }
+                }
+            }
+        }
+    }
+
+    Variants {
+        model: Quickshell.screens
+
+        // 2. Opened Radial Hub (Always on overlay layer, appears above all windows when active)
+        PanelWindow {
+            id: nucleusHubWindow
+            required property var modelData
+
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-nucleus-hub"
+            WlrLayershell.layer: WlrLayer.Overlay
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
+            }
+
+            visible: root.barMode === "nucleus" && root.nucleusHubItem.hubOpen
+
+            NucleusHub {
+                id: nucleusHubItemInstance
+                anchors.fill: parent
+                onOpenLauncher: root.openLauncher()
+                onOpenWallpapers: root.openWallpaperPicker()
+                onCloseRequested: {
+                    root.nucleusHubItem.hubOpen = false
+                }
+
+                Connections {
+                    target: root.nucleusHubItem
+                    function onToggleRequested() { nucleusHubItemInstance.toggle() }
+                    function onOpenRequested() { nucleusHubItemInstance.open() }
+                    function onCloseRequested() { nucleusHubItemInstance.close() }
+                    function onFocusLobeRequested(lobe) { nucleusHubItemInstance.focusLobe(lobe) }
+                    function onWallpaperModeRequested() { nucleusHubItemInstance.openWallpaperMode() }
+                    function onLauncherModeRequested() { nucleusHubItemInstance.openLauncherMode() }
+                }
+            }
+        }
+    }
+
 
     /* ── Notch Center Island Window (When musicBarEdge is on separate edge or main bar is vertical) ── */
     Variants {

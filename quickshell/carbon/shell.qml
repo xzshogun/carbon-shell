@@ -584,8 +584,26 @@ ShellRoot {
     }
 
     /* ── Mode Transitions ───────────────────────────────────────────── */
-    signal startVanishTransition()
     signal triggerWallpaperTransition()
+    property bool nucleusTransitionActive: false
+    property bool nucleusTransitionEnabled: true
+    property string nucleusTransitionWord: "Wooshh!!"
+
+    function startNucleusTransition(force) {
+        if (!force && !root.nucleusTransitionEnabled) {
+            root.barMode = "nucleus"
+            return
+        }
+        root.nucleusTransitionActive = true
+        root.triggerWallpaperTransition()
+    }
+
+    function finishNucleusTransition() {
+        root.barMode = "nucleus"
+        root.nucleusTransitionActive = false
+        Quickshell.execDetached(["python3", "-c",
+            "import json, os; p=os.path.expanduser('~/.config/hypr/carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {}; d['mode']='nucleus'; json.dump(d, open(p,'w'), indent=2)"])
+    }
 
     /* ── Bar Mode Configuration: "pill" or "notch" ──────────────────── */
     property string barMode: "pill"
@@ -611,6 +629,14 @@ ShellRoot {
             const txt = barModeFile.text().trim()
             if (txt.length > 0) {
                 const d = JSON.parse(txt)
+                if (d.nucleus) {
+                    if (d.nucleus.transition !== undefined) {
+                        root.nucleusTransitionEnabled = Boolean(d.nucleus.transition)
+                    }
+                    if (d.nucleus.transitionWord) {
+                        root.nucleusTransitionWord = String(d.nucleus.transitionWord)
+                    }
+                }
                 if (d.mode) {
                     if (d.mode === "three_islands") root.barMode = "pill"
                     else root.barMode = d.mode
@@ -636,6 +662,10 @@ ShellRoot {
 
     function switchBarMode(m) {
         if (!m) return
+        if (m === "nucleus" && root.barMode !== "nucleus" && root.nucleusTransitionEnabled) {
+            root.startNucleusTransition(false)
+            return
+        }
         root.barMode = m
         Quickshell.execDetached(["python3", "-c",
             "import json, os; p=os.path.expanduser('~/.config/hypr/carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {}; d['mode']='" + m + "'; json.dump(d, open(p,'w'), indent=2)"])
@@ -982,8 +1012,8 @@ ShellRoot {
                         if (root.barMode === "bloom") root.switchBarMode("notch")
                         else root.switchBarMode("bloom")
                     }
-                    else if (cmd === "vanish-transition" || cmd === "transition-vanish" || cmd === "woosh") {
-                        root.startVanishTransition()
+                    else if (cmd === "nucleus transition" || cmd === "vanish-transition" || cmd === "transition-vanish" || cmd === "woosh") {
+                        root.startNucleusTransition(true)
                     }
                     else if (cmd === "nucleus" || cmd === "mode-nucleus" || cmd === "toggle-nucleus") {
                         if (root.barMode === "nucleus") root.switchBarMode("notch")
@@ -2150,17 +2180,17 @@ ShellRoot {
         }
     }
 
-    /* ── Vanish Mode Cinematic Transition Overlay ("Wooshhh!!") ── */
+    /* ── Nucleus Mode-Switch Transition Overlay Window (~2.3s) ── */
     Variants {
-        model: Quickshell.screens
+        model: root.nucleusTransitionActive ? Quickshell.screens : []
 
         PanelWindow {
-            id: vanishTransitionWindow
+            id: nucleusTransitionWindow
             required property var modelData
 
             screen: modelData
             color: "transparent"
-            WlrLayershell.namespace: "carbon-vanish-transition"
+            WlrLayershell.namespace: "carbon-nucleus-transition"
             WlrLayershell.layer: WlrLayer.Overlay
             exclusionMode: ExclusionMode.Ignore
             aboveWindows: true
@@ -2171,22 +2201,21 @@ ShellRoot {
                 right: true
             }
 
-            visible: vanishTransitionInstance.isPlaying
+            visible: true
 
-            VanishTransitionOverlay {
-                id: vanishTransitionInstance
+            NucleusTransitionOverlay {
+                id: transitionOverlayItem
                 anchors.fill: parent
+                isPrimaryScreen: (modelData === Quickshell.screens[0])
+                transitionWord: root.nucleusTransitionWord
+                transitionEnabled: root.nucleusTransitionEnabled
 
-                onMidpointReached: {
-                    root.triggerWallpaperTransition()
-                    root.switchBarMode("nucleus")
+                Component.onCompleted: {
+                    play()
                 }
 
-                Connections {
-                    target: root
-                    function onStartVanishTransition() {
-                        vanishTransitionInstance.startTransition()
-                    }
+                onTransitionFinished: {
+                    root.finishNucleusTransition()
                 }
             }
         }

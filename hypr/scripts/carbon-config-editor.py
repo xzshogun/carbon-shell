@@ -361,6 +361,37 @@ def save_music_visualizer(val):
         print("Error saving music visualizer:", e)
 
 
+def read_nucleus_transition():
+    if os.path.isfile(BAR_MODE_PATH):
+        try:
+            with open(BAR_MODE_PATH, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                n = d.get("nucleus", {})
+                return n.get("transition", True), n.get("transitionWord", "Wooshh!!")
+        except Exception:
+            pass
+    return True, "Wooshh!!"
+
+
+def save_nucleus_transition(enabled, word):
+    try:
+        data = {}
+        if os.path.isfile(BAR_MODE_PATH):
+            try:
+                with open(BAR_MODE_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception:
+                pass
+        if "nucleus" not in data or not isinstance(data["nucleus"], dict):
+            data["nucleus"] = {}
+        data["nucleus"]["transition"] = bool(enabled)
+        data["nucleus"]["transitionWord"] = str(word)
+        with open(BAR_MODE_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print("Error saving nucleus transition:", e)
+
+
 def read_lockscreen_config():
     defaults = {
         "visualizer": True,
@@ -2688,6 +2719,43 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         row_vis.connect("notify::selected", on_vis_changed)
         grp_controls.add(row_vis)
 
+        # Mode Switch Transition Group
+        grp_transition = Adw.PreferencesGroup(
+            title="Mode Switch Transition",
+            description="Cinematic kinetic transition when switching from desktop bar to Vanish Mode"
+        )
+        page.add(grp_transition)
+
+        trans_enabled, trans_word = read_nucleus_transition()
+
+        row_trans = Adw.SwitchRow()
+        row_trans.set_title("Cinematic Transition Animation")
+        row_trans.set_subtitle("Play 2.3s bar collapse, shockwaves, and kinetic typography effect")
+        row_trans.set_active(trans_enabled)
+        grp_transition.add(row_trans)
+
+        row_word = Adw.EntryRow()
+        row_word.set_title("Kinetic Typography Word")
+        row_word.set_text(trans_word)
+        grp_transition.add(row_word)
+
+        row_test = Adw.ActionRow()
+        row_test.set_title("Test Transition Effect")
+        row_test.set_subtitle("Trigger and replay the mode-switch transition overlay immediately")
+        row_test.add_prefix(Gtk.Image.new_from_icon_name("media-playback-start-symbolic"))
+        btn_test = Gtk.Button(label="Play Transition")
+        btn_test.connect("clicked", lambda b: subprocess.run([
+            "sh", os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh"), "nucleus transition"
+        ], check=False))
+        row_test.add_suffix(btn_test)
+        grp_transition.add(row_test)
+
+        def on_trans_changed(*_):
+            save_nucleus_transition(row_trans.get_active(), row_word.get_text().strip() or "Wooshh!!")
+
+        row_trans.connect("notify::active", on_trans_changed)
+        row_word.connect("changed", on_trans_changed)
+
         # Shortcut Row to dedicated Vanish Shortcuts page
         row_to_v_shortcuts = Adw.ActionRow()
         row_to_v_shortcuts.set_title("Vanish Mode Shortcuts")
@@ -3612,10 +3680,15 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
     def select_bar_mode(self, mode_id):
         if mode_id == "nucleus":
-            # Fire cinematic Vanish transition & auto-close config editor window
-            subprocess.run([
-                "sh", os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh"), "vanish-transition"
-            ], check=False)
+            trans_enabled, _ = read_nucleus_transition()
+            if trans_enabled:
+                subprocess.run([
+                    "sh", os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh"), "nucleus transition"
+                ], check=False)
+            else:
+                subprocess.run([
+                    "sh", os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh"), "mode-nucleus"
+                ], check=False)
             self.close()
             return
 

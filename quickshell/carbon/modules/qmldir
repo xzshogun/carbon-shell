@@ -44,4 +44,4 @@ AtomicValenceBar AtomicValenceBar.qml
 AtomicOrb AtomicOrb.qml
 KineticShardBar KineticShardBar.qml
 NucleusHub NucleusHub.qml
-VanishTransitionOverlay VanishTransitionOverlay.qml
+NucleusTransitionOverlay NucleusTransitionOverlay.qml

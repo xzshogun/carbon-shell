@@ -53,7 +53,6 @@ Item {
         root.hubOpen = true
         root.activeMode = "hub"
         root.focusedLobe = ""
-        rippleAnim.restart()
     }
 
     Timer {
@@ -225,31 +224,6 @@ Item {
         width: 1
         height: 1
 
-        // Opening Ripple Ring Expanding from Center
-        Rectangle {
-            id: rippleRing
-            anchors.centerIn: parent
-            width: rippleProgress * 320
-            height: width
-            radius: width / 2
-            color: "transparent"
-            border.color: root.colTeal
-            border.width: 1.5
-            opacity: (1.0 - rippleProgress) * 0.7
-            visible: rippleAnim.running
-
-            property real rippleProgress: 0.0
-            NumberAnimation {
-                id: rippleAnim
-                target: rippleRing
-                property: "rippleProgress"
-                from: 0.0
-                to: 1.0
-                duration: 950
-                easing.type: Easing.OutCubic
-            }
-        }
-
         // Resting Carbon Valence Orbit Rings & 6 Electrons (visible when resting or closing)
         Item {
             id: restingElectrons
@@ -260,11 +234,11 @@ Item {
             // Ring 1 (Inner, 2 electrons)
             Rectangle {
                 anchors.centerIn: parent
-                width: 32
-                height: 32
+                width: 40
+                height: 40
                 radius: width / 2
                 color: "transparent"
-                border.color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.20)
+                border.color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.22)
                 border.width: 1
 
                 Item {
@@ -279,14 +253,14 @@ Item {
 
                     Rectangle {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        y: -3
-                        width: 5; height: 5; radius: 2.5
+                        y: -3.5
+                        width: 6; height: 6; radius: 3
                         color: root.colTeal
                     }
                     Rectangle {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        y: parent.height - 2
-                        width: 5; height: 5; radius: 2.5
+                        y: parent.height - 2.5
+                        width: 6; height: 6; radius: 3
                         color: root.colTeal
                     }
                 }
@@ -295,11 +269,11 @@ Item {
             // Ring 2 (Outer, 4 electrons)
             Rectangle {
                 anchors.centerIn: parent
-                width: 56
-                height: 56
+                width: 72
+                height: 72
                 radius: width / 2
                 color: "transparent"
-                border.color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.15)
+                border.color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.16)
                 border.width: 1
 
                 Item {
@@ -352,9 +326,58 @@ Item {
                 property string lobeTitle: ""
                 property int staggerDelay: 0
 
-                // Origin is at center of hub
-                x: 0
-                y: 0
+                // Gentle organic quantum idle float ("moving just a bit")
+                property int idleDuration: 5400
+                property int idlePhaseDelay: 0
+                property real idleAngleOffset: 0.0
+                property real idleDistOffset: 0.0
+
+                SequentialAnimation {
+                    running: root.hubOpen && !lobeItem.isThisFocused
+                    loops: Animation.Infinite
+                    PauseAnimation { duration: lobeItem.idlePhaseDelay }
+                    ParallelAnimation {
+                        NumberAnimation {
+                            target: lobeItem
+                            property: "idleAngleOffset"
+                            from: -1.6
+                            to: 1.6
+                            duration: lobeItem.idleDuration / 2
+                            easing.type: Easing.InOutSine
+                        }
+                        NumberAnimation {
+                            target: lobeItem
+                            property: "idleDistOffset"
+                            from: -3.0
+                            to: 3.0
+                            duration: lobeItem.idleDuration / 2
+                            easing.type: Easing.InOutSine
+                        }
+                    }
+                    ParallelAnimation {
+                        NumberAnimation {
+                            target: lobeItem
+                            property: "idleAngleOffset"
+                            from: 1.6
+                            to: -1.6
+                            duration: lobeItem.idleDuration / 2
+                            easing.type: Easing.InOutSine
+                        }
+                        NumberAnimation {
+                            target: lobeItem
+                            property: "idleDistOffset"
+                            from: 3.0
+                            to: -3.0
+                            duration: lobeItem.idleDuration / 2
+                            easing.type: Easing.InOutSine
+                        }
+                    }
+                }
+
+                // Origin is at center of hub, with gentle radial displacement
+                readonly property real idleRad: targetAngle * (Math.PI / 180.0)
+                x: isThisFocused ? 0 : (idleDistOffset * Math.cos(idleRad))
+                y: isThisFocused ? 0 : (idleDistOffset * Math.sin(idleRad))
                 width: 1
                 height: 1
                 transformOrigin: Item.TopLeft
@@ -363,9 +386,9 @@ Item {
                 readonly property bool isThisFocused: root.focusedLobe === lobeItem.lobeId
                 readonly property bool isAnyFocused: root.focusedLobe !== ""
 
-                // Dynamic Scale & Opacity per Phase 3 specifications:
-                // Focused lobe scale 0.9, others shrink to 0.45 and dim to 35%
-                readonly property real targetScale: isThisFocused ? 0.90 : (isAnyFocused ? (baseScale * 0.45) : baseScale)
+                // Dynamic Scale & Opacity per specifications:
+                // Focused lobe scale 0.92, others shrink to 0.45 and dim to 35%
+                readonly property real targetScale: isThisFocused ? 0.92 : (isAnyFocused ? (baseScale * 0.45) : baseScale)
                 readonly property real targetAlpha: isThisFocused ? 1.0 : (isAnyFocused ? 0.35 : 1.0)
 
                 property real bloomAnim: 0.0
@@ -384,56 +407,56 @@ Item {
                     }
                 }
 
-                rotation: targetAngle
+                rotation: targetAngle + (isThisFocused ? 0.0 : idleAngleOffset)
                 scale: targetScale * bloomAnim
                 opacity: targetAlpha * bloomAnim
                 Behavior on scale { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
                 Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                // ── Outer & Inner Teardrop Shapes ──
+                // ── Outer & Inner Teardrop Shapes (Enlarged) ──
                 Shape {
                     x: 0
                     y: 0
-                    width: 120
-                    height: 80
+                    width: 180
+                    height: 120
                     asynchronous: true
 
-                    // Outer shape: fill alpha 0.18, stroke alpha 0.8
+                    // Outer shape: length 155px, half-width 56px
                     ShapePath {
-                        strokeColor: Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.80)
-                        strokeWidth: 1.6
+                        strokeColor: Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.82)
+                        strokeWidth: 1.8
                         fillColor: Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.18)
                         capStyle: ShapePath.RoundCap
                         joinStyle: ShapePath.RoundJoin
 
                         startX: 0
                         startY: 0
-                        PathCubic { x: 100; y: 0; control1X: 22; control1Y: -36; control2X: 80; control2Y: -38 }
-                        PathCubic { x: 0; y: 0; control1X: 80; control1Y: 38; control2X: 22; control2Y: 36 }
+                        PathCubic { x: 155; y: 0; control1X: 34; control1Y: -56; control2X: 124; control2Y: -58 }
+                        PathCubic { x: 0; y: 0; control1X: 124; control1Y: 58; control2X: 34; control2Y: 56 }
                     }
 
-                    // Inner shape at 0.6 scale (alpha .30)
+                    // Inner shape at ~0.6 scale (length 95px, half-width 34px)
                     ShapePath {
                         strokeColor: Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.50)
-                        strokeWidth: 1.0
+                        strokeWidth: 1.2
                         fillColor: Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.30)
                         capStyle: ShapePath.RoundCap
                         joinStyle: ShapePath.RoundJoin
 
                         startX: 0
                         startY: 0
-                        PathCubic { x: 60; y: 0; control1X: 13.2; control1Y: -21.6; control2X: 48; control2Y: -22.8 }
-                        PathCubic { x: 0; y: 0; control1X: 48; control1Y: 22.8; control2X: 13.2; control2Y: 21.6 }
+                        PathCubic { x: 95; y: 0; control1X: 21; control1Y: -34; control2X: 76; control2Y: -36 }
+                        PathCubic { x: 0; y: 0; control1X: 76; control1Y: 36; control2X: 21; control2Y: 34 }
                     }
                 }
 
-                // ── 36px Round Icon Button centered at teardrop tip (x = 100, y = 0) ──
+                // ── 48px Round Icon Button centered at teardrop tip (x = 155, y = 0) ──
                 Item {
                     id: lobeTipButton
-                    x: 82
-                    y: -18
-                    width: 36
-                    height: 36
+                    x: 155 - 24
+                    y: -24
+                    width: 48
+                    height: 48
 
                     Rectangle {
                         anchors.fill: parent
@@ -442,9 +465,9 @@ Item {
                                ? Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.40) 
                                : (lobeItem.isThisFocused 
                                   ? Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.30)
-                                  : Qt.rgba(root.colBgDark.r, root.colBgDark.g, root.colBgDark.b, 0.90))
+                                  : Qt.rgba(root.colBgDark.r, root.colBgDark.g, root.colBgDark.b, 0.92))
                         border.color: lobeItem.lobeColor
-                        border.width: 1.8
+                        border.width: 2.0
                         scale: lobeMouse.containsMouse ? 1.15 : 1.0
                         Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
 
@@ -452,7 +475,7 @@ Item {
                             anchors.centerIn: parent
                             text: lobeItem.iconGlyph
                             font.family: Theme.fontIcon
-                            font.pixelSize: 17
+                            font.pixelSize: 22
                             font.bold: true
                             color: lobeItem.lobeColor
                             rotation: -lobeItem.targetAngle
@@ -472,11 +495,11 @@ Item {
 
                 /* ══════════════════════════════════════════════════════════════
                    PHASE 3: Satellites around tip when focused
-                   Angles relative to lobe: -72°, -24°, 24°, 72° at radius 42px
+                   Angles relative to lobe: -72°, -24°, 24°, 72° at radius 66px
                    ══════════════════════════════════════════════════════════════ */
                 Item {
                     id: satellitesContainer
-                    x: 100
+                    x: 155
                     y: 0
                     visible: lobeItem.isThisFocused
 
@@ -491,7 +514,7 @@ Item {
                             readonly property var satAngles: [-72, -24, 24, 72]
                             readonly property real relDeg: satAngles[index]
                             readonly property real relRad: relDeg * (Math.PI / 180.0)
-                            readonly property real satRadius: 46
+                            readonly property real satRadius: 66
 
                             property real satPop: 0.0
 
@@ -510,8 +533,8 @@ Item {
 
                             x: satRadius * Math.cos(relRad) * satPop - width / 2
                             y: satRadius * Math.sin(relRad) * satPop - height / 2
-                            width: 30
-                            height: 30
+                            width: 40
+                            height: 40
                             scale: satPop
                             opacity: satPop
 
@@ -520,18 +543,18 @@ Item {
                                 anchors.fill: parent
                                 radius: width / 2
                                 color: modelData.isActive 
-                                       ? Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.28)
+                                       ? Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.32)
                                        : (satMouse.containsMouse 
-                                          ? Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.20)
+                                          ? Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.22)
                                           : Qt.rgba(root.colBgDark.r, root.colBgDark.g, root.colBgDark.b, 0.95))
                                 border.color: lobeItem.lobeColor
-                                border.width: 1.5
+                                border.width: 1.8
 
                                 Text {
                                     anchors.centerIn: parent
                                     text: modelData.icon
                                     font.family: modelData.isFontIcon ? Theme.fontIcon : "Valley Sans"
-                                    font.pixelSize: modelData.isFontIcon ? 14 : 11
+                                    font.pixelSize: modelData.isFontIcon ? 18 : 14
                                     font.bold: true
                                     color: lobeItem.lobeColor
                                     rotation: -lobeItem.targetAngle
@@ -544,13 +567,13 @@ Item {
                                     anchors.right: parent.right
                                     anchors.topMargin: -4
                                     anchors.rightMargin: -4
-                                    width: 14; height: 14; radius: 7
+                                    width: 16; height: 16; radius: 8
                                     color: root.colCoral
                                     Text {
                                         anchors.centerIn: parent
                                         text: String(modelData.badgeCount || "")
                                         font.family: "Valley Sans"
-                                        font.pixelSize: 8
+                                        font.pixelSize: 9
                                         font.bold: true
                                         color: "#ffffff"
                                     }
@@ -580,6 +603,8 @@ Item {
                 targetAngle: -65
                 baseScale: 1.00
                 staggerDelay: 0
+                idleDuration: 5200
+                idlePhaseDelay: 0
                 lobeColor: root.colTeal
                 iconGlyph: "wifi"
                 lobeTitle: "Connect"
@@ -626,6 +651,8 @@ Item {
                 targetAngle: 25
                 baseScale: 0.88
                 staggerDelay: 90
+                idleDuration: 6200
+                idlePhaseDelay: 1200
                 lobeColor: root.colPurple
                 iconGlyph: "apps"
                 lobeTitle: "Launch"
@@ -672,6 +699,8 @@ Item {
                 targetAngle: 135
                 baseScale: 1.05
                 staggerDelay: 180
+                idleDuration: 5600
+                idlePhaseDelay: 2400
                 lobeColor: root.colCoral
                 iconGlyph: "dashboard"
                 lobeTitle: "Spaces"
@@ -710,6 +739,8 @@ Item {
                 targetAngle: 205
                 baseScale: 0.90
                 staggerDelay: 270
+                idleDuration: 6800
+                idlePhaseDelay: 3600
                 lobeColor: root.colAmber
                 iconGlyph: "notifications"
                 lobeTitle: "Alerts"
@@ -751,7 +782,7 @@ Item {
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           CALENDAR RING TICKS & CENTRAL NUCLEUS DISC
+           CALENDAR RING TICKS & CENTRAL NUCLEUS DISC (Enlarged)
            Around the nucleus, one small tick per day of the current month.
            Today's tick is longer and in the accent color.
            ══════════════════════════════════════════════════════════════════════ */
@@ -771,8 +802,8 @@ Item {
                     readonly property real rad: deg * (Math.PI / 180.0)
 
                     // Tick length & radius
-                    readonly property real ringR: 28
-                    readonly property real tickLen: isToday ? 8.0 : 3.5
+                    readonly property real ringR: 42
+                    readonly property real tickLen: isToday ? 12.0 : 5.0
 
                     rotation: deg
                     x: 0
@@ -781,7 +812,7 @@ Item {
                     Rectangle {
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: -ringR - tickLen
-                        width: isToday ? 2.2 : 1.2
+                        width: isToday ? 3.0 : 1.5
                         height: tickLen
                         radius: width / 2
                         color: isToday ? root.colTeal : Qt.rgba(1, 1, 1, 0.35)
@@ -790,11 +821,11 @@ Item {
             }
         }
 
-        // Center Nucleus Disc (Radius ~19px -> Width 38px)
+        // Center Nucleus Disc (Radius ~29px -> Width 58px)
         Item {
             id: nucleusCore
             anchors.centerIn: parent
-            width: root.hubOpen ? 38 : 14
+            width: root.hubOpen ? 58 : 16
             height: width
             Behavior on width { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
 
@@ -804,7 +835,7 @@ Item {
                 radius: width / 2
                 color: root.colTeal
                 border.color: "#FFFFFF"
-                border.width: root.hubOpen ? 1.5 : 1.0
+                border.width: root.hubOpen ? 2.0 : 1.0
 
                 // Time text inside disc
                 Text {
@@ -813,7 +844,7 @@ Item {
                     opacity: root.hubProgress
                     text: root.timeStr
                     font.family: "Valley Sans"
-                    font.pixelSize: 8
+                    font.pixelSize: 13
                     font.bold: true
                     color: "#0b0e14"
                 }
@@ -837,12 +868,12 @@ Item {
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.bottom
-            anchors.topMargin: 82
+            anchors.topMargin: 125
             visible: root.hubProgress > 0.1 && root.activeMode !== "wallpapers"
             opacity: root.hubProgress
             text: root.dateCaptionStr
             font.family: "Valley Sans"
-            font.pixelSize: 11
+            font.pixelSize: 13
             font.bold: true
             color: root.colFgDim
         }
@@ -960,7 +991,7 @@ Item {
             // Inner Ring Guides
             Rectangle {
                 anchors.centerIn: parent
-                width: 124; height: 124; radius: 62
+                width: 184; height: 184; radius: 92
                 color: "transparent"
                 border.color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.15)
                 border.width: 1
@@ -969,7 +1000,7 @@ Item {
             // Outer Ring Guides
             Rectangle {
                 anchors.centerIn: parent
-                width: 216; height: 216; radius: 108
+                width: 324; height: 324; radius: 162
                 color: "transparent"
                 border.color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.12)
                 border.width: 1
@@ -978,8 +1009,8 @@ Item {
             // Drag MouseArea for horizontal inertia rotation
             MouseArea {
                 anchors.centerIn: parent
-                width: 320
-                height: 320
+                width: 440
+                height: 440
                 hoverEnabled: true
                 property real lastX: 0
                 onPressed: mouse => lastX = mouse.x
@@ -993,7 +1024,7 @@ Item {
                 }
             }
 
-            // ── Inner Ring: 6 Thumbnail Orbs (Radius 62) ──
+            // ── Inner Ring: 6 Thumbnail Orbs (Radius 92) ──
             Repeater {
                 model: 6
                 delegate: Item {
@@ -1003,17 +1034,17 @@ Item {
                     readonly property real rad: curDeg * (Math.PI / 180.0)
                     readonly property var wpData: root.wallpapersList[index]
 
-                    x: 62 * Math.cos(rad) - width / 2
-                    y: 62 * Math.sin(rad) - height / 2
-                    width: 38
-                    height: 38
+                    x: 92 * Math.cos(rad) - width / 2
+                    y: 92 * Math.sin(rad) - height / 2
+                    width: 52
+                    height: 52
 
                     Rectangle {
                         anchors.fill: parent
                         radius: width / 2
                         color: root.colBgDark
                         border.color: root.colTeal
-                        border.width: 1.5
+                        border.width: 1.8
                         clip: true
 
                         Image {
@@ -1021,8 +1052,8 @@ Item {
                             source: wpData ? wpData.thumb : ""
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
-                            sourceSize.width: 76
-                            sourceSize.height: 76
+                            sourceSize.width: 104
+                            sourceSize.height: 104
                         }
 
                         MouseArea {
@@ -1036,7 +1067,7 @@ Item {
                 }
             }
 
-            // ── Outer Ring: 10 Thumbnail Orbs (Radius 108, offset 18°) ──
+            // ── Outer Ring: 10 Thumbnail Orbs (Radius 162, offset 18°) ──
             Repeater {
                 model: 10
                 delegate: Item {
@@ -1046,17 +1077,17 @@ Item {
                     readonly property real rad: curDeg * (Math.PI / 180.0)
                     readonly property var wpData: root.wallpapersList[6 + index]
 
-                    x: 108 * Math.cos(rad) - width / 2
-                    y: 108 * Math.sin(rad) - height / 2
-                    width: 42
-                    height: 42
+                    x: 162 * Math.cos(rad) - width / 2
+                    y: 162 * Math.sin(rad) - height / 2
+                    width: 58
+                    height: 58
 
                     Rectangle {
                         anchors.fill: parent
                         radius: width / 2
                         color: root.colBgDark
                         border.color: root.colTeal
-                        border.width: 1.5
+                        border.width: 1.8
                         clip: true
 
                         Image {
@@ -1064,8 +1095,8 @@ Item {
                             source: wpData ? wpData.thumb : ""
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
-                            sourceSize.width: 84
-                            sourceSize.height: 84
+                            sourceSize.width: 116
+                            sourceSize.height: 116
                         }
 
                         MouseArea {
@@ -1082,13 +1113,13 @@ Item {
             // Bottom Search Field Pill
             Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: 135
-                width: 220
-                height: 30
-                radius: 15
+                y: 205
+                width: 280
+                height: 36
+                radius: 18
                 color: Qt.rgba(root.colBgDark.r, root.colBgDark.g, root.colBgDark.b, 0.92)
                 border.color: root.colTeal
-                border.width: 1.2
+                border.width: 1.5
 
                 RowLayout {
                     anchors.fill: parent

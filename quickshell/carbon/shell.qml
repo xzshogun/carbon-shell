@@ -1989,13 +1989,13 @@ ShellRoot {
             Item {
                 id: nucleusRestingCenterDot
                 anchors.centerIn: parent
-                width: 64
-                height: 64
+                width: 80
+                height: 80
 
                 // Ring 1 (Inner, 2 electrons)
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 32; height: 32; radius: 16
+                    width: 40; height: 40; radius: 20
                     color: "transparent"
                     border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22)
                     border.width: 1
@@ -2008,11 +2008,11 @@ ShellRoot {
                         }
                         Rectangle {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            y: -3; width: 5; height: 5; radius: 2.5; color: Theme.accent
+                            y: -3.5; width: 6; height: 6; radius: 3; color: Theme.accent
                         }
                         Rectangle {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            y: parent.height - 2; width: 5; height: 5; radius: 2.5; color: Theme.accent
+                            y: parent.height - 2.5; width: 6; height: 6; radius: 3; color: Theme.accent
                         }
                     }
                 }
@@ -2020,7 +2020,7 @@ ShellRoot {
                 // Ring 2 (Outer, 4 electrons)
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 56; height: 56; radius: 28
+                    width: 72; height: 72; radius: 36
                     color: "transparent"
                     border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
                     border.width: 1
@@ -2039,17 +2039,17 @@ ShellRoot {
                                 rotation: index * 90
                                 Rectangle {
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    y: -3; width: 5; height: 5; radius: 2.5; color: Theme.accent
+                                    y: -3.5; width: 6; height: 6; radius: 3; color: Theme.accent
                                 }
                             }
                         }
                     }
                 }
 
-                // 14px center nucleus dot
+                // 16px center nucleus dot
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 14; height: 14; radius: 7
+                    width: 16; height: 16; radius: 8
                     color: Theme.accent
                     border.color: "#FFFFFF"
                     border.width: 1.0

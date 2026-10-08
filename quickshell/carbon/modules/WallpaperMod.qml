@@ -237,6 +237,15 @@ Item {
         transitionAnim.start()
     }
 
+    /* Retrigger current wallpaper animation during mode transitions */
+    function retriggerTransition() {
+        if (!root.currentWpPath) return
+        const incoming = (root.activeBuffer === "A" ? bufB : bufA)
+        incoming.source = resolveWpUrl(root.currentWpPath)
+        root.pendingNewPath = root.currentWpPath
+        root.startImageTransition()
+    }
+
     /* ── Cross-Type (Image <-> Video/GIF/Live) Transition ─────────── */
     function startCrossTypeTransition(newPath, newType, oldType) {
         root.isAnimating = true

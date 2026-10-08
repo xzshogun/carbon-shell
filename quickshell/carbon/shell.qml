@@ -583,6 +583,10 @@ ShellRoot {
         onTriggered: root.musicHidden = true
     }
 
+    /* ── Mode Transitions ───────────────────────────────────────────── */
+    signal startVanishTransition()
+    signal triggerWallpaperTransition()
+
     /* ── Bar Mode Configuration: "pill" or "notch" ──────────────────── */
     property string barMode: "pill"
 
@@ -978,6 +982,9 @@ ShellRoot {
                         if (root.barMode === "bloom") root.switchBarMode("notch")
                         else root.switchBarMode("bloom")
                     }
+                    else if (cmd === "vanish-transition" || cmd === "transition-vanish" || cmd === "woosh") {
+                        root.startVanishTransition()
+                    }
                     else if (cmd === "nucleus" || cmd === "mode-nucleus" || cmd === "toggle-nucleus") {
                         if (root.barMode === "nucleus") root.switchBarMode("notch")
                         else root.switchBarMode("nucleus")
@@ -1135,7 +1142,17 @@ ShellRoot {
             exclusionMode: ExclusionMode.Ignore
             anchors { top: true; left: true; right: true; bottom: true }
 
-            WallpaperMod { anchors.fill: parent }
+            WallpaperMod {
+                id: wpInstance
+                anchors.fill: parent
+
+                Connections {
+                    target: root
+                    function onTriggerWallpaperTransition() {
+                        wpInstance.retriggerTransition()
+                    }
+                }
+            }
         }
     }
 
@@ -2128,6 +2145,48 @@ ShellRoot {
                     function onWallpaperModeRequested() { nucleusHubItemInstance.openWallpaperMode() }
                     function onLauncherModeRequested() { nucleusHubItemInstance.openLauncherMode() }
                     function onToggleLyricsRequested() { nucleusHubItemInstance.toggleLyrics() }
+                }
+            }
+        }
+    }
+
+    /* ── Vanish Mode Cinematic Transition Overlay ("Wooshhh!!") ── */
+    Variants {
+        model: Quickshell.screens
+
+        PanelWindow {
+            id: vanishTransitionWindow
+            required property var modelData
+
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-vanish-transition"
+            WlrLayershell.layer: WlrLayer.Overlay
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
+            }
+
+            visible: vanishTransitionInstance.isPlaying
+
+            VanishTransitionOverlay {
+                id: vanishTransitionInstance
+                anchors.fill: parent
+
+                onMidpointReached: {
+                    root.triggerWallpaperTransition()
+                    root.switchBarMode("nucleus")
+                }
+
+                Connections {
+                    target: root
+                    function onStartVanishTransition() {
+                        vanishTransitionInstance.startTransition()
+                    }
                 }
             }
         }

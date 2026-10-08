@@ -3611,6 +3611,14 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
                 break
 
     def select_bar_mode(self, mode_id):
+        if mode_id == "nucleus":
+            # Fire cinematic Vanish transition & auto-close config editor window
+            subprocess.run([
+                "sh", os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh"), "vanish-transition"
+            ], check=False)
+            self.close()
+            return
+
         self.current_bar_mode = mode_id
         if mode_id in ["pill", "minimal"]:
             if self.bar_pos.get("mainBarEdge") not in ["top", "bottom"]:

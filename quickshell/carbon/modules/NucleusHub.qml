@@ -102,6 +102,18 @@ Item {
         refreshAppList()
     }
 
+    function toggleLyrics() {
+        if (dateLyricsCaption) {
+            dateLyricsCaption.showLyrics = !dateLyricsCaption.showLyrics
+        }
+    }
+
+    function setLyricsMode(show) {
+        if (dateLyricsCaption) {
+            dateLyricsCaption.showLyrics = show
+        }
+    }
+
     /* ── Randomize Orbital Positions & Distances on Each Open ── */
     function randomizeOrbitalPositions() {
         if (!lobeConnect || !lobeLaunch || !lobeSpaces || !lobeAlerts) return
@@ -931,49 +943,13 @@ Item {
                 anchors.fill: parent
                 spacing: 5
 
-                // ── 1. Track / Lyrics Display ──
+                // ── 1. Track Info Display ──
                 Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 38
 
-                    // A. Synced Lyrics View (Centered, poetic typography)
-                    ColumnLayout {
-                        anchors.fill: parent
-                        visible: nucleusMusicOverlay.showingLyrics
-                        spacing: 2
-
-                        Text {
-                            id: lyricMainText
-                            Layout.fillWidth: true
-                            horizontalAlignment: Text.AlignHCenter
-                            text: LyricsService.currentLine
-                            font.family: "Valley Sans"
-                            font.pixelSize: 13
-                            font.bold: true
-                            color: root.colTeal
-                            elide: Text.ElideRight
-                            maximumLineCount: 1
-
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            horizontalAlignment: Text.AlignHCenter
-                            text: LyricsService.nextLine.length > 0 ? ("› " + LyricsService.nextLine) : ""
-                            font.family: "Valley Sans"
-                            font.pixelSize: 10
-                            color: Qt.rgba(root.colFgDim.r, root.colFgDim.g, root.colFgDim.b, 0.65)
-                            elide: Text.ElideRight
-                            maximumLineCount: 1
-                            visible: text.length > 0
-                        }
-                    }
-
-                    // B. Track Info View (Album art micro-orb + centered info)
                     RowLayout {
                         anchors.centerIn: parent
-                        visible: !nucleusMusicOverlay.showingLyrics
                         spacing: 8
 
                         // Circular Album Art Micro-Orb
@@ -1029,14 +1005,16 @@ Item {
                         }
                     }
 
-                    // Click text area to toggle between lyrics and track metadata if both exist
+                    // Scrolling on track area also morphs the bottom caption between date and lyrics
                     MouseArea {
                         anchors.fill: parent
-                        cursorShape: LyricsService.hasLyrics ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        cursorShape: Qt.PointingHandCursor
+                        onWheel: (wheel) => {
+                            if (wheel.angleDelta.y < 0) dateLyricsCaption.showLyrics = true
+                            else if (wheel.angleDelta.y > 0) dateLyricsCaption.showLyrics = false
+                        }
                         onClicked: {
-                            if (LyricsService.hasLyrics) {
-                                nucleusMusicOverlay.forceMetadata = !nucleusMusicOverlay.forceMetadata
-                            }
+                            dateLyricsCaption.showLyrics = !dateLyricsCaption.showLyrics
                         }
                     }
                 }
@@ -1164,19 +1142,153 @@ Item {
             }
         }
 
-        // Caption: Date & Weekday below the nucleus
-        Text {
+        /* ══════════════════════════════════════════════════════════════════════
+           MORPHING DATE / SYNCED LYRICS CAPTION
+           - Scroll DOWN or Click: Morphs smoothly into Synced Lyrics
+           - Scroll UP or Click: Morphs smoothly into Day, Date & Month
+           ══════════════════════════════════════════════════════════════════════ */
+        Item {
+            id: dateLyricsCaption
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.bottom
             anchors.topMargin: (LyricsService.hasTrack && root.activeMode === "hub") ? 148 : 82
             Behavior on anchors.topMargin { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
             visible: root.hubProgress > 0.1 && root.activeMode !== "wallpapers"
             opacity: root.hubProgress
-            text: root.dateCaptionStr
-            font.family: "Valley Sans"
-            font.pixelSize: 12
-            font.bold: true
-            color: root.colFgDim
+            width: 360
+            height: 24
+            clip: true
+
+            property bool showLyrics: false
+
+            Connections {
+                target: LyricsService
+                function onHasTrackChanged() {
+                    if (!LyricsService.hasTrack) dateLyricsCaption.showLyrics = false
+                }
+            }
+
+            // 1. Date View (Slides up and fades out when lyrics are shown)
+            Item {
+                id: dateView
+                anchors.fill: parent
+                opacity: !dateLyricsCaption.showLyrics ? 1.0 : 0.0
+                y: !dateLyricsCaption.showLyrics ? 0 : -14
+                Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+                Behavior on y { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 6
+
+                    Text {
+                        text: root.dateCaptionStr
+                        font.family: "Valley Sans"
+                        font.pixelSize: 12
+                        font.bold: true
+                        color: root.colFgDim
+                    }
+
+                    // Subtle indicator that music lyrics are available to scroll down into
+                    Text {
+                        visible: LyricsService.hasTrack && LyricsService.hasLyrics
+                        text: "music_note"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 11
+                        color: dateCaptionMouse.containsMouse ? root.colTeal : Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.45)
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                    }
+                }
+            }
+
+            // 2. Synced Lyrics View (Slides in from bottom and fades in when lyrics are shown)
+            Item {
+                id: lyricsView
+                anchors.fill: parent
+                opacity: dateLyricsCaption.showLyrics ? 1.0 : 0.0
+                y: dateLyricsCaption.showLyrics ? 0 : 14
+                Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+                Behavior on y { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 6
+
+                    Text {
+                        text: "♪"
+                        font.family: "Valley Sans"
+                        font.pixelSize: 11
+                        font.bold: true
+                        color: root.colTeal
+                    }
+
+                    Text {
+                        id: activeLyricText
+                        text: {
+                            if (!LyricsService.hasTrack) return "No media playing"
+                            if (LyricsService.hasLyrics && LyricsService.currentLine.trim().length > 0) {
+                                return LyricsService.currentLine
+                            }
+                            if (LyricsService.hasLyrics) {
+                                return "· · ·"
+                            }
+                            return "No Synced Lyrics"
+                        }
+                        font.family: "Valley Sans"
+                        font.pixelSize: 12
+                        font.bold: true
+                        color: (LyricsService.hasLyrics && LyricsService.currentLine.trim().length > 0) ? root.colTeal : root.colFgDim
+                        elide: Text.ElideRight
+                        Layout.maximumWidth: 320
+                        horizontalAlignment: Text.AlignHCenter
+
+                        Behavior on color { ColorAnimation { duration: 180 } }
+
+                        Connections {
+                            target: LyricsService
+                            function onCurrentLineChanged() {
+                                lyricTextPulse.restart()
+                            }
+                        }
+
+                        SequentialAnimation {
+                            id: lyricTextPulse
+                            NumberAnimation { target: activeLyricText; property: "opacity"; to: 0.35; duration: 90; easing.type: Easing.OutQuad }
+                            NumberAnimation { target: activeLyricText; property: "opacity"; to: 1.0; duration: 180; easing.type: Easing.OutCubic }
+                        }
+                    }
+
+                    Text {
+                        text: "♪"
+                        font.family: "Valley Sans"
+                        font.pixelSize: 11
+                        font.bold: true
+                        color: root.colTeal
+                    }
+                }
+            }
+
+            // Interactive MouseArea: Scroll Down -> Lyrics, Scroll Up -> Date, Click -> Toggle
+            MouseArea {
+                id: dateCaptionMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+
+                onWheel: (wheel) => {
+                    if (wheel.angleDelta.y < 0) {
+                        // Scroll down: morph to lyrics
+                        dateLyricsCaption.showLyrics = true
+                    } else if (wheel.angleDelta.y > 0) {
+                        // Scroll up: morph to date
+                        dateLyricsCaption.showLyrics = false
+                    }
+                }
+
+                onClicked: {
+                    dateLyricsCaption.showLyrics = !dateLyricsCaption.showLyrics
+                }
+            }
         }
 
         /* ══════════════════════════════════════════════════════════════════════

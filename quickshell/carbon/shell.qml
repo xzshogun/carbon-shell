@@ -995,6 +995,10 @@ ShellRoot {
                         if (root.barMode !== "nucleus") root.switchBarMode("nucleus")
                         if (root.nucleusHubItem) root.nucleusHubItem.openLauncherMode()
                     }
+                    else if (cmd === "nucleus lyrics" || cmd === "nucleus lyrics toggle" || cmd === "nucleus toggle-lyrics") {
+                        if (root.barMode !== "nucleus") root.switchBarMode("nucleus")
+                        if (root.nucleusHubItem) root.nucleusHubItem.toggleLyrics()
+                    }
                     else if (cmd === "calendar" || cmd === "center-dashboard" || cmd === "center" || cmd === "time-weather" || cmd === "toggle-dashboard" || cmd === "dashboard")
                         root.toggleCenterDashboard()
                     else if (cmd === "calendar-events") {
@@ -1958,6 +1962,10 @@ ShellRoot {
             hubOpen = true
             launcherModeRequested() 
         }
+        signal toggleLyricsRequested()
+        function toggleLyrics() {
+            toggleLyricsRequested()
+        }
     }
 
     Variants {
@@ -2104,6 +2112,7 @@ ShellRoot {
                     function onFocusLobeRequested(lobe) { nucleusHubItemInstance.focusLobe(lobe) }
                     function onWallpaperModeRequested() { nucleusHubItemInstance.openWallpaperMode() }
                     function onLauncherModeRequested() { nucleusHubItemInstance.openLauncherMode() }
+                    function onToggleLyricsRequested() { nucleusHubItemInstance.toggleLyrics() }
                 }
             }
         }

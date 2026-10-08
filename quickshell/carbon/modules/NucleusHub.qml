@@ -106,19 +106,16 @@ Item {
     function randomizeOrbitalPositions() {
         if (!lobeConnect || !lobeLaunch || !lobeSpaces || !lobeAlerts) return
 
-        // 4 deliberate asymmetric sectors leaving bottom zone [55°..125°] clear for music/date
-        // Sector A: Right (20° .. 50°)
-        // Sector B: Left (130° .. 160°)
-        // Sector C: Upper-Left (190° .. 255°)
-        // Sector D: Upper-Right (285° .. 345°)
+        // 4 deliberate asymmetric sectors spanning the upper dome (175° .. 365° / 5°)
+        // Completely leaves the bottom 170° clear — orbs never enter the music overlay/controls region!
         var sectors = [
-            { min: 20.0, max: 50.0 },
-            { min: 130.0, max: 160.0 },
-            { min: 190.0, max: 255.0 },
-            { min: 285.0, max: 345.0 }
+            { min: 175.0, max: 210.0 }, // Sector 1: Left flank (max y <= +14px)
+            { min: 220.0, max: 255.0 }, // Sector 2: Upper-Left (y <= -90px)
+            { min: 285.0, max: 320.0 }, // Sector 3: Upper-Right (y <= -90px)
+            { min: 330.0, max: 365.0 }  // Sector 4: Right flank (max y <= +14px)
         ]
 
-        // Shuffle quadrant assignments randomly so any orb can appear in any sector
+        // Shuffle sector assignments randomly so any orb can appear in any sector
         var order = [0, 1, 2, 3]
         for (var i = order.length - 1; i > 0; i--) {
             var j = Math.floor(Math.random() * (i + 1))
@@ -134,9 +131,10 @@ Item {
             var sec = sectors[order[k]]
             // Random angle within assigned sector
             var angle = sec.min + (Math.random() * (sec.max - sec.min))
+            if (angle >= 360.0) angle -= 360.0
 
-            // Random orbital radius between 118px and 155px (never exceeds max distance 155px)
-            var dist = Math.round(118.0 + Math.random() * 37.0)
+            // Random orbital radius between 118px and 152px
+            var dist = Math.round(118.0 + Math.random() * 34.0)
 
             lobe.targetAngle = angle
             lobe.orbitalRadius = dist
@@ -556,7 +554,7 @@ Item {
             OrbitalLobe {
                 id: lobeConnect
                 lobeId: "connect"
-                targetAngle: -65
+                targetAngle: 195
                 baseScale: 1.00
                 staggerDelay: 0
                 idleDuration: 5200
@@ -605,7 +603,7 @@ Item {
             OrbitalLobe {
                 id: lobeLaunch
                 lobeId: "launch"
-                targetAngle: 25
+                targetAngle: 240
                 baseScale: 0.88
                 staggerDelay: 90
                 idleDuration: 6200
@@ -654,7 +652,7 @@ Item {
             OrbitalLobe {
                 id: lobeSpaces
                 lobeId: "spaces"
-                targetAngle: 135
+                targetAngle: 300
                 baseScale: 1.05
                 staggerDelay: 180
                 idleDuration: 5600
@@ -695,7 +693,7 @@ Item {
             OrbitalLobe {
                 id: lobeAlerts
                 lobeId: "alerts"
-                targetAngle: 205
+                targetAngle: 345
                 baseScale: 0.90
                 staggerDelay: 270
                 idleDuration: 6800
@@ -808,11 +806,13 @@ Item {
         Item {
             id: musicProgressRing
             anchors.centerIn: parent
-            width: 104
-            height: 104
+            width: 116
+            height: 116
             visible: root.hubOpen && LyricsService.hasTrack && root.activeMode === "hub"
-            opacity: (root.hubProgress > 0.3 && LyricsService.hasTrack && root.activeMode === "hub") ? 1.0 : 0.0
-            Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+            opacity: (root.hubProgress > 0.35 && LyricsService.hasTrack && root.activeMode === "hub") ? 1.0 : 0.0
+            scale: 0.7 + (0.3 * root.hubProgress)
+            Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
 
             readonly property real rawProgress: (LyricsService.totalLength > 0)
                 ? Math.max(0.0, Math.min(1.0, LyricsService.currentPosition / LyricsService.totalLength)) : 0.0
@@ -822,50 +822,44 @@ Item {
                 NumberAnimation { duration: 150; easing.type: Easing.Linear }
             }
 
-            Canvas {
-                id: progressCanvas
+            readonly property real trackRadius: 50
+            readonly property real currentAngleRad: -Math.PI / 2 + (2 * Math.PI * animProgress)
+
+            Shape {
+                id: progressShape
                 anchors.fill: parent
-                antialiasing: true
-                renderTarget: Canvas.Image
-                renderStrategy: Canvas.Immediate
+                layer.enabled: true
+                layer.samples: 4
 
-                readonly property real cx: width / 2
-                readonly property real cy: height / 2
-                readonly property real trackRadius: 46
-
-                Connections {
-                    target: musicProgressRing
-                    function onAnimProgressChanged() { progressCanvas.requestPaint() }
-                    function onVisibleChanged() { if (musicProgressRing.visible) progressCanvas.requestPaint() }
+                // 1. Faint Orbital Guide Ring
+                ShapePath {
+                    strokeWidth: 2.0
+                    strokeColor: Qt.rgba(1, 1, 1, 0.14)
+                    fillColor: "transparent"
+                    capStyle: ShapePath.RoundCap
+                    PathAngleArc {
+                        centerX: 58
+                        centerY: 58
+                        radiusX: 50
+                        radiusY: 50
+                        startAngle: 0
+                        sweepAngle: 360
+                    }
                 }
 
-                Connections {
-                    target: root
-                    function onColTealChanged() { progressCanvas.requestPaint() }
-                }
-
-                onPaint: {
-                    const ctx = getContext("2d");
-                    ctx.reset();
-                    const r = trackRadius;
-
-                    // 1. Subtle Orbital Track (faint guide ring)
-                    ctx.beginPath();
-                    ctx.arc(cx, cy, r, 0, 2 * Math.PI, false);
-                    ctx.lineWidth = 1.8;
-                    ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
-                    ctx.stroke();
-
-                    // 2. Active Progress Arc
-                    if (musicProgressRing.animProgress > 0.002) {
-                        const startAngle = -Math.PI / 2;
-                        const endAngle = startAngle + (2 * Math.PI * musicProgressRing.animProgress);
-                        ctx.beginPath();
-                        ctx.arc(cx, cy, r, startAngle, endAngle, false);
-                        ctx.lineWidth = 2.4;
-                        ctx.strokeStyle = root.colTeal;
-                        ctx.lineCap = "round";
-                        ctx.stroke();
+                // 2. Neon Accent Progress Arc
+                ShapePath {
+                    strokeWidth: 2.6
+                    strokeColor: root.colTeal
+                    fillColor: "transparent"
+                    capStyle: ShapePath.RoundCap
+                    PathAngleArc {
+                        centerX: 58
+                        centerY: 58
+                        radiusX: 50
+                        radiusY: 50
+                        startAngle: -90
+                        sweepAngle: Math.max(0.1, Math.min(359.9, musicProgressRing.animProgress * 360.0))
                     }
                 }
             }
@@ -873,20 +867,20 @@ Item {
             // Leading Specular Glowing Dot at progress head
             Rectangle {
                 id: progressDot
-                visible: musicProgressRing.animProgress > 0.01 && musicProgressRing.animProgress < 0.99
+                visible: musicProgressRing.animProgress > 0.005
                 width: 6
                 height: 6
                 radius: 3
                 color: "#FFFFFF"
-                x: (parent.width / 2) + 46 * Math.cos(-Math.PI / 2 + 2 * Math.PI * musicProgressRing.animProgress) - 3
-                y: (parent.height / 2) + 46 * Math.sin(-Math.PI / 2 + 2 * Math.PI * musicProgressRing.animProgress) - 3
+                x: 58 + musicProgressRing.trackRadius * Math.cos(musicProgressRing.currentAngleRad) - 3
+                y: 58 + musicProgressRing.trackRadius * Math.sin(musicProgressRing.currentAngleRad) - 3
 
                 Rectangle {
                     anchors.centerIn: parent
                     width: 12
                     height: 12
                     radius: 6
-                    color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.45)
+                    color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.5)
                     z: -1
                 }
             }
@@ -901,7 +895,7 @@ Item {
                     const dx = mouse.x - width / 2;
                     const dy = mouse.y - height / 2;
                     const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist >= 32 && dist <= 60) {
+                    if (dist >= 36 && dist <= 66) {
                         let angle = Math.atan2(dy, dx);
                         let frac = (angle + Math.PI / 2) / (2 * Math.PI);
                         if (frac < 0) frac += 1.0;

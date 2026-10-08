@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
@@ -23,6 +24,7 @@ Item {
     implicitHeight: 180
     width: 340
     height: 180
+    clip: true
 
     signal closeRequested()
 
@@ -34,7 +36,21 @@ Item {
 
     property bool open: true
     property bool attachedBottom: false
-    readonly property bool animatingOut: !root.open && bgCard.opacity > 0.001
+    property bool animatingOut: false
+    onOpenChanged: {
+        if (!open) {
+            animatingOut = true
+            animatingOutTimer.restart()
+        } else {
+            animatingOut = false
+            animatingOutTimer.stop()
+        }
+    }
+    Timer {
+        id: animatingOutTimer
+        interval: 200
+        onTriggered: root.animatingOut = false
+    }
 
     readonly property string deviceName: {
         if (Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.description && Pipewire.defaultAudioSink.description.length > 0) {
@@ -48,41 +64,59 @@ Item {
 
     readonly property bool isSpotify: activePlayer && activePlayer.identity && activePlayer.identity.toLowerCase().includes("spotify")
 
-    Rectangle {
+    Item {
         id: bgCard
-        anchors.fill: parent
-        radius: 18
-        color: Theme.isDark ? Qt.rgba(0.08, 0.09, 0.12, 0.95) : Theme.m3surfaceContainerLowest
-        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.35) : (Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.12))
-        border.width: 1
-        clip: true
+        width: parent.width
+        height: parent.height
 
-        Behavior on border.color {
-            ColorAnimation { duration: root.open ? 300 : 150; easing.type: Easing.OutQuad }
-        }
+        Shape {
+            id: cardBgShape
+            anchors.fill: parent
+            layer.enabled: true
+            layer.smooth: true
+            preferredRendererType: Shape.CurveRenderer
 
-        transformOrigin: !root.attachedBottom ? Item.Top : Item.Bottom
-        transform: Translate {
-            y: root.open ? 0 : (!root.attachedBottom ? -16 : 16)
-            Behavior on y {
-                NumberAnimation {
-                    duration: root.open ? 280 : 150
-                    easing.type: root.open ? Easing.OutExpo : Easing.InQuad
-                }
+            // 1. Fill background (Seamlessly attached: square top, rounded bottom)
+            ShapePath {
+                fillColor: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.shellOpacity)
+                strokeColor: "transparent"
+                strokeWidth: 0
+                startX: 0; startY: 0
+                PathLine { x: bgCard.width; y: 0 }
+                PathLine { x: bgCard.width; y: bgCard.height - 20 }
+                PathArc { x: bgCard.width - 20; y: bgCard.height; radiusX: 20; radiusY: 20 }
+                PathLine { x: 20; y: bgCard.height }
+                PathArc { x: 0; y: bgCard.height - 20; radiusX: 20; radiusY: 20 }
+                PathLine { x: 0; y: 0 }
+            }
+
+            // 2. Continuous stroke (Right, Bottom, Left - NO stroke on top edge to blend seamlessly into the bar)
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Theme.outline
+                strokeWidth: 1
+                startX: bgCard.width; startY: 0
+                PathLine { x: bgCard.width; y: bgCard.height - 20 }
+                PathArc { x: bgCard.width - 20; y: bgCard.height; radiusX: 20; radiusY: 20 }
+                PathLine { x: 20; y: bgCard.height }
+                PathArc { x: 0; y: bgCard.height - 20; radiusX: 20; radiusY: 20 }
+                PathLine { x: 0; y: 0 }
             }
         }
-        scale: root.open ? 1.0 : 0.92
+
         opacity: root.open ? 1.0 : 0.0
-        Behavior on scale {
-            NumberAnimation {
-                duration: root.open ? 280 : 150
-                easing.type: root.open ? Easing.OutExpo : Easing.InQuad
-            }
-        }
+        y: root.open ? 0 : (!root.attachedBottom ? -height : height)
+
         Behavior on opacity {
             NumberAnimation {
-                duration: root.open ? 200 : 130
-                easing.type: root.open ? Easing.OutCubic : Easing.InQuad
+                duration: root.open ? 180 : 140
+                easing.bezierCurve: Theme.animCurves.expressiveDefaultEffects
+            }
+        }
+        Behavior on y {
+            NumberAnimation {
+                duration: root.open ? 240 : 160
+                easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel
             }
         }
 
@@ -93,15 +127,6 @@ Item {
             fillMode: Image.PreserveAspectCrop
             opacity: 0.14
             visible: status === Image.Ready && source != ""
-        }
-
-        /* ── Ambient Inner Border Highlight ───────────────────────────── */
-        Rectangle {
-            anchors.fill: parent
-            radius: 18
-            color: "transparent"
-            border.color: Qt.rgba(1, 1, 1, 0.06)
-            border.width: 1
         }
 
         ColumnLayout {

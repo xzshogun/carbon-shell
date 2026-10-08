@@ -16,7 +16,10 @@ import "../components"
 NotchContainer {
     id: root
 
-    implicitHeight: 34
+    property bool isExpanded: false
+    implicitHeight: isExpanded ? 270 : 34
+    implicitWidth: isExpanded ? 860 : (contentImplicitWidth + (leftFillet ? filletRadius : 0) + (rightFillet ? filletRadius : 0) + (horizontalPadding * 2))
+
     earWidth: 20
     contentSpacing: 8
 
@@ -31,13 +34,19 @@ NotchContainer {
 
     readonly property bool hudActive: HudService.active
 
-    mouseArea.hoverEnabled: true
+    focus: root.isExpanded
+    Keys.enabled: root.isExpanded
+    Keys.onEscapePressed: root.closeCenterDashboard()
+
+    mouseArea.hoverEnabled: !root.isExpanded
     mouseArea.cursorShape: Qt.PointingHandCursor
     mouseArea.acceptedButtons: Qt.LeftButton | Qt.RightButton
     mouseArea.onEntered: {
-        if (!root.hudActive) root.openCenterDashboard()
+        if (!root.hudActive && !root.isExpanded) root.openCenterDashboard()
     }
-    mouseArea.onExited: root.closeCenterDashboard()
+    mouseArea.onExited: {
+        if (!root.isExpanded) root.closeCenterDashboard()
+    }
     mouseArea.onClicked: (mouse) => {
         if (root.hudActive) {
             HudService.dismiss()
@@ -115,6 +124,12 @@ NotchContainer {
             anchors.verticalCenter: parent.verticalCenter
             implicitHeight: 26
             implicitWidth: root.hudActive ? dynamicPill.implicitWidth : normalNotchRow.implicitWidth
+            opacity: root.isExpanded ? 0.0 : 1.0
+            visible: opacity > 0.01
+
+            Behavior on opacity {
+                NumberAnimation { duration: 180; easing.type: Easing.OutQuad }
+            }
 
             Behavior on implicitWidth {
                 NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
@@ -301,5 +316,33 @@ NotchContainer {
     }
     }
     ]
+
+    CenterDashboard {
+        id: dashContent
+        parent: root
+        z: 5
+        anchors.top: parent.top
+        anchors.topMargin: 4
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: 860
+        height: 260
+        showBackground: false
+        open: root.isExpanded
+        visible: opacity > 0.01
+        opacity: root.isExpanded ? 1.0 : 0.0
+        scale: root.isExpanded ? 1.0 : 0.94
+        Behavior on opacity {
+            NumberAnimation { duration: 220; easing.type: Easing.OutQuad }
+        }
+        Behavior on scale {
+            NumberAnimation { duration: 280; easing.bezierCurve: Theme.animCurves.expressiveDefaultSpatial }
+        }
+        onCloseRequested: root.closeCenterDashboard()
+        onHoveredChanged: {
+            if (dashContent.hovered) {
+                root.openCenterDashboard()
+            }
+        }
+    }
 }
 

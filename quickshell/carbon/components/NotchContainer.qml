@@ -29,13 +29,20 @@ Item {
 
     Behavior on width {
         NumberAnimation {
-            duration: 280
-            easing.type: Easing.OutCubic
+            duration: 320
+            easing.bezierCurve: Theme.animCurves.expressiveDefaultSpatial
         }
     }
     height: implicitHeight
+    Behavior on height {
+        NumberAnimation {
+            duration: 320
+            easing.bezierCurve: Theme.animCurves.expressiveDefaultSpatial
+        }
+    }
 
     property bool attachedBottom: false
+    property bool hasAttachedPopup: false
 
     readonly property string fillPath: {
         const rTopLeft = root.leftFillet ? root.filletRadius : 0
@@ -57,6 +64,22 @@ Item {
             p += `A ${rBotLeft} ${rBotLeft} 0 0 1 ${curX + rBotLeft} 0 `
 
             const rightWallX = w - rTopRight
+            if (root.hasAttachedPopup) {
+                p += `L ${curX} 0 `
+                p += `L ${rightWallX} 0 `
+                if (rTopRight > 0) {
+                    p += `L ${rightWallX} ${h - rTopRight} `
+                    p += `A ${rTopRight} ${rTopRight} 0 0 0 ${w} ${h} `
+                } else {
+                    p += `L ${w} ${h} `
+                }
+                p += `L 0 ${h} Z`
+                return p
+            }
+
+            p += `L ${curX} ${rBotLeft} `
+            p += `A ${rBotLeft} ${rBotLeft} 0 0 1 ${curX + rBotLeft} 0 `
+
             p += `L ${rightWallX - rBotRight} 0 `
             p += `A ${rBotRight} ${rBotRight} 0 0 1 ${rightWallX} ${rBotRight} `
 
@@ -77,10 +100,24 @@ Item {
             p += `A ${rTopLeft} ${rTopLeft} 0 0 1 ${rTopLeft} ${rTopLeft} `
             curX = rTopLeft
         }
+
+        const rightWallX = w - rTopRight
+        if (root.hasAttachedPopup) {
+            p += `L ${curX} ${h} `
+            p += `L ${rightWallX} ${h} `
+            if (rTopRight > 0) {
+                p += `L ${rightWallX} ${rTopRight} `
+                p += `A ${rTopRight} ${rTopRight} 0 0 1 ${w} 0 `
+            } else {
+                p += `L ${w} 0 `
+            }
+            p += `L 0 0 Z`
+            return p
+        }
+
         p += `L ${curX} ${h - rBotLeft} `
         p += `A ${rBotLeft} ${rBotLeft} 0 0 0 ${curX + rBotLeft} ${h} `
 
-        const rightWallX = w - rTopRight
         p += `L ${rightWallX - rBotRight} ${h} `
         p += `A ${rBotRight} ${rBotRight} 0 0 0 ${rightWallX} ${h - rBotRight} `
 
@@ -111,10 +148,23 @@ Item {
                 p += `A ${rTopLeft} ${rTopLeft} 0 0 0 ${rTopLeft} ${h - rTopLeft} `
                 curX = rTopLeft
             }
+
+            const rightWallX = w - rTopRight
+            if (root.hasAttachedPopup) {
+                p += `L ${curX} 0 `
+                if (rTopRight > 0) {
+                    p += `M ${rightWallX} 0 `
+                    p += `L ${rightWallX} ${h - rTopRight} `
+                    p += `A ${rTopRight} ${rTopRight} 0 0 0 ${w} ${h}`
+                } else {
+                    p += `M ${w} 0 L ${w} ${h}`
+                }
+                return p
+            }
+
             p += `L ${curX} ${rBotLeft} `
             p += `A ${rBotLeft} ${rBotLeft} 0 0 1 ${curX + rBotLeft} 0 `
 
-            const rightWallX = w - rTopRight
             p += `L ${rightWallX - rBotRight} 0 `
             p += `A ${rBotRight} ${rBotRight} 0 0 1 ${rightWallX} ${rBotRight} `
 
@@ -133,10 +183,24 @@ Item {
             p += `A ${rTopLeft} ${rTopLeft} 0 0 1 ${rTopLeft} ${rTopLeft} `
             curX = rTopLeft
         }
+
+        const rightWallX = w - rTopRight
+        if (root.hasAttachedPopup) {
+            // Leave bottom open to seamlessly merge with the attached popup card
+            p += `L ${curX} ${h} `
+            if (rTopRight > 0) {
+                p += `M ${rightWallX} ${h} `
+                p += `L ${rightWallX} ${rTopRight} `
+                p += `A ${rTopRight} ${rTopRight} 0 0 1 ${w} 0`
+            } else {
+                p += `M ${w} ${h} L ${w} 0`
+            }
+            return p
+        }
+
         p += `L ${curX} ${h - rBotLeft} `
         p += `A ${rBotLeft} ${rBotLeft} 0 0 0 ${curX + rBotLeft} ${h} `
 
-        const rightWallX = w - rTopRight
         p += `L ${rightWallX - rBotRight} ${h} `
         p += `A ${rBotRight} ${rBotRight} 0 0 0 ${rightWallX} ${h - rBotRight} `
 
@@ -148,6 +212,8 @@ Item {
         }
         return p
     }
+
+    property real notchOpacity: 0.90
 
     Shape {
         id: bgShape
@@ -161,7 +227,7 @@ Item {
         ShapePath {
             strokeWidth: 0
             strokeColor: "transparent"
-            fillColor: Theme.bg
+            fillColor: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, root.notchOpacity)
 
             PathSvg {
                 path: root.fillPath
@@ -198,9 +264,15 @@ Item {
     Row {
         id: contentRow
         z: 1
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.left: parent.left
-        anchors.leftMargin: (root.leftFillet ? root.filletRadius : 0) + root.horizontalPadding
+        anchors.top: root.attachedBottom ? undefined : parent.top
+        anchors.topMargin: root.attachedBottom ? undefined : Math.max(0, (Math.min(root.height, 34) - contentRow.height) / 2)
+        anchors.bottom: root.attachedBottom ? parent.bottom : undefined
+        anchors.bottomMargin: root.attachedBottom ? Math.max(0, (Math.min(root.height, 34) - contentRow.height) / 2) : undefined
+        anchors.left: (!root.rightFillet && root.leftFillet) ? undefined : ((root.leftFillet && root.rightFillet) ? undefined : parent.left)
+        anchors.leftMargin: (!root.rightFillet && root.leftFillet) ? undefined : ((root.leftFillet && root.rightFillet) ? undefined : ((root.leftFillet ? root.filletRadius : 0) + root.horizontalPadding))
+        anchors.right: (!root.rightFillet && root.leftFillet) ? parent.right : undefined
+        anchors.rightMargin: (!root.rightFillet && root.leftFillet) ? root.horizontalPadding : undefined
+        anchors.horizontalCenter: (root.leftFillet && root.rightFillet) ? parent.horizontalCenter : undefined
         spacing: root.contentSpacing
     }
 }

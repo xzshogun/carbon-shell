@@ -80,7 +80,7 @@ ShellRoot {
         id: smallMusicLeaveTimer
         interval: 350
         onTriggered: {
-            if (!root.smallMusicPinned && !root.smallMusicHovered) root.closeSmallMusic()
+            if ((root.barMode !== "minimal" || !root.smallMusicPinned) && !root.smallMusicHovered) root.closeSmallMusic()
         }
     }
 
@@ -184,7 +184,7 @@ ShellRoot {
     }
     function closeMixer() { root.mixerOpen = false; root.mixerPinned = false }
     function toggleMixer() {
-        if (root.mixerOpen && root.mixerPinned) { root.mixerPinned = false; root.mixerOpen = false }
+        if (root.mixerOpen) { root.closeMixer() }
         else { root.closeAllPopupsExcept("mixer"); root.mixerPinned = true; root.mixerOpen = true }
     }
 
@@ -486,16 +486,6 @@ ShellRoot {
         root.wallpaperTransitionPendingFinish = true
     }
 
-    /* Dynamic Hyprland Blur Activation for Overlays */
-    readonly property bool needsBlur: root.overviewOpen || root.powerOpen || root.wallpaperTransitionOpen
-    onNeedsBlurChanged: {
-        if (root.needsBlur) {
-            Quickshell.execDetached(["hyprctl", "eval", "hl.config({ decoration = { blur = { enabled = true, passes = 2, size = 5 } } })"])
-        } else {
-            Quickshell.execDetached(["hyprctl", "eval", "hl.config({ decoration = { blur = { enabled = false } } })"])
-        }
-    }
-
     function openLauncher() {
         root.closeWallpaperPicker()
         root.launcherOpen = true
@@ -585,6 +575,7 @@ ShellRoot {
 
     /* ── Bar Mode Configuration: "pill" or "notch" ──────────────────── */
     property string barMode: "pill"
+    onBarModeChanged: console.log("[BAR-MODE CHANGED] New root.barMode is now: " + root.barMode)
 
     FileView {
         id: barModeFile
@@ -593,7 +584,7 @@ ShellRoot {
         blockLoading: true
         printErrors: false
         onLoaded: root.reloadBarMode()
-        onFileChanged: reload()
+        onFileChanged: root.reloadBarMode()
     }
 
     property string islandStyle: "pill"
@@ -602,14 +593,31 @@ ShellRoot {
     property bool islandHovered: false
     readonly property bool islandRevealed: islandPersistent || islandHovered || mixerOpen || trayOpen || brightnessOpen || batteryOpen || wifiOpen || btOpen || calendarOpen || centerDashboardOpen || smallMusicOpen
 
+    property bool _switchingBarMode: false
+
+    Timer {
+        id: switchGuardTimer
+        interval: 600
+        onTriggered: root._switchingBarMode = false
+    }
+
     function reloadBarMode() {
+        if (root._switchingBarMode) {
+            console.log("[BAR-MODE] reloadBarMode skipped because _switchingBarMode is active")
+            return
+        }
         try {
+            barModeFile.reload()
             const txt = barModeFile.text().trim()
+            console.log("[BAR-MODE] reloadBarMode raw text after reload: '" + txt + "'")
             if (txt.length > 0) {
                 const d = JSON.parse(txt)
+                console.log("[BAR-MODE] parsed mode: " + d.mode + " islandStyle: " + d.islandStyle)
                 if (d.mode) {
-                    if (d.mode === "three_islands") root.barMode = "pill"
-                    else root.barMode = d.mode
+                    var target = (d.mode === "three_islands") ? "pill" : d.mode
+                    if (root.barMode !== target) {
+                        root.barMode = target
+                    }
                 }
                 if (d.islandStyle) {
                     root.islandStyle = d.islandStyle
@@ -624,6 +632,7 @@ ShellRoot {
                         root.musicBarEdge = "top"
                     }
                 }
+                console.log("[BAR-MODE] final root.barMode=" + root.barMode)
             }
         } catch (e) {
             console.log("Error loading bar mode: " + e)
@@ -631,10 +640,14 @@ ShellRoot {
     }
 
     function switchBarMode(m) {
+        console.log("[BAR-MODE] switchBarMode called with: " + m)
         if (!m) return
+        root._switchingBarMode = true
+        switchGuardTimer.restart()
         root.barMode = m
+        console.log("[BAR-MODE] switchBarMode set root.barMode to: " + root.barMode)
         Quickshell.execDetached(["python3", "-c",
-            "import json, os; p=os.path.expanduser('~/.config/hypr/carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {}; d['mode']='" + m + "'; json.dump(d, open(p,'w'), indent=2)"])
+            "import json, os; p=os.path.expanduser('~/.config/hypr/carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {};\nif d.get('mode') != '" + m + "':\n  d['mode']='" + m + "'\n  t=p+'.tmp'\n  with open(t,'w') as f: json.dump(d, f, indent=2)\n  os.replace(t, p)"])
     }
 
     function switchIslandStyle(s) {
@@ -650,7 +663,20 @@ ShellRoot {
             "import json, os; p=os.path.expanduser('~/.config/hypr/carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {}; d['islandPersistent']=" + (p ? "True" : "False") + "; json.dump(d, open(p,'w'), indent=2)"])
     }
 
-    property int barHeight: 34
+    property real shellOpacity: Theme.shellOpacity
+    property bool shellBlur: true
+    property int pillHeight: 36
+    property int notchHeight: 32
+    property int appGap: 1
+    property int pillAppGap: 1
+    property int notchAppGap: 1
+    property real pillOpacity: root.shellOpacity
+    property bool pillBlur: root.shellBlur
+    property real notchOpacity: root.shellOpacity
+    property bool notchBlur: root.shellBlur
+    property real minimalOpacity: root.shellOpacity
+    property bool minimalBlur: root.shellBlur
+    property int barHeight: root.barMode === "notch" ? root.notchHeight : root.pillHeight
     property string barEdge: "top"
     property string mainBarEdge: "top"
     property string musicBarEdge: "top"
@@ -670,6 +696,26 @@ ShellRoot {
         return (root.mainBarEdge === "bottom" || root.barEdge === "bottom") ? "top_left" : "bottom_right"
     }
 
+    readonly property int popupTopMargin: {
+        if (root.mainBarEdge === "bottom") return 0
+        if (root.barMode === "notch") return 0
+        if (root.barMode === "pill") return root.pillHeight + 14
+        return 0
+    }
+
+    readonly property int popupBottomMargin: {
+        if (root.mainBarEdge !== "bottom") return 0
+        if (root.barMode === "notch") return 0
+        if (root.barMode === "pill") return root.pillHeight + 14
+        return 0
+    }
+
+    readonly property int popupRightMargin: {
+        if (root.barMode === "notch") return 0
+        if (root.barMode === "pill") return 12
+        return 0
+    }
+
     FileView {
         id: barPosFile
         path: root.home + "/.config/hypr/carbon-bar-position.json"
@@ -677,7 +723,7 @@ ShellRoot {
         blockLoading: true
         printErrors: false
         onLoaded: root.applyBarPos(barPosFile.text())
-        onFileChanged: reload()
+        onFileChanged: root.applyBarPos(barPosFile.text())
     }
 
     function applyBarPos(txt) {
@@ -700,7 +746,38 @@ ShellRoot {
             if (d.centerAlign) root.centerAlign = d.centerAlign
             if (d.rightAlign) root.rightAlign = d.rightAlign
 
-            root.barHeight = (root.barMode === "atomic" ? 46 : (root.barMode === "pill" ? 38 : 34))
+            if (d.pillHeight !== undefined) root.pillHeight = parseInt(d.pillHeight) || 36
+            if (d.notchHeight !== undefined) root.notchHeight = parseInt(d.notchHeight) || 32
+            if (d.appGap !== undefined) root.appGap = (!isNaN(parseInt(d.appGap))) ? parseInt(d.appGap) : 1
+            if (d.pillAppGap !== undefined) root.pillAppGap = (!isNaN(parseInt(d.pillAppGap))) ? parseInt(d.pillAppGap) : root.appGap
+            else root.pillAppGap = root.appGap
+            if (d.notchAppGap !== undefined) root.notchAppGap = (!isNaN(parseInt(d.notchAppGap))) ? parseInt(d.notchAppGap) : root.appGap
+            else root.notchAppGap = root.appGap
+
+            if (d.shellOpacity !== undefined) {
+                root.shellOpacity = Math.max(0.10, Math.min(1.0, parseFloat(d.shellOpacity) || 0.85))
+                root.pillOpacity = root.shellOpacity
+                root.notchOpacity = root.shellOpacity
+                root.minimalOpacity = root.shellOpacity
+                Theme.shellOpacity = root.shellOpacity
+            } else {
+                if (d.pillOpacity !== undefined) root.pillOpacity = parseFloat(d.pillOpacity) || 0.85
+                if (d.notchOpacity !== undefined) root.notchOpacity = parseFloat(d.notchOpacity) || 0.90
+                if (d.minimalOpacity !== undefined) root.minimalOpacity = parseFloat(d.minimalOpacity) || 0.90
+            }
+
+            if (d.shellBlur !== undefined) {
+                root.shellBlur = !!d.shellBlur
+                root.pillBlur = root.shellBlur
+                root.notchBlur = root.shellBlur
+                root.minimalBlur = root.shellBlur
+            } else {
+                if (d.pillBlur !== undefined) root.pillBlur = !!d.pillBlur
+                if (d.notchBlur !== undefined) root.notchBlur = !!d.notchBlur
+                if (d.minimalBlur !== undefined) root.minimalBlur = !!d.minimalBlur
+            }
+
+            root.barHeight = (root.barMode === "notch" ? root.notchHeight : root.pillHeight)
         } catch (e) {}
     }
 
@@ -747,13 +824,11 @@ ShellRoot {
     property bool controlsPinned: false
 
     function openControls() {
-        if (root.barMode === "minimal") return
         root.closeAllPopupsExcept("controls")
         root.controlsPinned = true
         root.controlsVisible = true
     }
     function openControlsHover() {
-        if (root.barMode === "minimal") return
         root.closeAllPopupsExcept("controls")
         root.controlsPinned = false
         root.controlsVisible = true
@@ -761,8 +836,7 @@ ShellRoot {
     }
     function closeControls() { root.controlsVisible = false; root.controlsPinned = false }
     function toggleControls() {
-        if (root.barMode === "minimal") return
-        if (root.controlsVisible && root.controlsPinned) {
+        if (root.controlsVisible) {
             root.closeControls()
         } else {
             root.closeAllPopupsExcept("controls")
@@ -775,7 +849,7 @@ ShellRoot {
         id: controlsLeaveTimer
         interval: 350
         onTriggered: {
-            if (!root.controlsPinned && !root.controlsHovered) root.controlsVisible = false
+            if (!root.controlsPinned && !root.controlsHovered) root.closeControls()
         }
     }
 
@@ -794,16 +868,13 @@ ShellRoot {
         id: cmdSocketServer
         path: "/tmp/carbon-shell.sock"
         active: true
-        Component.onCompleted: {
-            cmdSocketServer.active = false
-            cmdSocketServer.active = true
-        }
         handler: Component {
             Socket {
                 parser: SplitParser {
                 splitMarker: "\n"
                 onRead: function (message) {
                     var cmd = message.trim()
+                    console.log("[IPC RECEIVED] " + cmd)
                     if (cmd === "wallpaper" || cmd === "wallpaper-local") {
                         root.wallpaperSource = "local"
                         root.toggleWallpaperPicker()
@@ -844,8 +915,49 @@ ShellRoot {
                         root.toggleMixer()
                     else if (cmd === "brightness")
                         root.toggleBrightness()
+                    else if (cmd === "battery")
+                        root.toggleBattery()
+                    else if (cmd === "wifi")
+                        root.toggleWifi()
+                    else if (cmd === "bt" || cmd === "bluetooth")
+                        root.toggleBt()
+                    else if (cmd === "tray")
+                        root.toggleTray()
+                    else if (cmd === "calendar")
+                        root.toggleCalendar()
+                    else if (cmd === "dashboard" || cmd === "center-dashboard")
+                        root.toggleCenterDashboard()
+                    else if (cmd === "small-music")
+                        root.toggleSmallMusic()
                     else if (cmd === "controls")
                         root.toggleControls()
+                    else if (cmd.startsWith("set-bar-mode ")) {
+                        const m = cmd.substring(13).trim()
+                        if (m) root.switchBarMode(m)
+                    }
+                    else if (cmd.startsWith("set-opacity ")) {
+                        const val = parseFloat(cmd.substring(12))
+                        if (!isNaN(val)) {
+                            root.shellOpacity = Math.max(0.10, Math.min(1.0, val))
+                            root.pillOpacity = root.shellOpacity
+                            root.notchOpacity = root.shellOpacity
+                            root.minimalOpacity = root.shellOpacity
+                            Theme.shellOpacity = root.shellOpacity
+                            Theme.reload()
+                        }
+                    }
+                    else if (cmd.startsWith("set-blur ")) {
+                        const val = parseInt(cmd.substring(9))
+                        root.shellBlur = (val === 1)
+                        root.pillBlur = root.shellBlur
+                        root.notchBlur = root.shellBlur
+                        root.minimalBlur = root.shellBlur
+                    }
+                    else if (cmd === "reload-config" || cmd === "apply-settings") {
+                        root.applyBarPos(barPosFile.text())
+                        root.reloadBarMode()
+                        Theme.reloadShellOpacity()
+                    }
                     else if (cmd === "controls-mode-todo") {
                         root.controlsPinned = true
                         root.controlsVisible = true
@@ -921,10 +1033,6 @@ ShellRoot {
                         root.closeOverview()
                     else if (cmd === "theme-reload" || cmd === "reload-theme")
                         Theme.reload()
-                    else if (cmd === "atomic" || cmd === "mode-atomic" || cmd === "toggle-atomic") {
-                        if (root.barMode === "atomic") root.switchBarMode("notch")
-                        else root.switchBarMode("atomic")
-                    }
                     else if (cmd === "calendar" || cmd === "center-dashboard" || cmd === "center" || cmd === "time-weather" || cmd === "toggle-dashboard" || cmd === "dashboard")
                         root.toggleCenterDashboard()
                     else if (cmd === "calendar-events") {
@@ -1058,25 +1166,22 @@ ShellRoot {
         }
     }
 
-    /* ── Audio-Reactive Active Window Border Daemon ──────────────────────── */
+    /* ── Audio-Reactive Active Window Border Daemon (Disabled for low latency & CPU efficiency) ── */
     Process {
         id: audioBorderDaemon
         command: ["python3", root.home + "/.config/hypr/scripts/audio-border.py"]
-        running: true
+        running: false
     }
 
     /* ── Dynamic Edge Reservation Windows (Prevents App Overlap) ────────── */
-    readonly property bool hasTopReserve: (root.barMode === "atomic") ? false :
-        ((root.barMode === "pill" || (root.barMode === "minimal" && root.islandPersistent))
-        ? (root.mainBarEdge === "top")
-        : (root.barMode === "minimal" ? false : (root.mainBarEdge === "top" || root.musicBarEdge === "top")))
+    readonly property bool hasTopReserve: false
     readonly property bool hasBottomReserve: (root.barMode === "pill" || (root.barMode === "minimal" && root.islandPersistent))
         ? (root.mainBarEdge === "bottom")
         : (root.barMode === "minimal" ? false : (root.mainBarEdge === "bottom" || root.musicBarEdge === "bottom"))
     readonly property bool hasLeftReserve: false
     readonly property bool hasRightReserve: false
 
-    readonly property int topReserveHeight: root.barMode === "atomic" ? 0 : (root.hasTopReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0)
+    readonly property int topReserveHeight: root.hasTopReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0
     readonly property int bottomReserveHeight: root.hasBottomReserve ? (root.barHeight + (root.barMode === "pill" ? 10 : (root.islandStyle === "notch" ? 4 : 8))) : 0
     readonly property int leftReserveWidth: root.hasLeftReserve ? 38 : 0
     readonly property int rightReserveWidth: root.hasRightReserve ? 38 : 0
@@ -1181,7 +1286,8 @@ ShellRoot {
             color: "transparent"
             WlrLayershell.namespace: "carbon-bar-pill-full"
             WlrLayershell.layer: WlrLayer.Top
-            exclusionMode: ExclusionMode.Ignore
+            exclusionMode: root.barMode === "pill" ? ExclusionMode.Normal : ExclusionMode.Ignore
+            exclusiveZone: root.barMode === "pill" ? Math.max(0, root.pillHeight + (root.mainBarEdge !== "bottom" ? 8 : 0) + root.pillAppGap) : 0
             aboveWindows: true
             anchors {
                 top: root.mainBarEdge !== "bottom"
@@ -1196,68 +1302,73 @@ ShellRoot {
                 right: 12
             }
 
-            implicitHeight: root.barHeight
+            implicitHeight: root.pillHeight
             visible: root.barMode === "pill" && root.mainBarEdge !== "left" && root.mainBarEdge !== "right"
 
-            Rectangle {
-                id: pillFullCapsule
+            Loader {
+                id: pillFullBarLoader
                 anchors.fill: parent
-                radius: root.barHeight / 2
-                color: Theme.bg
-                border.color: Theme.outline
-                border.width: 1
-
-                Item {
+                active: root.barMode === "pill" && root.mainBarEdge !== "left" && root.mainBarEdge !== "right"
+                sourceComponent: Rectangle {
+                    id: pillFullCapsule
                     anchors.fill: parent
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 8
+                    radius: root.pillHeight / 2
+                    color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, root.pillOpacity)
+                    border.color: Theme.outline
+                    border.width: 1
 
-                    /* Left: Workspaces & App Launcher */
-                    BarLeft {
-                        id: pillLeftItem
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        showBackground: false
-                        vertical: false
-                        onOpenLauncher: root.openLauncher()
-                    }
+                    Item {
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
 
-                    /* Center: Clock, Rotating Vinyl Disc, Equalizer & Music Island */
-                    BarCenter {
-                        id: pillCenterItem
-                        anchors.centerIn: parent
-                        barContent: root.musicBarContent
-                        onOpenCenterDashboard: root.openCenterDashboard()
-                        onCloseCenterDashboard: centerDashboardLeaveTimer.restart()
-                        onToggleCenterDashboard: root.toggleCenterDashboard()
-                        onToggleMusic: root.toggleCenterDashboard()
-                        onOpenMusic: root.openCenterDashboard()
-                        onToggleControls: root.toggleCenterDashboard()
-                    }
+                        /* Left: Workspaces & App Launcher */
+                        BarLeft {
+                            id: pillLeftItem
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            showBackground: false
+                            vertical: false
+                            onOpenLauncher: root.openLauncher()
+                        }
 
-                    /* Right: System Tray & Controls */
-                    BarRight {
-                        id: pillRightItem
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        showBackground: false
-                        vertical: false
-                        anchorWindow: pillFullBarWindow
-                        notifCount: (notificationServer && notificationServer.trackedNotifications) ? notificationServer.trackedNotifications.values.length : 0
-                        onOpenMixer: root.openMixer()
-                        onCloseMixer: mixerLeaveTimer.restart()
-                        onToggleMixer: root.toggleMixer()
-                        onOpenBrightness: root.openBrightness()
-                        onCloseBrightness: brightnessLeaveTimer.restart()
-                        onToggleBrightness: root.toggleBrightness()
-                        onOpenBattery: root.openBattery()
-                        onCloseBattery: batteryLeaveTimer.restart()
-                        onToggleBattery: root.toggleBattery()
-                        onOpenTray: root.openTray()
-                        onCloseTray: trayLeaveTimer.restart()
-                        onToggleTray: root.toggleTray()
-                        onToggleControls: root.toggleControls()
-                        onOpenPower: root.openPower()
+                        /* Center: Clock, Rotating Vinyl Disc, Equalizer & Music Island */
+                        BarCenter {
+                            id: pillCenterItem
+                            anchors.centerIn: parent
+                            barContent: root.musicBarContent
+                            onOpenCenterDashboard: root.openCenterDashboard()
+                            onCloseCenterDashboard: centerDashboardLeaveTimer.restart()
+                            onToggleCenterDashboard: root.toggleCenterDashboard()
+                            onToggleMusic: root.toggleCenterDashboard()
+                            onOpenMusic: root.openCenterDashboard()
+                            onToggleControls: root.toggleCenterDashboard()
+                        }
+
+                        /* Right: System Tray & Controls */
+                        BarRight {
+                            id: pillRightItem
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            showBackground: false
+                            vertical: false
+                            anchorWindow: pillFullBarWindow
+                            notifCount: (notificationServer && notificationServer.trackedNotifications) ? notificationServer.trackedNotifications.values.length : 0
+                            onOpenMixer: root.openMixer()
+                            onCloseMixer: mixerLeaveTimer.restart()
+                            onToggleMixer: root.toggleMixer()
+                            onOpenBrightness: root.openBrightness()
+                            onCloseBrightness: brightnessLeaveTimer.restart()
+                            onToggleBrightness: root.toggleBrightness()
+                            onOpenBattery: root.openBattery()
+                            onCloseBattery: batteryLeaveTimer.restart()
+                            onToggleBattery: root.toggleBattery()
+                            onOpenTray: root.openTray()
+                            onCloseTray: trayLeaveTimer.restart()
+                            onToggleTray: root.toggleTray()
+                            onToggleControls: root.toggleControls()
+                            onOpenPower: root.openPower()
+                        }
                     }
                 }
             }
@@ -1419,7 +1530,10 @@ ShellRoot {
             color: "transparent"
             WlrLayershell.namespace: "carbon-bar-minimal"
             WlrLayershell.layer: WlrLayer.Top
-            exclusionMode: ExclusionMode.Ignore
+            exclusionMode: root.islandPersistent ? ExclusionMode.Normal : ExclusionMode.Ignore
+            exclusiveZone: root.islandPersistent ? Math.max(0, (root.islandStyle === "notch" ? (root.notchHeight + root.notchAppGap) : (root.pillHeight + (root.mainBarEdge !== "bottom" ? 8 : 0) + root.pillAppGap))) : 0
+            WlrLayershell.keyboardFocus: (root.islandHovered || islandHov.hovered) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            Keys.forwardTo: [minimalIslandItem]
             aboveWindows: true
             anchors {
                 top: root.mainBarEdge !== "bottom"
@@ -1430,7 +1544,7 @@ ShellRoot {
                 bottom: 0
             }
 
-            implicitHeight: root.barHeight + 18
+            implicitHeight: Math.max(root.barHeight + 28, minimalIslandItem.height + 16)
             implicitWidth: 600
             visible: root.barMode === "minimal"
 
@@ -1472,6 +1586,9 @@ ShellRoot {
                 id: minimalIslandItem
                 attachedBottom: root.mainBarEdge === "bottom"
                 islandStyle: root.islandStyle
+                islandOpacity: root.minimalOpacity
+                pillHeight: root.pillHeight
+                notchHeight: root.notchHeight
                 notifCount: (notificationServer && notificationServer.trackedNotifications) ? notificationServer.trackedNotifications.values.length : 0
                 anchors.horizontalCenter: parent.horizontalCenter
 
@@ -1501,6 +1618,7 @@ ShellRoot {
                         if (islandHov.hovered) {
                             islandHoverLeaveTimer.stop()
                             root.islandHovered = true
+                            minimalIslandItem.forceActiveFocus()
                         } else {
                             islandHoverLeaveTimer.restart()
                         }
@@ -1548,6 +1666,8 @@ ShellRoot {
                 onSwitchIslandStyle: (s) => root.switchIslandStyle(s)
                 onConvertToPill: root.switchBarMode("pill")
                 onConvertToNotch: root.switchBarMode("notch")
+                onToggleSpotlight: root.toggleSpotlight()
+                onOpenSpotlight: root.openSpotlight()
             }
         }
     }
@@ -1564,6 +1684,7 @@ ShellRoot {
             color: "transparent"
             WlrLayershell.namespace: "carbon-music-small"
             WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: root.smallMusicOpen ? (root.barMode === "minimal" ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None) : WlrKeyboardFocus.None
             exclusionMode: ExclusionMode.Ignore
             aboveWindows: true
             anchors {
@@ -1571,21 +1692,26 @@ ShellRoot {
                 bottom: root.mainBarEdge === "bottom"
             }
             margins {
-                top: root.mainBarEdge !== "bottom" ? (root.barHeight + 8) : 0
-                bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
+                top: root.popupTopMargin
+                bottom: root.popupBottomMargin
             }
 
-            implicitWidth: 340
-            implicitHeight: 184
-            visible: (root.smallMusicOpen || smallMusicItem.animatingOut)
+            implicitWidth: smallMusicItem.implicitWidth
+            implicitHeight: smallMusicItem.implicitHeight
+            visible: (root.smallMusicOpen || smallMusicItem.animatingOut) && root.barMode !== "minimal"
 
             mask: Region {
-                item: root.smallMusicOpen ? smallMusicItem : null
+                item: (root.smallMusicOpen || smallMusicItem.animatingOut) ? smallMusicItem : null
             }
 
             SmallMusicOverlay {
                 id: smallMusicItem
                 anchors.centerIn: parent
+                focus: root.smallMusicOpen
+                Keys.onEscapePressed: event => {
+                    root.closeSmallMusic()
+                    event.accepted = true
+                }
                 open: root.smallMusicOpen
                 attachedBottom: root.mainBarEdge === "bottom"
                 onCloseRequested: root.closeSmallMusic()
@@ -1669,7 +1795,8 @@ ShellRoot {
             color: "transparent"
             WlrLayershell.namespace: "carbon-bar-notch"
             WlrLayershell.layer: WlrLayer.Top
-            exclusionMode: ExclusionMode.Ignore
+            exclusionMode: root.barMode === "notch" ? ExclusionMode.Normal : ExclusionMode.Ignore
+            exclusiveZone: root.barMode === "notch" ? Math.max(0, root.notchHeight + root.notchAppGap) : 0
             aboveWindows: true
             anchors {
                 top: root.mainBarEdge !== "bottom"
@@ -1682,10 +1809,11 @@ ShellRoot {
                 bottom: 0
             }
 
-            implicitHeight: 34
+            implicitHeight: Math.max(root.notchHeight, notchCenterItem.height)
+            WlrLayershell.keyboardFocus: root.centerDashboardOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             visible: root.barMode === "notch"
 
-            mask: notchMask
+            mask: (root.barMode === "notch" && notchBarWindow.visible) ? notchMask : null
             Region {
                 id: notchMask
                 Region {
@@ -1710,6 +1838,9 @@ ShellRoot {
 
             NotchBarLeft {
                 id: notchLeftItem
+                notchOpacity: root.notchOpacity
+                height: root.notchHeight
+                implicitHeight: root.notchHeight
                 attachedBottom: root.mainBarEdge === "bottom"
                 anchors.top: root.mainBarEdge !== "bottom" ? parent.top : undefined
                 anchors.bottom: root.mainBarEdge === "bottom" ? parent.bottom : undefined
@@ -1721,13 +1852,17 @@ ShellRoot {
 
             NotchBarCenter {
                 id: notchCenterItem
+                notchOpacity: root.notchOpacity
+                isExpanded: root.centerDashboardOpen
                 visible: root.musicBarEdge === root.mainBarEdge
                 barContent: root.musicBarContent
                 attachedBottom: root.mainBarEdge === "bottom"
+                hasAttachedPopup: root.centerDashboardOpen || root.calendarOpen || root.smallMusicOpen
                 anchors.top: root.mainBarEdge !== "bottom" ? parent.top : undefined
                 anchors.bottom: root.mainBarEdge === "bottom" ? parent.bottom : undefined
                 anchors.horizontalCenter: parent.horizontalCenter
                 leftFillet: true
+                rightFillet: true
                 onOpenMusicHover: root.openCenterDashboard()
                 onCloseMusicHover: centerDashboardLeaveTimer.restart()
                 onOpenCenterDashboard: root.openCenterDashboard()
@@ -1740,7 +1875,16 @@ ShellRoot {
 
             NotchBarRight {
                 id: notchRightItem
+                notchOpacity: root.notchOpacity
+                height: root.notchHeight
+                implicitHeight: root.notchHeight
                 attachedBottom: root.mainBarEdge === "bottom"
+                hasAttachedPopup: (root.mixerOpen || mixerItem.animatingOut)
+                               || (root.wifiOpen || wifiItem.animatingOut)
+                               || (root.btOpen || btItem.animatingOut)
+                               || (root.brightnessOpen || brightnessItem.animatingOut)
+                               || (root.batteryOpen || batteryItem.animatingOut)
+                               || (root.trayOpen || trayItem.animatingOut)
                 anchors.top: root.mainBarEdge !== "bottom" ? parent.top : undefined
                 anchors.bottom: root.mainBarEdge === "bottom" ? parent.bottom : undefined
                 anchors.right: parent.right
@@ -1759,45 +1903,6 @@ ShellRoot {
                 onCloseTray: trayLeaveTimer.restart()
                 onToggleTray: root.toggleTray()
                 onOpenPower: root.openPower()
-            }
-        }
-    }
-
-    /* ── Atomic Valence Mode: Quantum Orbital Shell Preview ────────────── */
-    Variants {
-        model: Quickshell.screens
-
-        PanelWindow {
-            id: atomicOrbWindow
-            required property var modelData
-
-            screen: modelData
-            color: "transparent"
-            WlrLayershell.namespace: "carbon-atomic-orb"
-            WlrLayershell.layer: WlrLayer.Top
-            exclusionMode: ExclusionMode.Ignore
-            aboveWindows: true
-            anchors {
-                top: false
-                bottom: false
-                left: false
-                right: false
-            }
-
-            implicitWidth: 104
-            implicitHeight: 104
-            visible: root.barMode === "atomic"
-
-            mask: Region {
-                item: atomicOrbItem.hitBox
-            }
-
-            AtomicOrb {
-                id: atomicOrbItem
-                anchors.centerIn: parent
-                onToggleCenterDashboard: root.toggleCenterDashboard()
-                onOpenLauncher: root.openLauncher()
-                onToggleMixer: root.toggleMixer()
             }
         }
     }
@@ -1828,6 +1933,7 @@ ShellRoot {
                 id: separateNotchCenter
                 barContent: root.musicBarContent
                 attachedBottom: root.musicBarEdge === "bottom"
+                hasAttachedPopup: root.centerDashboardOpen || root.calendarOpen || root.smallMusicOpen
                 anchors.fill: parent
                 onOpenMusicHover: root.openCenterDashboard()
                 onCloseMusicHover: centerDashboardLeaveTimer.restart()
@@ -1899,7 +2005,7 @@ ShellRoot {
             anchors { top: true; left: true; right: true; bottom: true }
 
             aboveWindows: true
-            visible: root.spotlightOpen
+            visible: root.spotlightOpen || (spotlightItem && spotlightItem.animatingOut)
 
             MouseArea {
                 anchors.fill: parent
@@ -1917,9 +2023,10 @@ ShellRoot {
             SpotlightModal {
                 id: spotlightItem
                 anchors.horizontalCenter: parent.horizontalCenter
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: -60
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 0
                 open: root.spotlightOpen
+                shellOpacity: root.shellOpacity
                 onCloseRequested: root.closeSpotlight()
             }
         }
@@ -2021,25 +2128,26 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
-            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
-            right: root.barMode === "minimal" ? 0 : 16
+            top: root.popupTopMargin
+            bottom: root.popupBottomMargin
+            right: root.popupRightMargin
         }
 
         implicitWidth: mixerItem.implicitWidth
-        implicitHeight: mixerItem.implicitHeight + 20
+        implicitHeight: mixerItem.implicitHeight
 
-        visible: root.mainBarEdge !== "left"
+        visible: (root.mixerOpen || mixerItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "minimal"
 
         mask: Region {
-            item: root.mixerOpen ? mixerItem : null
+            item: (root.mixerOpen || mixerItem.animatingOut) ? mixerItem : null
             x: 0; y: 0
-            width: root.mixerOpen ? mixerItem.implicitWidth : 0
-            height: root.mixerOpen ? mixerItem.implicitHeight + 20 : 0
+            width: (root.mixerOpen || mixerItem.animatingOut) ? mixerItem.implicitWidth : 0
+            height: (root.mixerOpen || mixerItem.animatingOut) ? mixerItem.implicitHeight : 0
         }
 
         MixerMod {
             id: mixerItem
+            barMode: root.barMode
             barEdge: root.mainBarEdge
             open: root.mixerOpen
             onCloseRequested: root.closeMixer()
@@ -2065,25 +2173,26 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
-            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
-            right: root.barMode === "minimal" ? 0 : 16
+            top: root.popupTopMargin
+            bottom: root.popupBottomMargin
+            right: root.popupRightMargin
         }
 
         implicitWidth: brightnessItem.implicitWidth
-        implicitHeight: brightnessItem.implicitHeight + 20
+        implicitHeight: brightnessItem.implicitHeight
 
-        visible: root.mainBarEdge !== "left"
+        visible: (root.brightnessOpen || brightnessItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "minimal"
 
         mask: Region {
-            item: root.brightnessOpen ? brightnessItem : null
+            item: (root.brightnessOpen || brightnessItem.animatingOut) ? brightnessItem : null
             x: 0; y: 0
-            width: root.brightnessOpen ? brightnessItem.implicitWidth : 0
-            height: root.brightnessOpen ? brightnessItem.implicitHeight + 20 : 0
+            width: (root.brightnessOpen || brightnessItem.animatingOut) ? brightnessItem.implicitWidth : 0
+            height: (root.brightnessOpen || brightnessItem.animatingOut) ? brightnessItem.implicitHeight : 0
         }
 
         BrightnessPopup {
             id: brightnessItem
+            barMode: root.barMode
             barEdge: root.mainBarEdge
             open: root.brightnessOpen
             onCloseRequested: root.closeBrightness()
@@ -2109,25 +2218,26 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
-            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
-            right: root.barMode === "minimal" ? 0 : 24
+            top: root.popupTopMargin
+            bottom: root.popupBottomMargin
+            right: root.popupRightMargin
         }
 
         implicitWidth: batteryItem.implicitWidth
-        implicitHeight: batteryItem.implicitHeight + 20
+        implicitHeight: batteryItem.implicitHeight
 
-        visible: root.mainBarEdge !== "left"
+        visible: (root.batteryOpen || batteryItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "minimal"
 
         mask: Region {
-            item: root.batteryOpen ? batteryItem : null
+            item: (root.batteryOpen || batteryItem.animatingOut) ? batteryItem : null
             x: 0; y: 0
-            width: root.batteryOpen ? batteryItem.implicitWidth : 0
-            height: root.batteryOpen ? batteryItem.implicitHeight + 20 : 0
+            width: (root.batteryOpen || batteryItem.animatingOut) ? batteryItem.implicitWidth : 0
+            height: (root.batteryOpen || batteryItem.animatingOut) ? batteryItem.implicitHeight : 0
         }
 
         BatteryPopup {
             id: batteryItem
+            barMode: root.barMode
             barEdge: root.mainBarEdge
             open: root.batteryOpen
             onHoveredChanged: {
@@ -2153,25 +2263,27 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
-            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
-            right: root.barMode === "minimal" ? 0 : 16
+            top: root.popupTopMargin
+            bottom: root.popupBottomMargin
+            right: root.popupRightMargin
         }
 
-        implicitWidth: 250
-        implicitHeight: 286 + 20
+        implicitWidth: wifiItem.implicitWidth
+        implicitHeight: wifiItem.implicitHeight
 
-        visible: root.mainBarEdge !== "left"
+        visible: (root.wifiOpen || wifiItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "minimal"
 
         mask: Region {
-            item: root.wifiOpen ? wifiItem : null
+            item: (root.wifiOpen || wifiItem.animatingOut) ? wifiItem : null
             x: 0; y: 0
-            width: root.wifiOpen ? 250 : 0
-            height: root.wifiOpen ? 286 + 20 : 0
+            width: (root.wifiOpen || wifiItem.animatingOut) ? wifiItem.implicitWidth : 0
+            height: (root.wifiOpen || wifiItem.animatingOut) ? wifiItem.implicitHeight : 0
         }
 
         WifiPopup {
             id: wifiItem
+            barMode: root.barMode
+            barEdge: root.mainBarEdge
             open: root.wifiOpen
             powerOn: root.wifiOn
             wifiName: root.wifiName
@@ -2202,25 +2314,27 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
-            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
-            right: root.barMode === "minimal" ? 0 : 16
+            top: root.popupTopMargin
+            bottom: root.popupBottomMargin
+            right: root.popupRightMargin
         }
 
-        implicitWidth: 250
-        implicitHeight: 286 + 20
+        implicitWidth: btItem.implicitWidth
+        implicitHeight: btItem.implicitHeight
 
-        visible: root.mainBarEdge !== "left"
+        visible: (root.btOpen || btItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "minimal"
 
         mask: Region {
-            item: root.btOpen ? btItem : null
+            item: (root.btOpen || btItem.animatingOut) ? btItem : null
             x: 0; y: 0
-            width: root.btOpen ? 250 : 0
-            height: root.btOpen ? 286 + 20 : 0
+            width: (root.btOpen || btItem.animatingOut) ? btItem.implicitWidth : 0
+            height: (root.btOpen || btItem.animatingOut) ? btItem.implicitHeight : 0
         }
 
         BtPopup {
             id: btItem
+            barMode: root.barMode
+            barEdge: root.mainBarEdge
             open: root.btOpen
             powerOn: root.btOn
             btName: root.btName
@@ -2251,25 +2365,26 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
-            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
-            right: root.barMode === "minimal" ? 0 : 16
+            top: root.popupTopMargin
+            bottom: root.popupBottomMargin
+            right: root.popupRightMargin
         }
 
         implicitWidth: trayItem.implicitWidth
-        implicitHeight: trayItem.implicitHeight + 20
+        implicitHeight: trayItem.implicitHeight
 
-        visible: root.mainBarEdge !== "left"
+        visible: (root.trayOpen || trayItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "minimal"
 
         mask: Region {
-            item: root.trayOpen ? trayItem : null
+            item: (root.trayOpen || trayItem.animatingOut) ? trayItem : null
             x: 0; y: 0
-            width: root.trayOpen ? trayItem.implicitWidth : 0
-            height: root.trayOpen ? trayItem.implicitHeight + 20 : 0
+            width: (root.trayOpen || trayItem.animatingOut) ? trayItem.implicitWidth : 0
+            height: (root.trayOpen || trayItem.animatingOut) ? trayItem.implicitHeight : 0
         }
 
         TrayPopup {
             id: trayItem
+            barMode: root.barMode
             barEdge: root.mainBarEdge
             open: root.trayOpen
             onHoveredChanged: {
@@ -2288,6 +2403,7 @@ ShellRoot {
         color: "transparent"
         WlrLayershell.namespace: "carbon-calendar"
         WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: root.calendarOpen ? (root.barMode === "minimal" ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None) : WlrKeyboardFocus.None
         exclusionMode: ExclusionMode.Ignore
         anchors {
             top: root.mainBarEdge !== "bottom" && root.mainBarEdge !== "right"
@@ -2295,25 +2411,31 @@ ShellRoot {
             right: root.barMode !== "minimal"
         }
         margins {
-            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
-            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
+            top: root.popupTopMargin
+            bottom: root.popupBottomMargin
             right: root.barMode === "minimal" ? 0 : 16
         }
 
         implicitWidth: 216
-        implicitHeight: 206 + 20
+        implicitHeight: 206
 
-        visible: root.mainBarEdge !== "left"
+        visible: (root.calendarOpen || calendarItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "minimal"
 
         mask: Region {
-            item: root.calendarOpen ? calendarItem : null
+            item: (root.calendarOpen || calendarItem.animatingOut) ? calendarItem : null
             x: 0; y: 0
-            width: root.calendarOpen ? 216 : 0
-            height: root.calendarOpen ? 206 + 20 : 0
+            width: (root.calendarOpen || calendarItem.animatingOut) ? 216 : 0
+            height: (root.calendarOpen || calendarItem.animatingOut) ? 206 : 0
         }
 
         CalendarPopup {
             id: calendarItem
+            barEdge: root.mainBarEdge
+            focus: root.calendarOpen
+            Keys.onEscapePressed: event => {
+                root.closeCalendar()
+                event.accepted = true
+            }
             open: root.calendarOpen
             onCloseRequested: root.closeCalendar()
             onAnyHoverChanged: {
@@ -2340,18 +2462,18 @@ ShellRoot {
             bottom: root.mainBarEdge === "bottom"
         }
         margins {
-            top: root.mainBarEdge === "bottom" ? 0 : (root.barHeight + 8)
-            bottom: root.mainBarEdge === "bottom" ? (root.barHeight + 8) : 0
+            top: root.popupTopMargin
+            bottom: root.popupBottomMargin
         }
 
         implicitWidth: centerDashboardItem.implicitWidth
         implicitHeight: centerDashboardItem.implicitHeight
 
         mask: Region {
-            item: root.centerDashboardOpen ? centerDashboardItem.cardItem : null
+            item: (root.centerDashboardOpen || centerDashboardItem.animatingOut) ? centerDashboardItem.cardItem : null
         }
 
-        visible: root.centerDashboardOpen || centerDashboardItem.animatingOut
+        visible: (root.centerDashboardOpen || centerDashboardItem.animatingOut) && root.barMode !== "notch" && root.barMode !== "minimal"
 
         function updateHover() {
             var isHov = windowHoverArea.containsMouse || centerDashboardItem.hovered
@@ -2406,13 +2528,13 @@ ShellRoot {
         implicitWidth: mixerItemLeft.implicitWidth
         implicitHeight: mixerItemLeft.implicitHeight + 20
 
-        visible: root.mainBarEdge === "left"
+        visible: (root.mixerOpen || mixerItemLeft.animatingOut) && root.mainBarEdge === "left"
 
         mask: Region {
-            item: root.mixerOpen ? mixerItemLeft : null
+            item: (root.mixerOpen || mixerItemLeft.animatingOut) ? mixerItemLeft : null
             x: 0; y: 0
-            width: root.mixerOpen ? mixerItemLeft.implicitWidth : 0
-            height: root.mixerOpen ? mixerItemLeft.implicitHeight + 20 : 0
+            width: (root.mixerOpen || mixerItemLeft.animatingOut) ? mixerItemLeft.implicitWidth : 0
+            height: (root.mixerOpen || mixerItemLeft.animatingOut) ? mixerItemLeft.implicitHeight + 20 : 0
         }
 
         MixerMod {
@@ -2447,12 +2569,13 @@ ShellRoot {
         implicitWidth: brightnessItemLeft.implicitWidth
         implicitHeight: brightnessItemLeft.implicitHeight + 20
 
-        visible: root.mainBarEdge === "left"
+        visible: (root.brightnessOpen || brightnessItemLeft.animatingOut) && root.mainBarEdge === "left"
 
         mask: Region {
+            item: (root.brightnessOpen || brightnessItemLeft.animatingOut) ? brightnessItemLeft : null
             x: 0; y: 0
-            width: root.brightnessOpen ? brightnessItemLeft.implicitWidth : 0
-            height: root.brightnessOpen ? brightnessItemLeft.implicitHeight + 20 : 0
+            width: (root.brightnessOpen || brightnessItemLeft.animatingOut) ? brightnessItemLeft.implicitWidth : 0
+            height: (root.brightnessOpen || brightnessItemLeft.animatingOut) ? brightnessItemLeft.implicitHeight + 20 : 0
         }
 
         BrightnessPopup {
@@ -2487,12 +2610,13 @@ ShellRoot {
         implicitWidth: batteryItemLeft.implicitWidth
         implicitHeight: batteryItemLeft.implicitHeight + 20
 
-        visible: root.mainBarEdge === "left"
+        visible: (root.batteryOpen || batteryItemLeft.animatingOut) && root.mainBarEdge === "left"
 
         mask: Region {
+            item: (root.batteryOpen || batteryItemLeft.animatingOut) ? batteryItemLeft : null
             x: 0; y: 0
-            width: root.batteryOpen ? batteryItemLeft.implicitWidth : 0
-            height: root.batteryOpen ? batteryItemLeft.implicitHeight + 20 : 0
+            width: (root.batteryOpen || batteryItemLeft.animatingOut) ? batteryItemLeft.implicitWidth : 0
+            height: (root.batteryOpen || batteryItemLeft.animatingOut) ? batteryItemLeft.implicitHeight + 20 : 0
         }
 
         BatteryPopup {
@@ -2526,12 +2650,13 @@ ShellRoot {
         implicitWidth: trayItemLeft.implicitWidth
         implicitHeight: trayItemLeft.implicitHeight + 20
 
-        visible: root.mainBarEdge === "left"
+        visible: (root.trayOpen || trayItemLeft.animatingOut) && root.mainBarEdge === "left"
 
         mask: Region {
+            item: (root.trayOpen || trayItemLeft.animatingOut) ? trayItemLeft : null
             x: 0; y: 0
-            width: root.trayOpen ? trayItemLeft.implicitWidth : 0
-            height: root.trayOpen ? trayItemLeft.implicitHeight + 20 : 0
+            width: (root.trayOpen || trayItemLeft.animatingOut) ? trayItemLeft.implicitWidth : 0
+            height: (root.trayOpen || trayItemLeft.animatingOut) ? trayItemLeft.implicitHeight + 20 : 0
         }
 
         TrayPopup {
@@ -2671,7 +2796,7 @@ ShellRoot {
         color: "transparent"
         WlrLayershell.namespace: "carbon-controls"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.controlsVisible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: root.controlsVisible ? (root.barMode === "minimal" ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand) : WlrKeyboardFocus.None
         exclusionMode: ExclusionMode.Ignore
 
         anchors {
@@ -2691,17 +2816,26 @@ ShellRoot {
         implicitHeight: controlsItem.implicitHeight
 
         mask: Region {
-            item: root.controlsVisible ? controlsItem.cardItem : null
+            item: (root.controlsVisible || controlsItem.animatingOut) ? controlsItem : null
+            x: 0; y: 0
+            width: (root.controlsVisible || controlsItem.animatingOut) ? controlsItem.implicitWidth : 0
+            height: (root.controlsVisible || controlsItem.animatingOut) ? controlsItem.implicitHeight : 0
         }
 
-        visible: (root.controlsVisible || controlsItem.animatingOut) && root.barMode !== "minimal"
+        visible: (root.controlsVisible || controlsItem.animatingOut)
 
         QuickSettings {
             id: controlsItem
+            focus: root.controlsVisible
+            Keys.onEscapePressed: event => {
+                root.closeControls()
+                event.accepted = true
+            }
             corner: root.controlsCorner
             width: controlsItem.implicitWidth
             height: controlsItem.implicitHeight
             open: root.controlsVisible
+            shellOpacity: root.shellOpacity
             server: notificationServer
             onHoveredChanged: {
                 root.controlsHovered = controlsItem.hovered

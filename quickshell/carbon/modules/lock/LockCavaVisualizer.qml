@@ -80,7 +80,7 @@ Item {
     /* ── Smooth Waveform Lerp & Decay Animation ──────────────────────────── */
     Timer {
         id: smoothTimer
-        interval: 16
+        interval: 35
         repeat: true
         running: root.showing && root.active && root.visible
         onTriggered: {

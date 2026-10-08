@@ -7,62 +7,104 @@ import Quickshell.Hyprland
 import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
-import M3Shapes
 import "../Singletons"
 
 /**
  * MinimalIsland: Ultra-lightweight Dynamic Island single-bar capsule.
- * Designed for absolute minimum CPU, GPU, and RAM consumption.
+ * Designed to look and feel exactly like the authentic Tide Island:
  *
- * Page Architecture:
- *   Page 0 (Default): Minimal Workspaces & Clock ONLY (no sound, battery, or media).
- *   Page 1 (Swipe Right): Sound, Battery, and Notifications.
- *   Page 2 (Swipe Right again): Media Player controls and track info.
+ * Modes:
+ *   1. Resting (Time): Workspace badge, crisp digital clock, and minimal battery %.
+ *   2. Music Playing: Album art thumbnail, track title & artist typography, and live mini audio equalizer.
+ *   3. HUD Active: Smooth morph into Dynamic Island volume/brightness/battery pill.
  *
- * Silky Smooth Physics:
- *   - Pure Easing.OutCubic curves (zero jitter, zero shaking, zero overshoot bounce).
- *   - Direct drag tracking without animation fighting.
- *   - Clean horizontal cross-slide transitions.
+ * Switching between Music and Time:
+ *   - Left Arrow Key (or swipe/drag left): Switches to normal Time view (even while music is playing!).
+ *   - Right Arrow Key (or swipe/drag right): Switches to Music view.
+ *   - Subtle indicator in resting mode when media is playing.
+ *
+ * Click Interactions:
+ *   - Left-click (in Music view): Toggles sleek expanded Media Player card.
+ *   - Left-click (in Time view): Toggles sleek expanded Calendar & Date card.
+ *   - Right-click: Toggles Control Center / Quick Settings.
+ *   - Middle-click: Toggles modern Spotlight Launcher.
+ *   - Scroll Wheel: Fine volume control (vertical) / view toggle (horizontal).
  */
 Item {
     id: root
 
     readonly property string home: Quickshell.env("HOME") || ""
-    implicitHeight: 34
-    implicitWidth: capsule.width
-    width: capsule.width
-    height: 34
-
     property bool attachedBottom: false
     property string islandStyle: "pill" // "pill" or "notch"
+    property int pillHeight: 36
+    property int notchHeight: 32
+    property real islandOpacity: 0.90
     property int notifCount: 0
-    property int currentPage: 0 // 0: Time & Workspace, 1: Sound/Battery/Notif, 2: Media
+    property int currentPage: 0
 
-    function getShapeForWs(wsId) {
-        switch (wsId) {
-            case 1: return MaterialShape.Clover4Leaf
-            case 2: return MaterialShape.Sunny
-            case 3: return MaterialShape.Flower
-            case 4: return MaterialShape.Heart
-            case 5: return MaterialShape.Gem
-            case 6: return MaterialShape.Diamond
-            case 7: return MaterialShape.Cookie4Sided
-            case 8: return MaterialShape.SoftBurst
-            case 9: return MaterialShape.Boom
-            case 10: return MaterialShape.Ghostish
-            default: {
-                const extraShapes = [
-                    MaterialShape.Slanted,
-                    MaterialShape.Pentagon,
-                    MaterialShape.ClamShell,
-                    MaterialShape.PuffyDiamond,
-                    MaterialShape.Arch
-                ]
-                return extraShapes[Math.abs(wsId - 11) % extraShapes.length]
+    /* ── Synced Lyrics Multi-Line & State (Tide Island Style) ── */
+    readonly property bool hasSyncedLyrics: LyricsService.hasLyrics && LyricsService.hasTrack
+    readonly property string liveLyricLine: LyricsService.currentLine ? LyricsService.currentLine.trim() : ""
+    readonly property string displayLyricLine: {
+        if (!hasSyncedLyrics) return ""
+        return liveLyricLine.length > 0 ? liveLyricLine : "♪ ♫ ♪"
+    }
+    property string activeLyricText: displayLyricLine
+    property string previousLyricText: ""
+    property real lyricChangeProgress: 1.0
+
+    implicitHeight: islandStyle === "notch" ? notchHeight : pillHeight
+    height: implicitHeight
+    implicitWidth: capsule.width
+    width: capsule.width
+
+    /* ── Active Sub-View State (Music vs Time) ── */
+    property string activeView: "music" // "music" or "time"
+
+    focus: true
+    Keys.enabled: true
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Left) {
+            root.activeView = "time"
+            event.accepted = true
+        } else if (event.key === Qt.Key_Right) {
+            if (root.isPlaying || root.hasTrack) {
+                root.activeView = "music"
             }
+            event.accepted = true
         }
     }
+    Keys.onLeftPressed: event => {
+        root.activeView = "time"
+        event.accepted = true
+    }
+    Keys.onRightPressed: event => {
+        if (root.isPlaying || root.hasTrack) {
+            root.activeView = "music"
+        }
+        event.accepted = true
+    }
 
+    onDisplayLyricLineChanged: {
+        if (displayLyricLine === activeLyricText) return
+        previousLyricText = activeLyricText
+        activeLyricText = displayLyricLine
+        lyricChangeProgress = 0.0
+        lyricChangeAnimation.restart()
+    }
+
+    NumberAnimation {
+        id: lyricChangeAnimation
+        target: root
+        property: "lyricChangeProgress"
+        from: 0.0
+        to: 1.0
+        duration: 320
+        easing.bezierCurve: Theme.animCurves.expressiveDefaultSpatial
+        onFinished: root.previousLyricText = ""
+    }
+
+    /* ── Signals for shell.qml integration ── */
     signal openLauncher()
     signal toggleControls()
     signal openNotif()
@@ -89,201 +131,69 @@ Item {
     signal openSmallMusic()
     signal closeSmallMusic()
     signal toggleSmallMusic()
+    signal openSpotlight()
+    signal toggleSpotlight()
     signal convertToPill()
     signal convertToNotch()
     signal switchIslandStyle(string style)
 
-    /* ── Night Light Integration ── */
-    property bool nightLightOn: false
+    /* ── HUD State ── */
+    readonly property bool hudActive: HudService.active
+
+    /* ── MPRIS Music State ── */
+    readonly property var activePlayer: LyricsService.activePlayer
+    readonly property bool isPlaying: LyricsService.isPlaying && (LyricsService.hasTrack || (activePlayer && activePlayer.playbackState === MprisPlaybackState.Playing))
+    readonly property string trackTitle: LyricsService.trackTitle || (activePlayer ? activePlayer.trackTitle : "")
+    readonly property string trackArtist: LyricsService.trackArtist || (activePlayer ? (activePlayer.trackArtists ? activePlayer.trackArtists.join(", ") : "") : "")
+    readonly property string artUrl: LyricsService.artUrl || (activePlayer ? activePlayer.artUrl : "")
+    readonly property bool hasTrack: trackTitle.length > 0
+
+    onIsPlayingChanged: {
+        if (root.isPlaying) {
+            root.activeView = "music"
+        }
+    }
+
+    /* ── Mini Cava Visualizer State (5 Bars, Low CPU) ── */
+    property var cavaBars: [4, 8, 12, 8, 4]
+    property real cavaAnimTick: 0
 
     Process {
-        id: nightLightStatusProc
-        command: [root.home + "/.config/hypr/scripts/carbon-night.sh", "status"]
+        id: cavaProc
+        command: ["cava", "-p", root.home + "/.config/hypr/cava-island.conf"]
+        running: root.isPlaying && root.activeView === "music"
         stdout: SplitParser {
+            splitMarker: "\n"
             onRead: line => {
-                root.nightLightOn = (line.trim() === "on")
+                const parts = line.trim().split(";")
+                if (parts.length >= 5) {
+                    const b0 = Math.max(3, Math.min(13, Math.round((parseInt(parts[0]) || 0) * 0.13)))
+                    const b1 = Math.max(3, Math.min(13, Math.round((parseInt(parts[1]) || 0) * 0.13)))
+                    const b2 = Math.max(3, Math.min(13, Math.round((parseInt(parts[2]) || 0) * 0.13)))
+                    const b3 = Math.max(3, Math.min(13, Math.round((parseInt(parts[3]) || 0) * 0.13)))
+                    const b4 = Math.max(3, Math.min(13, Math.round((parseInt(parts[4]) || 0) * 0.13)))
+                    root.cavaBars = [b0, b1, b2, b3, b4]
+                }
             }
         }
     }
 
     Timer {
-        interval: 30000
+        interval: 100
         repeat: true
-        running: true
+        running: root.isPlaying && root.activeView === "music" && (!cavaProc.running)
         onTriggered: {
-            if (!nightLightStatusProc.running) nightLightStatusProc.running = true
+            root.cavaAnimTick += 0.4
+            const b0 = 3 + Math.round(Math.abs(Math.sin(root.cavaAnimTick)) * 6)
+            const b1 = 3 + Math.round(Math.abs(Math.cos(root.cavaAnimTick * 1.3)) * 8)
+            const b2 = 3 + Math.round(Math.abs(Math.sin(root.cavaAnimTick * 0.8 + 1)) * 10)
+            const b3 = 3 + Math.round(Math.abs(Math.cos(root.cavaAnimTick * 1.1 + 0.5)) * 8)
+            const b4 = 3 + Math.round(Math.abs(Math.sin(root.cavaAnimTick * 1.4 + 0.2)) * 6)
+            root.cavaBars = [b0, b1, b2, b3, b4]
         }
     }
 
-    function toggleNightLight() {
-        Quickshell.execDetached([root.home + "/.config/hypr/scripts/carbon-night.sh", "toggle"])
-        root.nightLightOn = !root.nightLightOn
-        nightLightCheckTimer.restart()
-    }
-
-    Timer {
-        id: nightLightCheckTimer
-        interval: 350
-        onTriggered: {
-            if (!nightLightStatusProc.running) nightLightStatusProc.running = true
-        }
-    }
-
-    /* ── Coordinated Hover & Pop-up Timing (Prevents Overlaps) ── */
-    property string pendingPopup: ""
-    property string activePopup: ""
-
-    Timer {
-        id: popupHoverTimer
-        interval: 160
-        repeat: false
-        onTriggered: {
-            if (root.pendingPopup !== "") {
-                root.activePopup = root.pendingPopup
-                if (root.pendingPopup === "mixer") root.openMixer()
-                else if (root.pendingPopup === "brightness") root.openBrightness()
-                else if (root.pendingPopup === "battery") root.openBattery()
-                else if (root.pendingPopup === "wifi") root.openWifi()
-                else if (root.pendingPopup === "bt") root.openBt()
-                else if (root.pendingPopup === "notif") root.openNotif()
-                else if (root.pendingPopup === "calendar") root.openCalendar()
-                else if (root.pendingPopup === "smallMusic") root.openSmallMusic()
-            }
-        }
-    }
-
-    function requestHoverPopup(name) {
-        if (root.activePopup === name) return
-        root.pendingPopup = name
-        popupHoverTimer.restart()
-    }
-
-    function cancelHoverPopup(name) {
-        if (root.pendingPopup === name) {
-            popupHoverTimer.stop()
-            root.pendingPopup = ""
-        }
-        if (root.activePopup === name) {
-            if (name === "mixer") root.closeMixer()
-            else if (name === "brightness") root.closeBrightness()
-            else if (name === "battery") root.closeBattery()
-            else if (name === "wifi") root.closeWifi()
-            else if (name === "bt") root.closeBt()
-            else if (name === "notif") root.closeNotif()
-            else if (name === "calendar") root.closeCalendar()
-            else if (name === "smallMusic") root.closeSmallMusic()
-            root.activePopup = ""
-        }
-    }
-
-    function clickPopup(name) {
-        popupHoverTimer.stop()
-        root.pendingPopup = ""
-        root.activePopup = ""
-        if (name === "mixer") root.toggleMixer()
-        else if (name === "brightness") root.toggleBrightness()
-        else if (name === "battery") root.toggleBattery()
-        else if (name === "wifi") root.toggleWifi()
-        else if (name === "bt") root.toggleBt()
-        else if (name === "notif") root.toggleNotif()
-        else if (name === "calendar") root.toggleCalendar()
-        else if (name === "smallMusic") root.toggleSmallMusic()
-    }
-
-    function nextPage() {
-        root.currentPage = (root.currentPage + 1) % 3
-    }
-
-    function prevPage() {
-        root.currentPage = (root.currentPage - 1 + 3) % 3
-    }
-
-    function handleWheel(wheel) {
-        if (!wheel) return
-        if (wheel.angleDelta.y < 0) {
-            root.nextPage()
-        } else if (wheel.angleDelta.y > 0) {
-            root.prevPage()
-        }
-    }
-
-    /* ── Notch Geometry Fillets ── */
-    property real filletRadius: 14
-    property real bottomRadius: 14
-
-    readonly property string notchFillPath: {
-        const rTopLeft = root.filletRadius
-        const rTopRight = root.filletRadius
-        const rBotLeft = root.bottomRadius
-        const rBotRight = root.bottomRadius
-        const w = capsule.width
-        const h = 34
-
-        if (root.attachedBottom) {
-            let p = `M 0 ${h} `
-            p += `A ${rTopLeft} ${rTopLeft} 0 0 0 ${rTopLeft} ${h - rTopLeft} `
-            p += `L ${rTopLeft} ${rBotLeft} `
-            p += `A ${rBotLeft} ${rBotLeft} 0 0 1 ${rTopLeft + rBotLeft} 0 `
-
-            const rightWallX = w - rTopRight
-            p += `L ${rightWallX - rBotRight} 0 `
-            p += `A ${rBotRight} ${rBotRight} 0 0 1 ${rightWallX} ${rBotRight} `
-            p += `L ${rightWallX} ${h - rTopRight} `
-            p += `A ${rTopRight} ${rTopRight} 0 0 0 ${w} ${h} `
-            p += `L 0 ${h} Z`
-            return p
-        }
-
-        let p = "M 0 0 "
-        p += `A ${rTopLeft} ${rTopLeft} 0 0 1 ${rTopLeft} ${rTopLeft} `
-        p += `L ${rTopLeft} ${h - rBotLeft} `
-        p += `A ${rBotLeft} ${rBotLeft} 0 0 0 ${rTopLeft + rBotLeft} ${h} `
-
-        const rightWallX = w - rTopRight
-        p += `L ${rightWallX - rBotRight} ${h} `
-        p += `A ${rBotRight} ${rBotRight} 0 0 0 ${rightWallX} ${h - rBotRight} `
-        p += `L ${rightWallX} ${rTopRight} `
-        p += `A ${rTopRight} ${rTopRight} 0 0 1 ${w} 0 `
-        p += `L 0 0 Z`
-        return p
-    }
-
-    readonly property string notchStrokePath: {
-        const rTopLeft = root.filletRadius
-        const rTopRight = root.filletRadius
-        const rBotLeft = root.bottomRadius
-        const rBotRight = root.bottomRadius
-        const w = capsule.width
-        const h = 34
-
-        if (root.attachedBottom) {
-            let p = `M 0 ${h} `
-            p += `A ${rTopLeft} ${rTopLeft} 0 0 0 ${rTopLeft} ${h - rTopLeft} `
-            p += `L ${rTopLeft} ${rBotLeft} `
-            p += `A ${rBotLeft} ${rBotLeft} 0 0 1 ${rTopLeft + rBotLeft} 0 `
-
-            const rightWallX = w - rTopRight
-            p += `L ${rightWallX - rBotRight} 0 `
-            p += `A ${rBotRight} ${rBotRight} 0 0 1 ${rightWallX} ${rBotRight} `
-            p += `L ${rightWallX} ${h - rTopRight} `
-            p += `A ${rTopRight} ${rTopRight} 0 0 0 ${w} ${h}`
-            return p
-        }
-
-        let p = "M 0 0 "
-        p += `A ${rTopLeft} ${rTopLeft} 0 0 1 ${rTopLeft} ${rTopLeft} `
-        p += `L ${rTopLeft} ${h - rBotLeft} `
-        p += `A ${rBotLeft} ${rBotLeft} 0 0 0 ${rTopLeft + rBotLeft} ${h} `
-
-        const rightWallX = w - rTopRight
-        p += `L ${rightWallX - rBotRight} ${h} `
-        p += `A ${rBotRight} ${rBotRight} 0 0 0 ${rightWallX} ${h - rBotRight} `
-        p += `L ${rightWallX} ${rTopRight} `
-        p += `A ${rTopRight} ${rTopRight} 0 0 1 ${w} 0`
-        return p
-    }
-
-    /* ── Live Clock (Minute updates, zero idle waste) ── */
+    /* ── Live Clock State ── */
     property var currentTime: new Date()
     property int currentHourRaw: currentTime.getHours()
     property int currentHour12: {
@@ -294,27 +204,6 @@ Item {
     property string minStr: {
         let m = currentTime.getMinutes()
         return (m < 10 ? "0" : "") + m
-    }
-
-    /* ── Clock Style Watcher ── */
-    FileView {
-        id: clockStyleFile
-        path: root.home + "/.config/hypr/carbon-clock-style.json"
-        watchChanges: true
-        onFileChanged: root.reloadClockStyle()
-        onLoaded: root.reloadClockStyle()
-    }
-
-    property string clockStyle: "titan"
-
-    function reloadClockStyle() {
-        try {
-            const txt = clockStyleFile.text().trim()
-            if (txt.length > 0) {
-                const d = JSON.parse(txt)
-                if (d.style) root.clockStyle = d.style
-            }
-        } catch (e) {}
     }
 
     Timer {
@@ -344,61 +233,6 @@ Item {
         }
     }
 
-    /* ── MPRIS State (Synchronized via LyricsService Singleton) ── */
-    readonly property var activePlayer: LyricsService.activePlayer
-    readonly property bool isPlaying: LyricsService.isPlaying
-    readonly property string trackTitle: LyricsService.trackTitle
-    readonly property string trackArtist: LyricsService.trackArtist
-    readonly property bool hasTrack: LyricsService.hasTrack
-
-    /* ── Mini Cava Visualizer State ── */
-    property var cavaBars: [4, 8, 12, 6]
-    property real cavaAnimTick: 0
-
-    Process {
-        id: cavaProc
-        command: ["cava", "-p", root.home + "/.config/hypr/cava-island.conf"]
-        running: root.currentPage === 2 && root.isPlaying
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: line => {
-                const parts = line.trim().split(";")
-                if (parts.length >= 4) {
-                    const b0 = Math.max(3, Math.min(14, Math.round((parseInt(parts[0]) || 0) * 0.14)))
-                    const b1 = Math.max(3, Math.min(14, Math.round((parseInt(parts[1]) || 0) * 0.14)))
-                    const b2 = Math.max(3, Math.min(14, Math.round((parseInt(parts[2]) || 0) * 0.14)))
-                    const b3 = Math.max(3, Math.min(14, Math.round((parseInt(parts[3]) || 0) * 0.14)))
-                    root.cavaBars = [b0, b1, b2, b3]
-                }
-            }
-        }
-    }
-
-    Timer {
-        interval: 100
-        repeat: true
-        running: root.currentPage === 2 && root.isPlaying && (!cavaProc.running)
-        onTriggered: {
-            root.cavaAnimTick += 0.4
-            const b0 = 3 + Math.round(Math.abs(Math.sin(root.cavaAnimTick)) * 8)
-            const b1 = 3 + Math.round(Math.abs(Math.cos(root.cavaAnimTick * 1.3)) * 10)
-            const b2 = 3 + Math.round(Math.abs(Math.sin(root.cavaAnimTick * 0.8 + 1)) * 9)
-            const b3 = 3 + Math.round(Math.abs(Math.cos(root.cavaAnimTick * 1.1 + 0.5)) * 7)
-            root.cavaBars = [b0, b1, b2, b3]
-        }
-    }
-
-    /* ── Audio State (PipeWire Direct) ── */
-    readonly property var audioSink: Pipewire.defaultAudioSink
-    readonly property real volume: audioSink && audioSink.audio ? audioSink.audio.volume : 0.0
-    readonly property bool muted: audioSink && audioSink.audio ? audioSink.audio.muted : false
-    readonly property string volumeGlyph: {
-        if (muted) return "volume_off"
-        if (volume > 0.5) return "volume_up"
-        if (volume > 0.0) return "volume_down"
-        return "volume_mute"
-    }
-
     /* ── Battery State (UPower Direct) ── */
     readonly property var battery: UPower.displayDevice
     readonly property bool hasBattery: battery ? battery.isPresent : false
@@ -414,33 +248,89 @@ Item {
         return "battery_alert"
     }
 
-    /* ── Dynamic Container ── */
-    Item {
-        id: capsule
-        height: 34
-        anchors.centerIn: parent
+    /* ── Notch Geometry (Tide Island Style: Flat Top Flush to Screen, Rounded Bottom) ── */
+    property real bottomRadius: 16
 
-        property bool musicHovered: false
+    readonly property string notchFillPath: {
+        const r = root.bottomRadius
+        const w = capsule.width
+        const h = capsule.height
 
-        readonly property int baseWidth: {
-            if (root.currentPage === 0) return 178 // Minimal: Workspace + Time + Calendar
-            if (root.currentPage === 1) return 278 // Sound, Brightness, Battery, Wifi, Bluetooth, Night Light, Notif
-            if (root.currentPage === 2) {
-                if (capsule.musicHovered) {
-                    return (LyricsService.hasLyrics ? 320 : (root.hasTrack ? 250 : 178))
-                }
-                return root.hasTrack ? 220 : 160
-            }
-            return root.hasTrack ? 220 : 160
+        if (root.attachedBottom) {
+            let p = `M 0 ${h} `
+            p += `L 0 ${r} `
+            p += `A ${r} ${r} 0 0 1 ${r} 0 `
+            p += `L ${w - r} 0 `
+            p += `A ${r} ${r} 0 0 1 ${w} ${r} `
+            p += `L ${w} ${h} `
+            p += `Z`
+            return p
         }
 
-        width: root.islandStyle === "notch" ? (baseWidth + Math.round(root.filletRadius * 2)) : baseWidth
+        let p = "M 0 0 "
+        p += `L 0 ${h - r} `
+        p += `A ${r} ${r} 0 0 0 ${r} ${h} `
+        p += `L ${w - r} ${h} `
+        p += `A ${r} ${r} 0 0 0 ${w} ${h - r} `
+        p += `L ${w} 0 `
+        p += `Z`
+        return p
+    }
 
-        /* Ultra-smooth cubic expansion / contraction (zero jitter, zero shaking) */
+    readonly property string notchStrokePath: {
+        const r = root.bottomRadius
+        const w = capsule.width
+        const h = capsule.height
+
+        if (root.attachedBottom) {
+            let p = `M 0 ${h} `
+            p += `L 0 ${r} `
+            p += `A ${r} ${r} 0 0 1 ${r} 0 `
+            p += `L ${w - r} 0 `
+            p += `A ${r} ${r} 0 0 1 ${w} ${r} `
+            p += `L ${w} ${h}`
+            return p
+        }
+
+        let p = `M 0 0 `
+        p += `L 0 ${h - r} `
+        p += `A ${r} ${r} 0 0 0 ${r} ${h} `
+        p += `L ${w - r} ${h} `
+        p += `A ${r} ${r} 0 0 0 ${w} ${h - r} `
+        p += `L ${w} 0`
+        return p
+    }
+
+    /* ── Main Dynamic Island Capsule ── */
+    Item {
+        id: capsule
+        height: root.implicitHeight
+        anchors.centerIn: parent
+
+        readonly property bool showMusic: (!root.hudActive && (root.isPlaying || root.hasTrack) && root.activeView === "music")
+        readonly property int baseWidth: {
+            if (root.hudActive) return 170
+            if (capsule.showMusic) {
+                if (root.hasSyncedLyrics) {
+                    return 264
+                }
+                return 226
+            }
+            return (root.isPlaying || root.hasTrack) ? 148 : 124
+        }
+
+        width: baseWidth
+
         Behavior on width {
             NumberAnimation {
-                duration: 260
-                easing.type: Easing.OutCubic
+                duration: 350
+                easing.bezierCurve: Theme.animCurves.expressiveDefaultSpatial
+            }
+        }
+        Behavior on height {
+            NumberAnimation {
+                duration: 350
+                easing.bezierCurve: Theme.animCurves.expressiveDefaultSpatial
             }
         }
 
@@ -449,8 +339,8 @@ Item {
             id: pillBg
             anchors.fill: parent
             visible: root.islandStyle !== "notch"
-            radius: 17
-            color: Theme.bg
+            radius: height / 2
+            color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, root.islandOpacity)
             border.color: Theme.outline
             border.width: 1
         }
@@ -468,7 +358,7 @@ Item {
             ShapePath {
                 strokeWidth: 0
                 strokeColor: "transparent"
-                fillColor: Theme.bg
+                fillColor: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, root.islandOpacity)
                 PathSvg { path: root.notchFillPath }
             }
 
@@ -482,827 +372,270 @@ Item {
             }
         }
 
-        /* ── Scroll Gesture Area (Wheel Up/Down to cycle islands) ── */
+        /* ── Unified Click, Wheel, and Gesture Interaction ── */
         MouseArea {
-            id: swipeGestureArea
+            id: mainMouseArea
             anchors.fill: parent
             hoverEnabled: true
-            z: 1
+            cursorShape: Qt.PointingHandCursor
+            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+            z: 10
 
-            onWheel: wheel => root.handleWheel(wheel)
+            onEntered: root.forceActiveFocus()
+
+            property real pressX: 0
+            onPressed: mouse => {
+                pressX = mouse.x
+            }
+            onReleased: mouse => {
+                const dx = mouse.x - pressX
+                if (dx > 25) {
+                    if (root.isPlaying || root.hasTrack) root.activeView = "music"
+                } else if (dx < -25) {
+                    root.activeView = "time"
+                }
+            }
+
+            onClicked: mouse => {
+                root.forceActiveFocus()
+                if (mouse.button === Qt.RightButton) {
+                    if (root.activePlayer) root.activePlayer.togglePlaying()
+                } else if (mouse.button === Qt.MiddleButton) {
+                    root.toggleSpotlight()
+                } else {
+                    if (root.isPlaying || root.hasTrack) {
+                        root.activeView = (root.activeView === "music" ? "time" : "music")
+                    }
+                }
+            }
+
+            onWheel: wheel => {
+                if (!wheel) return
+                // Horizontal wheel or Shift+Wheel: switches between time & music view
+                if (wheel.angleDelta.x > 0 || (wheel.modifiers & Qt.ShiftModifier && wheel.angleDelta.y > 0)) {
+                    if (root.isPlaying || root.hasTrack) root.activeView = "music"
+                } else if (wheel.angleDelta.x < 0 || (wheel.modifiers & Qt.ShiftModifier && wheel.angleDelta.y < 0)) {
+                    root.activeView = "time"
+                } else if (wheel.angleDelta.y !== 0) {
+                    // Vertical wheel: Volume adjustment
+                    if (Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
+                        if (wheel.angleDelta.y > 0) {
+                            Pipewire.defaultAudioSink.audio.volume = Math.min(1.0, (Pipewire.defaultAudioSink.audio.volume || 0) + 0.02)
+                        } else {
+                            Pipewire.defaultAudioSink.audio.volume = Math.max(0.0, (Pipewire.defaultAudioSink.audio.volume || 0) - 0.02)
+                        }
+                    }
+                }
+            }
         }
 
-        /* ── Content Container (Clean Silky Slide Transitions) ── */
+        /* ── Content Container ── */
         Item {
             id: contentContainer
             anchors.fill: parent
-            anchors.leftMargin: root.islandStyle === "notch" ? root.filletRadius : 0
-            anchors.rightMargin: root.islandStyle === "notch" ? root.filletRadius : 0
+            anchors.leftMargin: 8
+            anchors.rightMargin: 8
             clip: true
             z: 2
 
-            /* ══════════════════════════════════════════════════════════════
-             * PAGE 0: MINIMAL WORKSPACES & TIME ONLY
-             * ══════════════════════════════════════════════════════════════ */
-            Item {
-                id: page0
-                anchors.fill: parent
-                visible: opacity > 0.001
-
-                opacity: root.currentPage === 0 ? 1.0 : 0.0
-                x: (0 - root.currentPage) * 24
+            /* ── A. HUD Mode (DynamicIslandPill) ── */
+            DynamicIslandPill {
+                id: dynamicPill
+                anchors.centerIn: parent
+                opacity: root.hudActive ? 1.0 : 0.0
+                visible: opacity > 0.01
 
                 Behavior on opacity {
-                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-                }
-                Behavior on x {
-                    NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
-                }
-
-                Row {
-                    anchors.centerIn: parent
-                    spacing: 12
-
-                    /* Active Workspace Morphing Badge */
-                    Item {
-                        id: wsBtn
-                        width: 24
-                        height: 24
-                        anchors.verticalCenter: parent.verticalCenter
-                        scale: wsArea.pressed ? 0.92 : (wsArea.containsMouse ? 1.15 : 1.0)
-                        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack; easing.overshoot: 1.3 } }
-
-                        MaterialShape {
-                            id: wsShape
-                            anchors.fill: parent
-                            shape: root.getShapeForWs(root.activeWs)
-                            animationDuration: 280
-                            animationEasing: Easing.OutBack
-                            color: wsArea.containsMouse ? Theme.accentLit : Theme.accent
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: String(root.activeWs)
-                            font.pixelSize: 11
-                            font.bold: true
-                            font.family: "Valley Sans"
-                            color: Theme.isDark ? "#111111" : "#ffffff"
-                        }
-
-                        MouseArea {
-                            id: wsArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            z: 5
-                            onClicked: root.openLauncher()
-                            onWheel: wheel => root.handleWheel(wheel)
-                        }
-                    }
-
-                    /* Live Clock (Titan 3D Pop) - hoverable to trigger calendar */
-                    Item {
-                        anchors.verticalCenter: parent.verticalCenter
-                        implicitWidth: clockRow.implicitWidth
-                        implicitHeight: clockRow.implicitHeight
-
-                        Row {
-                            id: clockRow
-                            spacing: root.clockStyle === "titan" ? 1 : 2
-                            anchors.centerIn: parent
-
-                            Text {
-                                text: root.hourStr
-                                font.pixelSize: root.clockStyle === "titan" ? 14 : 12
-                                font.weight: root.clockStyle === "titan" ? Font.Black : Font.Bold
-                                font.family: root.clockStyle === "titan" ? "Titan One" : "JetBrains Mono"
-                                color: Theme.fg
-                                style: root.clockStyle === "titan" ? Text.Raised : Text.Normal
-                                styleColor: root.clockStyle === "titan" ? "#55000000" : "transparent"
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-
-                            Text {
-                                text: ":"
-                                font.pixelSize: root.clockStyle === "titan" ? 14 : 12
-                                font.weight: root.clockStyle === "titan" ? Font.Black : Font.Bold
-                                font.family: root.clockStyle === "titan" ? "Titan One" : "JetBrains Mono"
-                                color: Theme.accent
-                                style: root.clockStyle === "titan" ? Text.Raised : Text.Normal
-                                styleColor: root.clockStyle === "titan" ? "#55000000" : "transparent"
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-
-                            Text {
-                                text: root.minStr
-                                font.pixelSize: root.clockStyle === "titan" ? 14 : 12
-                                font.weight: root.clockStyle === "titan" ? Font.Black : Font.Bold
-                                font.family: root.clockStyle === "titan" ? "Titan One" : "JetBrains Mono"
-                                color: root.clockStyle === "titan" ? Theme.accent : Theme.fg
-                                style: root.clockStyle === "titan" ? Text.Raised : Text.Normal
-                                styleColor: root.clockStyle === "titan" ? "#55000000" : "transparent"
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                        }
-
-                        MouseArea {
-                            id: clockArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.ArrowCursor
-                            z: 5
-                            onWheel: wheel => root.handleWheel(wheel)
-                        }
-                    }
-
-                    /* Small Calendar Icon */
-                    Item {
-                        id: calBtn
-                        width: 22
-                        height: 22
-                        anchors.verticalCenter: parent.verticalCenter
-                        scale: calArea.pressed ? 0.92 : (calArea.containsMouse ? 1.08 : 1.0)
-                        Behavior on scale { NumberAnimation { duration: 120 } }
-
-                        // Ambient halo
-                        MaterialShape {
-                            anchors.centerIn: parent
-                            width: parent.width + 4
-                            height: parent.height + 4
-                            shape: MaterialShape.Cookie4Sided
-                            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22)
-                            scale: calArea.containsMouse ? 1.12 : 0.6
-                            opacity: calArea.containsMouse ? 1.0 : 0.0
-                            rotation: calArea.containsMouse ? 8 : 0
-                            Behavior on opacity { NumberAnimation { duration: 180 } }
-                            Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                            Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
-                        }
-
-                        // Tactile highlight chip
-                        MaterialShape {
-                            anchors.fill: parent
-                            shape: calArea.containsMouse ? MaterialShape.Cookie4Sided : MaterialShape.Circle
-                            animationDuration: 240
-                            animationEasing: Easing.OutBack
-                            color: calArea.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : "transparent"
-                            strokeColor: calArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.40) : "transparent"
-                            strokeWidth: 1.0
-                            rotation: calArea.containsMouse ? 8 : 0
-                            Behavior on color { ColorAnimation { duration: 120 } }
-                            Behavior on strokeColor { ColorAnimation { duration: 120 } }
-                            Behavior on rotation { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "calendar_today"
-                            font.family: Theme.fontIcon
-                            font.pixelSize: 14
-                            color: calArea.containsMouse ? Theme.accent : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.7)
-                        }
-
-                        MouseArea {
-                            id: calArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            z: 5
-                            onEntered: root.requestHoverPopup("calendar")
-                            onExited: root.cancelHoverPopup("calendar")
-                            onClicked: root.clickPopup("calendar")
-                            onWheel: wheel => root.handleWheel(wheel)
-                        }
-                    }
+                    NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
                 }
             }
 
-            /* ══════════════════════════════════════════════════════════════
-             * PAGE 1: SOUND, BATTERY, AND NOTIFICATION
-             * ══════════════════════════════════════════════════════════════ */
+            /* ── B. Music Playing Mode ── */
             Item {
-                id: page1
+                id: musicModeLayout
                 anchors.fill: parent
-                visible: opacity > 0.001
-
-                opacity: root.currentPage === 1 ? 1.0 : 0.0
-                x: (1 - root.currentPage) * 24
+                opacity: capsule.showMusic ? 1.0 : 0.0
+                visible: opacity > 0.01
 
                 Behavior on opacity {
-                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-                }
-                Behavior on x {
-                    NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
-                }
-
-                Row {
-                    anchors.centerIn: parent
-                    spacing: 10
-
-                    /* ── 1. Sound / Volume Icon ── */
-                    Item {
-                        id: volPill
-                        width: 24
-                        height: 24
-                        anchors.verticalCenter: parent.verticalCenter
-                        scale: volArea.pressed ? 0.92 : (volArea.containsMouse ? 1.08 : 1.0)
-                        Behavior on scale { NumberAnimation { duration: 120 } }
-
-                        // Ambient blooming shape halo
-                        MaterialShape {
-                            anchors.centerIn: parent
-                            width: parent.width + 4
-                            height: parent.height + 4
-                            shape: MaterialShape.Flower
-                            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22)
-                            scale: volArea.containsMouse ? 1.12 : 0.6
-                            opacity: volArea.containsMouse ? 1.0 : 0.0
-                            rotation: volArea.containsMouse ? -8 : 0
-                            Behavior on opacity { NumberAnimation { duration: 180 } }
-                            Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                            Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
-                        }
-
-                        // Tactile highlight chip
-                        MaterialShape {
-                            anchors.fill: parent
-                            shape: volArea.containsMouse ? MaterialShape.Flower : MaterialShape.Circle
-                            animationDuration: 240
-                            animationEasing: Easing.OutBack
-                            color: volArea.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : "transparent"
-                            strokeColor: volArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.40) : "transparent"
-                            strokeWidth: 1.0
-                            rotation: volArea.containsMouse ? -8 : 0
-                            Behavior on color { ColorAnimation { duration: 120 } }
-                            Behavior on strokeColor { ColorAnimation { duration: 120 } }
-                            Behavior on rotation { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.volumeGlyph
-                            font.family: Theme.fontIcon
-                            font.pixelSize: 14
-                            color: root.muted ? Theme.err : (volArea.containsMouse ? Theme.accent : Theme.fg)
-                        }
-
-                        MouseArea {
-                            id: volArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            cursorShape: Qt.PointingHandCursor
-                            z: 5
-                            onEntered: root.requestHoverPopup("mixer")
-                            onExited: root.cancelHoverPopup("mixer")
-                            onClicked: mouse => {
-                                if (mouse.button === Qt.RightButton) {
-                                    if (root.audioSink && root.audioSink.audio)
-                                        root.audioSink.audio.muted = !root.audioSink.audio.muted
-                                } else {
-                                    root.clickPopup("mixer")
-                                }
-                            }
-                            onWheel: wheel => {
-                                if (root.audioSink && root.audioSink.audio) {
-                                    const step = 0.05
-                                    if (wheel.angleDelta.y > 0)
-                                        root.audioSink.audio.volume = Math.min(1.0, root.audioSink.audio.volume + step)
-                                    else
-                                        root.audioSink.audio.volume = Math.max(0.0, root.audioSink.audio.volume - step)
-                                }
-                            }
-                        }
-                    }
-
-                    /* ── 2. Brightness Icon ── */
-                    Item {
-                        id: brightPill
-                        width: 24
-                        height: 24
-                        anchors.verticalCenter: parent.verticalCenter
-                        scale: brightArea.pressed ? 0.92 : (brightArea.containsMouse ? 1.08 : 1.0)
-                        Behavior on scale { NumberAnimation { duration: 120 } }
-
-                        // Ambient blooming shape halo
-                        MaterialShape {
-                            anchors.centerIn: parent
-                            width: parent.width + 4
-                            height: parent.height + 4
-                            shape: MaterialShape.Sunny
-                            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22)
-                            scale: brightArea.containsMouse ? 1.12 : 0.6
-                            opacity: brightArea.containsMouse ? 1.0 : 0.0
-                            rotation: brightArea.containsMouse ? 15 : 0
-                            Behavior on opacity { NumberAnimation { duration: 180 } }
-                            Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                            Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
-                        }
-
-                        // Tactile highlight chip
-                        MaterialShape {
-                            anchors.fill: parent
-                            shape: brightArea.containsMouse ? MaterialShape.Sunny : MaterialShape.Circle
-                            animationDuration: 240
-                            animationEasing: Easing.OutBack
-                            color: brightArea.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : "transparent"
-                            strokeColor: brightArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.40) : "transparent"
-                            strokeWidth: 1.0
-                            rotation: brightArea.containsMouse ? 15 : 0
-                            Behavior on color { ColorAnimation { duration: 120 } }
-                            Behavior on strokeColor { ColorAnimation { duration: 120 } }
-                            Behavior on rotation { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "light_mode"
-                            font.family: Theme.fontIcon
-                            font.pixelSize: 14
-                            color: brightArea.containsMouse ? Theme.accentLit : Theme.fg
-                        }
-
-                        MouseArea {
-                            id: brightArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            z: 5
-                            onEntered: root.requestHoverPopup("brightness")
-                            onExited: root.cancelHoverPopup("brightness")
-                            onClicked: root.clickPopup("brightness")
-                            onWheel: wheel => root.handleWheel(wheel)
-                        }
-                    }
-
-                    /* ── 3. Battery Icon ── */
-                    Item {
-                        id: batPill
-                        width: 24
-                        height: 24
-                        anchors.verticalCenter: parent.verticalCenter
-                        scale: batArea.pressed ? 0.92 : (batArea.containsMouse ? 1.08 : 1.0)
-                        Behavior on scale { NumberAnimation { duration: 120 } }
-
-                        // Ambient blooming shape halo
-                        MaterialShape {
-                            anchors.centerIn: parent
-                            width: parent.width + 4
-                            height: parent.height + 4
-                            shape: MaterialShape.Gem
-                            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22)
-                            scale: batArea.containsMouse ? 1.12 : 0.6
-                            opacity: batArea.containsMouse ? 1.0 : 0.0
-                            rotation: batArea.containsMouse ? 10 : 0
-                            Behavior on opacity { NumberAnimation { duration: 180 } }
-                            Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                            Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
-                        }
-
-                        // Tactile highlight chip
-                        MaterialShape {
-                            anchors.fill: parent
-                            shape: batArea.containsMouse ? MaterialShape.Gem : MaterialShape.Circle
-                            animationDuration: 240
-                            animationEasing: Easing.OutBack
-                            color: batArea.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : "transparent"
-                            strokeColor: batArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.40) : "transparent"
-                            strokeWidth: 1.0
-                            rotation: batArea.containsMouse ? 10 : 0
-                            Behavior on color { ColorAnimation { duration: 120 } }
-                            Behavior on strokeColor { ColorAnimation { duration: 120 } }
-                            Behavior on rotation { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.batteryGlyph
-                            font.family: Theme.fontIcon
-                            font.pixelSize: 14
-                            color: root.isCharging ? Theme.accentLit : (root.batteryPct < 0.2 ? Theme.err : (batArea.containsMouse ? Theme.accent : Theme.fg))
-                        }
-
-                        MouseArea {
-                            id: batArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            z: 5
-                            onEntered: root.requestHoverPopup("battery")
-                            onExited: root.cancelHoverPopup("battery")
-                            onClicked: root.clickPopup("battery")
-                            onWheel: wheel => root.handleWheel(wheel)
-                        }
-                    }
-
-                    /* ── 4. Wi-Fi Icon ── */
-                    Item {
-                        id: wifiPill
-                        width: 24
-                        height: 24
-                        anchors.verticalCenter: parent.verticalCenter
-                        scale: wifiArea.pressed ? 0.92 : (wifiArea.containsMouse ? 1.08 : 1.0)
-                        Behavior on scale { NumberAnimation { duration: 120 } }
-
-                        // Ambient blooming shape halo
-                        MaterialShape {
-                            anchors.centerIn: parent
-                            width: parent.width + 4
-                            height: parent.height + 4
-                            shape: MaterialShape.SoftBurst
-                            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22)
-                            scale: wifiArea.containsMouse ? 1.12 : 0.6
-                            opacity: wifiArea.containsMouse ? 1.0 : 0.0
-                            rotation: wifiArea.containsMouse ? -10 : 0
-                            Behavior on opacity { NumberAnimation { duration: 180 } }
-                            Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                            Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
-                        }
-
-                        // Tactile highlight chip
-                        MaterialShape {
-                            anchors.fill: parent
-                            shape: wifiArea.containsMouse ? MaterialShape.SoftBurst : MaterialShape.Circle
-                            animationDuration: 240
-                            animationEasing: Easing.OutBack
-                            color: wifiArea.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : "transparent"
-                            strokeColor: wifiArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.40) : "transparent"
-                            strokeWidth: 1.0
-                            rotation: wifiArea.containsMouse ? -10 : 0
-                            Behavior on color { ColorAnimation { duration: 120 } }
-                            Behavior on strokeColor { ColorAnimation { duration: 120 } }
-                            Behavior on rotation { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "wifi"
-                            font.family: Theme.fontIcon
-                            font.pixelSize: 14
-                            color: wifiArea.containsMouse ? Theme.accent : Theme.fg
-                        }
-
-                        MouseArea {
-                            id: wifiArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            z: 5
-                            onEntered: root.requestHoverPopup("wifi")
-                            onExited: root.cancelHoverPopup("wifi")
-                            onClicked: root.clickPopup("wifi")
-                            onWheel: wheel => root.handleWheel(wheel)
-                        }
-                    }
-
-                    /* ── 5. Bluetooth Icon ── */
-                    Item {
-                        id: btPill
-                        width: 24
-                        height: 24
-                        anchors.verticalCenter: parent.verticalCenter
-                        scale: btArea.pressed ? 0.92 : (btArea.containsMouse ? 1.08 : 1.0)
-                        Behavior on scale { NumberAnimation { duration: 120 } }
-
-                        // Ambient blooming shape halo
-                        MaterialShape {
-                            anchors.centerIn: parent
-                            width: parent.width + 4
-                            height: parent.height + 4
-                            shape: MaterialShape.Slanted
-                            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22)
-                            scale: btArea.containsMouse ? 1.12 : 0.6
-                            opacity: btArea.containsMouse ? 1.0 : 0.0
-                            rotation: btArea.containsMouse ? 8 : 0
-                            Behavior on opacity { NumberAnimation { duration: 180 } }
-                            Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                            Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
-                        }
-
-                        // Tactile highlight chip
-                        MaterialShape {
-                            anchors.fill: parent
-                            shape: btArea.containsMouse ? MaterialShape.Slanted : MaterialShape.Circle
-                            animationDuration: 240
-                            animationEasing: Easing.OutBack
-                            color: btArea.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : "transparent"
-                            strokeColor: btArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.40) : "transparent"
-                            strokeWidth: 1.0
-                            rotation: btArea.containsMouse ? 8 : 0
-                            Behavior on color { ColorAnimation { duration: 120 } }
-                            Behavior on strokeColor { ColorAnimation { duration: 120 } }
-                            Behavior on rotation { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "bluetooth"
-                            font.family: Theme.fontIcon
-                            font.pixelSize: 14
-                            color: btArea.containsMouse ? Theme.accent : Theme.fg
-                        }
-
-                        MouseArea {
-                            id: btArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            z: 5
-                            onEntered: root.requestHoverPopup("bt")
-                            onExited: root.cancelHoverPopup("bt")
-                            onClicked: root.clickPopup("bt")
-                            onWheel: wheel => root.handleWheel(wheel)
-                        }
-                    }
-
-                    /* ── 6. Night Light Toggle Icon (Highlighted circle when enabled) ── */
-                    Item {
-                        id: nightPill
-                        width: 24
-                        height: 24
-                        anchors.verticalCenter: parent.verticalCenter
-                        scale: nightArea.pressed ? 0.92 : (nightArea.containsMouse ? 1.08 : 1.0)
-                        Behavior on scale { NumberAnimation { duration: 120 } }
-
-                        // Ambient blooming shape halo
-                        MaterialShape {
-                            anchors.centerIn: parent
-                            width: parent.width + 4
-                            height: parent.height + 4
-                            shape: MaterialShape.PuffyDiamond
-                            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.25)
-                            scale: (nightArea.containsMouse || root.nightLightOn) ? 1.12 : 0.6
-                            opacity: (nightArea.containsMouse || root.nightLightOn) ? 1.0 : 0.0
-                            rotation: nightArea.containsMouse ? -12 : 0
-                            Behavior on opacity { NumberAnimation { duration: 180 } }
-                            Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                            Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
-                        }
-
-                        // Tactile highlight chip
-                        MaterialShape {
-                            anchors.fill: parent
-                            shape: (nightArea.containsMouse || root.nightLightOn) ? MaterialShape.PuffyDiamond : MaterialShape.Circle
-                            animationDuration: 240
-                            animationEasing: Easing.OutBack
-                            color: root.nightLightOn ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.28) : (nightArea.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : "transparent")
-                            strokeColor: root.nightLightOn ? Theme.accent : (nightArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.40) : "transparent")
-                            strokeWidth: root.nightLightOn ? 1.5 : 1.0
-                            rotation: nightArea.containsMouse ? -12 : 0
-                            Behavior on color { ColorAnimation { duration: 120 } }
-                            Behavior on strokeColor { ColorAnimation { duration: 120 } }
-                            Behavior on rotation { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "nightlight"
-                            font.family: Theme.fontIcon
-                            font.pixelSize: 14
-                            color: root.nightLightOn ? Theme.accent : (nightArea.containsMouse ? Theme.accent : Theme.fg)
-                        }
-
-                        MouseArea {
-                            id: nightArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            z: 5
-                            onClicked: root.toggleNightLight()
-                            onWheel: wheel => root.handleWheel(wheel)
-                        }
-                    }
-
-                    /* ── 7. Notification Bell Icon ── */
-                    Item {
-                        id: notifPill
-                        width: 24
-                        height: 24
-                        anchors.verticalCenter: parent.verticalCenter
-                        scale: notifArea.pressed ? 0.92 : (notifArea.containsMouse ? 1.08 : 1.0)
-                        Behavior on scale { NumberAnimation { duration: 120 } }
-
-                        // Ambient blooming shape halo
-                        MaterialShape {
-                            anchors.centerIn: parent
-                            width: parent.width + 4
-                            height: parent.height + 4
-                            shape: MaterialShape.Clover4Leaf
-                            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22)
-                            scale: notifArea.containsMouse ? 1.12 : 0.6
-                            opacity: notifArea.containsMouse ? 1.0 : 0.0
-                            rotation: notifArea.containsMouse ? 12 : 0
-                            Behavior on opacity { NumberAnimation { duration: 180 } }
-                            Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                            Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
-                        }
-
-                        // Tactile highlight chip
-                        MaterialShape {
-                            anchors.fill: parent
-                            shape: notifArea.containsMouse ? MaterialShape.Clover4Leaf : MaterialShape.Circle
-                            animationDuration: 240
-                            animationEasing: Easing.OutBack
-                            color: notifArea.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : "transparent"
-                            strokeColor: notifArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.40) : "transparent"
-                            strokeWidth: 1.0
-                            rotation: notifArea.containsMouse ? 12 : 0
-                            Behavior on color { ColorAnimation { duration: 120 } }
-                            Behavior on strokeColor { ColorAnimation { duration: 120 } }
-                            Behavior on rotation { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
-                        }
-
-                        Item {
-                            anchors.centerIn: parent
-                            width: 14
-                            height: 14
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: "notifications"
-                                font.family: Theme.fontIcon
-                                font.pixelSize: 14
-                                color: Theme.dnd ? Theme.fgDim : (notifArea.containsMouse ? Theme.accent : (root.notifCount > 0 ? Theme.accent : Theme.fg))
-                            }
-
-                            /* Small indicator dot for normal mode */
-                            Rectangle {
-                                visible: !Theme.dnd
-                                anchors.top: parent.top
-                                anchors.right: parent.right
-                                anchors.topMargin: -1
-                                anchors.rightMargin: -2
-                                width: 5
-                                height: 5
-                                radius: 2.5
-                                color: root.notifCount > 0 ? Theme.accent : Qt.alpha(Theme.fg, 0.45)
-                            }
-
-                            /* DND 'z' badge when Do Not Disturb is active */
-                            Item {
-                                visible: Theme.dnd
-                                anchors.top: parent.top
-                                anchors.right: parent.right
-                                anchors.topMargin: -4
-                                anchors.rightMargin: -4
-                                width: 10
-                                height: 10
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "z"
-                                    font.family: "Valley Sans"
-                                    font.pixelSize: 9
-                                    font.weight: Font.Black
-                                    color: Theme.accent
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            id: notifArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            z: 5
-                            onEntered: root.requestHoverPopup("notif")
-                            onExited: root.cancelHoverPopup("notif")
-                            onClicked: root.clickPopup("notif")
-                            onWheel: wheel => root.handleWheel(wheel)
-                        }
-                    }
-                }
-            }
-
-            /* ══════════════════════════════════════════════════════════════
-             * PAGE 2: MEDIA OPTION
-             * ══════════════════════════════════════════════════════════════ */
-            Item {
-                id: page2
-                anchors.fill: parent
-                visible: opacity > 0.001
-
-                opacity: root.currentPage === 2 ? 1.0 : 0.0
-                x: (2 - root.currentPage) * 24
-
-                Behavior on opacity {
-                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-                }
-                Behavior on x {
-                    NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
+                    NumberAnimation { duration: 220; easing.type: Easing.OutQuad }
                 }
 
                 Row {
                     anchors.centerIn: parent
                     spacing: 8
 
-
-                    /* Interactive Music Pill (Album Art Circle + Track Title / Synced Lyrics) */
-                    Item {
-                        id: musicPill
-                        height: 24
-                        width: 20 + 8 + ((capsule.musicHovered && LyricsService.hasLyrics) ? 250 : (capsule.musicHovered ? 200 : (root.hasTrack ? 120 : 72)))
+                    /* 1. Rounded Album Art Thumbnail (Hidden in Lyrics View for Clean Minimal Aesthetic) */
+                    Rectangle {
+                        width: root.hasSyncedLyrics ? 0 : 22
+                        height: root.hasSyncedLyrics ? 0 : 22
+                        radius: 6
+                        color: Qt.alpha(Theme.fg, 0.08)
                         anchors.verticalCenter: parent.verticalCenter
+                        clip: true
+                        visible: !root.hasSyncedLyrics
 
-                        Behavior on width {
-                            NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+                        Image {
+                            id: albumImg
+                            anchors.fill: parent
+                            source: root.artUrl
+                            fillMode: Image.PreserveAspectCrop
+                            visible: status === Image.Ready
+                            asynchronous: true
                         }
 
-                        Row {
-                            anchors.fill: parent
-                            spacing: 8
-
-                            /* Album Cover Art / Music Circle (Non-rotating) */
-                            Rectangle {
-                                width: 20
-                                height: 20
-                                radius: 10
-                                clip: true
-                                color: Qt.rgba(0.12, 0.13, 0.18, 0.9)
-                                border.color: root.isPlaying ? Theme.accent : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.2)
-                                border.width: 1
-                                anchors.verticalCenter: parent.verticalCenter
-                                scale: musicPillArea.pressed ? 0.92 : (musicPillArea.containsMouse ? 1.08 : 1.0)
-                                Behavior on scale { NumberAnimation { duration: 120 } }
-
-                                Image {
-                                    anchors.fill: parent
-                                    source: LyricsService.artUrl
-                                    fillMode: Image.PreserveAspectCrop
-                                    visible: status === Image.Ready && source != ""
-                                }
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "music_note"
-                                    font.family: Theme.fontIcon
-                                    font.pixelSize: 12
-                                    color: root.isPlaying ? Theme.accent : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.6)
-                                    visible: !LyricsService.artUrl || LyricsService.artUrl === ""
-                                }
-                            }
-
-                            /* Track Title or Live Synced Lyrics (Expanded width) */
-                            Text {
-                                width: (capsule.musicHovered && LyricsService.hasLyrics) ? 250 : (capsule.musicHovered ? 200 : (root.hasTrack ? 120 : 72))
-                                height: 24
-                                verticalAlignment: Text.AlignVCenter
-                                text: {
-                                    if (!root.hasTrack) return "No Media"
-                                    if (capsule.musicHovered && LyricsService.hasLyrics) {
-                                        return LyricsService.currentLine.length > 0 
-                                            ? "♪ " + LyricsService.currentLine + " ♪" 
-                                            : "♪ " + (root.trackTitle || "...") + " ♪"
-                                    }
-                                    return (root.trackTitle.length > 0 ? root.trackTitle : "Playing") + (root.trackArtist ? " · " + root.trackArtist : "")
-                                }
-                                font.pixelSize: 11
-                                font.bold: true
-                                font.family: "Inter"
-                                color: (capsule.musicHovered && LyricsService.hasLyrics) ? Theme.accent : (root.hasTrack ? Theme.fg : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.5))
-                                elide: Text.ElideRight
-                                anchors.verticalCenter: parent.verticalCenter
-
-                                Behavior on width {
-                                    NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            id: musicPillArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            z: 5
-                            onEntered: { capsule.musicHovered = true }
-                            onExited: { capsule.musicHovered = false }
-                            onClicked: root.clickPopup("smallMusic")
-                            onWheel: wheel => root.handleWheel(wheel)
+                        Text {
+                            anchors.centerIn: parent
+                            visible: !albumImg.visible
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 13
+                            color: Theme.accent
+                            text: "music_note"
                         }
                     }
 
-                    /* Mini Cava Visualizer (At the very END of the row, always visible) */
-                    Row {
-                        id: endVisualizer
-                        spacing: 2
+                    /* 2. Synced Lyrics & Track Typography (Tide Island Style) */
+                    Item {
+                        width: root.hasSyncedLyrics ? 172 : 130
+                        height: 22
                         anchors.verticalCenter: parent.verticalCenter
-                        visible: root.hasTrack
+                        clip: true
+
+                        // View A: Synced Live Lyric
+                        Item {
+                            anchors.fill: parent
+                            visible: root.hasSyncedLyrics
+
+                            Text {
+                                id: prevLyricTxt
+                                visible: root.previousLyricText !== ""
+                                width: parent.width
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                y: (parent.height - height) / 2 - 12 * root.lyricChangeProgress
+                                opacity: (1.0 - root.lyricChangeProgress) * 0.65
+                                text: root.previousLyricText
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                                color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.55)
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+
+                            Text {
+                                id: curLyricTxt
+                                visible: root.activeLyricText !== ""
+                                width: parent.width
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                y: (parent.height - height) / 2 + (root.previousLyricText !== "" ? 12 * (1.0 - root.lyricChangeProgress) : 0)
+                                opacity: root.previousLyricText !== "" ? root.lyricChangeProgress : 1.0
+                                text: root.activeLyricText
+                                font.pixelSize: 11
+                                font.weight: Font.Bold
+                                color: Theme.accent
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                        }
+
+                        // View B: Track Title & Artist Fallback
+                        Column {
+                            anchors.fill: parent
+                            visible: !root.hasSyncedLyrics
+                            spacing: 1
+
+                            Text {
+                                width: parent.width
+                                text: root.trackTitle || "Playing"
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                                color: Theme.fg
+                                elide: Text.ElideRight
+                            }
+
+                            Text {
+                                width: parent.width
+                                text: root.trackArtist || "Unknown Artist"
+                                font.pixelSize: 9
+                                color: Theme.fgDim
+                                elide: Text.ElideRight
+                            }
+                        }
+                    }
+
+                    /* 3. Live 5-Bar Mini Cava Equalizer */
+                    Row {
+                        spacing: 2.5
+                        height: 14
+                        anchors.verticalCenter: parent.verticalCenter
 
                         Repeater {
-                            model: 4
+                            model: 5
                             Rectangle {
-                                width: 2
-                                height: root.isPlaying ? (root.cavaBars[index] || 3) : 3
-                                radius: 1
-                                color: Theme.accent
-                                anchors.verticalCenter: parent.verticalCenter
+                                width: 2.5
+                                height: Math.max(3, root.cavaBars[index] || 3)
+                                radius: 1.25
+                                color: Theme.accentLit
+                                anchors.bottom: parent.bottom
 
                                 Behavior on height {
-                                    NumberAnimation { duration: 75; easing.type: Easing.OutQuad }
+                                    NumberAnimation { duration: 75 }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            /* ── C. Clean Minimal Resting Mode (Time & Battery) ── */
+            Item {
+                id: restingModeLayout
+                anchors.fill: parent
+                opacity: (!root.hudActive && !capsule.showMusic) ? 1.0 : 0.0
+                visible: opacity > 0.01
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 220; easing.type: Easing.OutQuad }
+                }
+
+                Row {
+                    anchors.centerIn: parent
+                    spacing: 10
+
+                    /* 1. Clean Digital Clock */
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.hourStr + ":" + root.minStr
+                        font.pixelSize: 13
+                        font.weight: Font.DemiBold
+                        font.letterSpacing: -0.2
+                        color: Theme.fg
+                    }
+
+                    /* 2. Music Active Indicator (Clickable to switch back to music) */
+                    Rectangle {
+                        visible: (root.isPlaying || root.hasTrack)
+                        width: 8
+                        height: 8
+                        radius: 4
+                        color: Theme.accentLit
+                        anchors.verticalCenter: parent.verticalCenter
+                        opacity: root.isPlaying ? 0.95 : 0.5
+
+                        SequentialAnimation on opacity {
+                            running: root.isPlaying && (!capsule.showMusic)
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 0.35; duration: 900; easing.type: Easing.InOutQuad }
+                            NumberAnimation { to: 1.0; duration: 900; easing.type: Easing.InOutQuad }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -4
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                root.activeView = "music"
                             }
                         }
                     }

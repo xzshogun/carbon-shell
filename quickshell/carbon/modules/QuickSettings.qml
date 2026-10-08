@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
@@ -26,6 +27,7 @@ Item {
     property bool hovered: false
     property int mode: 0            // 0: controls, 1: todo, 2: timer, 3: weather
     property string corner: "bottom_right"
+    property real shellOpacity: Theme.shellOpacity
     readonly property string home: Quickshell.env("HOME") || ""
 
     /* ── Notifications Support & Keyboard Navigation ── */
@@ -122,8 +124,8 @@ Item {
     readonly property int paneH: 268
     readonly property int cardW: root.paneW + 24
     readonly property int cardH: 52 + root.paneH
-    implicitWidth: root.cardW + 28
-    implicitHeight: root.cardH + 28
+    implicitWidth: root.cardW
+    implicitHeight: root.cardH
     width: root.implicitWidth
     height: root.implicitHeight
 
@@ -644,57 +646,136 @@ Item {
     }
 
     /* ============================ Visual ============================ */
-    Rectangle {
+    Item {
         id: card
         width: root.cardW
         height: root.cardH
-        radius: 24
-        color: Theme.isDark ? Qt.rgba(0.08, 0.09, 0.12, 0.96) : Theme.m3surfaceContainerLowest
-        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.35) : (Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.12))
-        border.width: 1
         clip: true
-        Behavior on border.color { ColorAnimation { duration: root.open ? 350 : 150; easing.type: Easing.OutQuad } }
 
-        // Specular glow
-        Rectangle {
+        readonly property color fillColor: Theme.isDark ? Qt.rgba(0.08, 0.09, 0.12, root.shellOpacity) : Qt.rgba(Theme.m3surfaceContainerLowest.r, Theme.m3surfaceContainerLowest.g, Theme.m3surfaceContainerLowest.b, root.shellOpacity)
+        readonly property color strokeColor: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.35) : (Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.12))
+
+        Shape {
+            id: cardShape
             anchors.fill: parent
-            radius: 24
-            color: "transparent"
-            border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.06)
-            border.width: 1
-            z: 90
+            preferredRendererType: Shape.CurveRenderer
+            asynchronous: false
+            layer.enabled: true
+            layer.smooth: true
+
+            ShapePath {
+                strokeWidth: 0
+                strokeColor: "transparent"
+                fillColor: card.fillColor
+                PathSvg {
+                    path: {
+                        const w = card.width
+                        const h = card.height
+                        const r = 24
+                        if (root.corner === "bottom_right") {
+                            // Only top-left is rounded; completely flush and square at bottom and right screen edges
+                            let p = `M 0 ${r} `
+                            p += `A ${r} ${r} 0 0 1 ${r} 0 `
+                            p += `L ${w} 0 `
+                            p += `L ${w} ${h} `
+                            p += `L 0 ${h} `
+                            p += `Z`
+                            return p
+                        } else if (root.corner === "top_left") {
+                            let p = `M 0 0 `
+                            p += `L ${w} 0 `
+                            p += `L ${w} ${h - r} `
+                            p += `A ${r} ${r} 0 0 1 ${w - r} ${h} `
+                            p += `L 0 ${h} `
+                            p += `Z`
+                            return p
+                        } else {
+                            let p = `M 0 ${r} `
+                            p += `A ${r} ${r} 0 0 1 ${r} 0 `
+                            p += `L ${w - r} 0 `
+                            p += `A ${r} ${r} 0 0 1 ${w} ${r} `
+                            p += `L ${w} ${h - r} `
+                            p += `A ${r} ${r} 0 0 1 ${w - r} ${h} `
+                            p += `L ${r} ${h} `
+                            p += `A ${r} ${r} 0 0 1 0 ${h - r} `
+                            p += `Z`
+                            return p
+                        }
+                    }
+                }
+            }
+
+            ShapePath {
+                strokeWidth: 1.0
+                strokeColor: card.strokeColor
+                fillColor: "transparent"
+                capStyle: ShapePath.FlatCap
+                joinStyle: ShapePath.MiterJoin
+                PathSvg {
+                    path: {
+                        const w = card.width
+                        const h = card.height
+                        const r = 24
+                        if (root.corner === "bottom_right") {
+                            // Stroke ONLY on left edge and top edge — zero stroke on bottom or right screen edges!
+                            let p = `M 0 ${h} `
+                            p += `L 0 ${r} `
+                            p += `A ${r} ${r} 0 0 1 ${r} 0 `
+                            p += `L ${w} 0`
+                            return p
+                        } else if (root.corner === "top_left") {
+                            let p = `M 0 ${h} `
+                            p += `L ${w - r} ${h} `
+                            p += `A ${r} ${r} 0 0 0 ${w} ${h - r} `
+                            p += `L ${w} 0`
+                            return p
+                        } else {
+                            let p = `M 0 ${r} `
+                            p += `A ${r} ${r} 0 0 1 ${r} 0 `
+                            p += `L ${w - r} 0 `
+                            p += `A ${r} ${r} 0 0 1 ${w} ${r} `
+                            p += `L ${w} ${h - r} `
+                            p += `A ${r} ${r} 0 0 1 ${w - r} ${h} `
+                            p += `L ${r} ${h} `
+                            p += `A ${r} ${r} 0 0 1 0 ${h - r} `
+                            p += `L 0 ${r}`
+                            return p
+                        }
+                    }
+                }
+            }
         }
 
         transformOrigin: root.corner === "top_left" ? Item.TopLeft :
                          (root.corner === "bottom_left" ? Item.BottomLeft : Item.BottomRight)
 
-        x: (root.corner === "top_left" || root.corner === "bottom_left") ? (root.open ? 28 : 0) : (root.open ? 0 : 28)
-        y: root.corner === "top_left" ? (root.open ? 28 : 0) : (root.open ? 0 : 28)
-        scale: root.open ? 1.0 : 0.90
+        x: (root.corner === "top_left" || root.corner === "bottom_left") ? (root.open ? 0 : -14) : (root.open ? 0 : 14)
+        y: root.corner === "top_left" ? (root.open ? 0 : -14) : (root.open ? 0 : 14)
+        scale: root.open ? 1.0 : 0.97
         opacity: root.open ? 1.0 : 0.0
 
         Behavior on opacity {
             NumberAnimation {
-                duration: root.open ? 200 : 140
+                duration: root.open ? 130 : 80
                 easing.type: root.open ? Easing.OutCubic : Easing.InQuad
             }
         }
         Behavior on x {
             NumberAnimation {
-                duration: root.open ? 280 : 160
-                easing.type: root.open ? Easing.OutExpo : Easing.InQuad
+                duration: root.open ? 140 : 85
+                easing.type: root.open ? Easing.OutCubic : Easing.InQuad
             }
         }
         Behavior on y {
             NumberAnimation {
-                duration: root.open ? 280 : 160
-                easing.type: root.open ? Easing.OutExpo : Easing.InQuad
+                duration: root.open ? 140 : 85
+                easing.type: root.open ? Easing.OutCubic : Easing.InQuad
             }
         }
         Behavior on scale {
             NumberAnimation {
-                duration: root.open ? 280 : 160
-                easing.type: root.open ? Easing.OutExpo : Easing.InQuad
+                duration: root.open ? 140 : 85
+                easing.type: root.open ? Easing.OutCubic : Easing.InQuad
             }
         }
 
@@ -863,10 +944,10 @@ Item {
 
                         opacity: root.open ? 1 : 0
                         transform: Translate {
-                            y: root.open ? 0 : 8
-                            Behavior on y { NumberAnimation { duration: root.open ? 280 : 120; easing.type: Easing.OutExpo } }
+                            y: root.open ? 0 : 4
+                            Behavior on y { NumberAnimation { duration: root.open ? 120 : 70; easing.type: Easing.OutCubic } }
                         }
-                        Behavior on opacity { NumberAnimation { duration: root.open ? 240 : 120; easing.type: Easing.OutCubic } }
+                        Behavior on opacity { NumberAnimation { duration: root.open ? 120 : 70; easing.type: Easing.OutCubic } }
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -1064,10 +1145,10 @@ Item {
 
                         opacity: root.open ? 1 : 0
                         transform: Translate {
-                            y: root.open ? 0 : 14
-                            Behavior on y { NumberAnimation { duration: root.open ? 320 : 120; easing.type: Easing.OutExpo } }
+                            y: root.open ? 0 : 4
+                            Behavior on y { NumberAnimation { duration: root.open ? 125 : 75; easing.type: Easing.OutCubic } }
                         }
-                        Behavior on opacity { NumberAnimation { duration: root.open ? 280 : 120; easing.type: Easing.OutCubic } }
+                        Behavior on opacity { NumberAnimation { duration: root.open ? 125 : 75; easing.type: Easing.OutCubic } }
 
                         RowLayout {
                             anchors.fill: parent
@@ -1388,10 +1469,10 @@ Item {
 
                         opacity: root.open ? 1 : 0
                         transform: Translate {
-                            y: root.open ? 0 : 20
-                            Behavior on y { NumberAnimation { duration: root.open ? 360 : 120; easing.type: Easing.OutExpo } }
+                            y: root.open ? 0 : 4
+                            Behavior on y { NumberAnimation { duration: root.open ? 130 : 80; easing.type: Easing.OutCubic } }
                         }
-                        Behavior on opacity { NumberAnimation { duration: root.open ? 320 : 120; easing.type: Easing.OutCubic } }
+                        Behavior on opacity { NumberAnimation { duration: root.open ? 130 : 80; easing.type: Easing.OutCubic } }
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -1891,8 +1972,8 @@ Item {
                     opacity: root.mode === 1 ? 1 : 0
                     enabled: root.mode === 1
                     transform: Translate {
-                        y: root.open ? 0 : 12
-                        Behavior on y { NumberAnimation { duration: root.open ? 300 : 120; easing.type: Easing.OutExpo } }
+                        y: root.open ? 0 : 4
+                        Behavior on y { NumberAnimation { duration: root.open ? 130 : 80; easing.type: Easing.OutCubic } }
                     }
                     Behavior on x {
                         NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
@@ -1910,8 +1991,8 @@ Item {
                     opacity: root.mode === 2 ? 1 : 0
                     enabled: root.mode === 2
                     transform: Translate {
-                        y: root.open ? 0 : 12
-                        Behavior on y { NumberAnimation { duration: root.open ? 300 : 120; easing.type: Easing.OutExpo } }
+                        y: root.open ? 0 : 4
+                        Behavior on y { NumberAnimation { duration: root.open ? 130 : 80; easing.type: Easing.OutCubic } }
                     }
                     Behavior on x {
                         NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
@@ -1929,8 +2010,8 @@ Item {
                     opacity: root.mode === 3 ? 1 : 0
                     enabled: root.mode === 3
                     transform: Translate {
-                        y: root.open ? 0 : 12
-                        Behavior on y { NumberAnimation { duration: root.open ? 300 : 120; easing.type: Easing.OutExpo } }
+                        y: root.open ? 0 : 4
+                        Behavior on y { NumberAnimation { duration: root.open ? 130 : 80; easing.type: Easing.OutCubic } }
                     }
                     Behavior on x {
                         NumberAnimation { duration: 220; easing.type: Easing.OutCubic }

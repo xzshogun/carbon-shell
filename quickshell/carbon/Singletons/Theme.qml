@@ -17,6 +17,52 @@ Singleton {
     readonly property string home: Quickshell.env("HOME") || "/home/" + (Quickshell.env("USER") || "user")
     readonly property string caelestiaSchemePath: root.home + "/.local/state/caelestia/scheme.json"
     readonly property string fallbackThemePath: root.home + "/.config/hypr/theme.json"
+    readonly property string barPosPath: root.home + "/.config/hypr/carbon-bar-position.json"
+
+    property real shellOpacity: 0.85
+
+    /* ── Caelestia Material 3 Expressive Animation Tokens ── */
+    readonly property var animCurves: ({
+        expressiveFastSpatial: [0.42, 1.67, 0.21, 0.9, 1.0, 1.0],
+        expressiveDefaultSpatial: [0.38, 1.21, 0.22, 1.0, 1.0, 1.0],
+        expressiveSlowSpatial: [0.39, 1.29, 0.35, 0.98, 1.0, 1.0],
+        expressiveFastEffects: [0.31, 0.94, 0.34, 1.0, 1.0, 1.0],
+        expressiveDefaultEffects: [0.34, 0.8, 0.34, 1.0, 1.0, 1.0],
+        standardAccel: [0.3, 0.0, 0.8, 0.15, 1.0, 1.0],
+        emphasizedDecel: [0.05, 0.7, 0.1, 1.0, 1.0, 1.0]
+    })
+    readonly property var animDurations: ({
+        openPopup: 380,
+        closePopup: 200,
+        fastSpatial: 350,
+        defaultSpatial: 500,
+        slowSpatial: 650,
+        fastEffects: 150,
+        defaultEffects: 200
+    })
+
+    FileView {
+        id: barPosFile
+        path: root.barPosPath
+        watchChanges: true
+        blockLoading: true
+        printErrors: false
+        onFileChanged: root.reloadShellOpacity()
+        onLoaded: root.reloadShellOpacity()
+    }
+
+    function reloadShellOpacity() {
+        try {
+            var txt = barPosFile.text().trim()
+            if (txt.length > 0) {
+                var d = JSON.parse(txt)
+                if (d.shellOpacity !== undefined) {
+                    root.shellOpacity = Math.max(0.10, Math.min(1.0, parseFloat(d.shellOpacity) || 0.85))
+                }
+            }
+        } catch (e) {}
+        root.reload()
+    }
 
     FileView {
         id: caelestiaFile
@@ -24,10 +70,7 @@ Singleton {
         watchChanges: true
         blockLoading: true
         printErrors: false
-        onFileChanged: {
-            reload()
-            root.reload()
-        }
+        onFileChanged: root.reload()
         onLoaded: root.reload()
     }
 
@@ -37,10 +80,7 @@ Singleton {
         watchChanges: true
         blockLoading: true
         printErrors: false
-        onFileChanged: {
-            reload()
-            root.reload()
-        }
+        onFileChanged: root.reload()
         onLoaded: root.reload()
     }
 
@@ -121,7 +161,7 @@ Singleton {
 
                 /* Map to Carbon Theme variables with Caelestia's subtle alpha layering */
                 if (root.isDark) {
-                    root.bg = Qt.rgba(root.m3surfaceContainer.r, root.m3surfaceContainer.g, root.m3surfaceContainer.b, 0.92)
+                    root.bg = Qt.rgba(root.m3surfaceContainer.r, root.m3surfaceContainer.g, root.m3surfaceContainer.b, root.shellOpacity)
                     root.bgAlt = Qt.rgba(root.m3surfaceContainerHigh.r, root.m3surfaceContainerHigh.g, root.m3surfaceContainerHigh.b, 0.75)
                     root.bgHover = Qt.rgba(root.m3surfaceContainerHighest.r, root.m3surfaceContainerHighest.g, root.m3surfaceContainerHighest.b, 0.90)
                     root.bgActive = Qt.rgba(root.m3primaryContainer.r, root.m3primaryContainer.g, root.m3primaryContainer.b, 0.85)
@@ -137,7 +177,7 @@ Singleton {
                     root.outline = Qt.rgba(root.m3outlineVariant.r, root.m3outlineVariant.g, root.m3outlineVariant.b, 0.40)
                 } else {
                     /* Crisp, luminous porcelain light mode */
-                    root.bg = Qt.rgba(root.m3surfaceContainerLowest.r, root.m3surfaceContainerLowest.g, root.m3surfaceContainerLowest.b, 0.96)
+                    root.bg = Qt.rgba(root.m3surfaceContainerLowest.r, root.m3surfaceContainerLowest.g, root.m3surfaceContainerLowest.b, root.shellOpacity)
                     root.bgAlt = Qt.rgba(root.m3surfaceContainerLow.r, root.m3surfaceContainerLow.g, root.m3surfaceContainerLow.b, 0.90)
                     root.bgHover = Qt.rgba(root.m3surfaceContainer.r, root.m3surfaceContainer.g, root.m3surfaceContainer.b, 0.95)
                     root.bgActive = Qt.rgba(root.m3primaryContainer.r, root.m3primaryContainer.g, root.m3primaryContainer.b, 0.90)
@@ -162,12 +202,14 @@ Singleton {
             }
 
             /* Fallback to ~/.config/hypr/theme.json */
-            fallbackFile.reload()
             var ftxt = fallbackFile.text().trim()
             if (ftxt.length > 0) {
                 var p = JSON.parse(ftxt)
                 root.palette = p
-                if (p.bg) root.bg = p.bg
+                if (p.bg) {
+                    var rawBg = Qt.color(p.bg)
+                    root.bg = Qt.rgba(rawBg.r, rawBg.g, rawBg.b, root.shellOpacity)
+                }
                 if (p.bgAlt) root.bgAlt = p.bgAlt
                 if (p.bgHover) root.bgHover = p.bgHover
                 if (p.bgActive) root.bgActive = p.bgActive

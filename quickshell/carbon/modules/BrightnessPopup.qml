@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import "../components"
@@ -23,6 +24,7 @@ Item {
 
     implicitWidth: 260
     implicitHeight: 72
+    clip: true
 
     /* ============ Display brightness (via brightnessctl) ============ */
     property real brightRatio: 0
@@ -66,56 +68,105 @@ Item {
         }
     }
 
+    property bool animatingOut: false
     onOpenChanged: {
-        if (root.open) root.refreshBrightness()
+        if (root.open) {
+            root.refreshBrightness()
+            root.animatingOut = false
+            animatingOutTimer.stop()
+        } else {
+            root.animatingOut = true
+            animatingOutTimer.restart()
+        }
+    }
+    Timer {
+        id: animatingOutTimer
+        interval: 200
+        onTriggered: root.animatingOut = false
     }
 
-    Rectangle {
+    property string barMode: "notch"
+
+    readonly property string fillPath: {
+        const w = card.width
+        const h = card.height
+        if (root.barMode === "pill") {
+            const r = 16
+            return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
+        }
+        const r = 18
+        const leftX = 12
+        return `M ${leftX} 0 L ${w} 0 L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${leftX + r} ${h} A ${r} ${r} 0 0 1 ${leftX} ${h - r} L ${leftX} 0 Z`
+    }
+
+    readonly property string strokePath: {
+        const w = card.width
+        const h = card.height
+        if (root.barMode === "pill") {
+            const r = 16
+            return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
+        }
+        const r = 18
+        const leftX = 12
+        return `M ${w} 0 L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${leftX + r} ${h} A ${r} ${r} 0 0 1 ${leftX} ${h - r} L ${leftX} 0`
+    }
+
+    Item {
         id: card
         width: parent.width
         height: parent.height
-        radius: 16
-        color: Theme.bg
-        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Theme.outline
-        border.width: 1
 
-        opacity: root.open ? 1 : 0
-        x: root.open ? 0 : (root.barEdge === "left" ? -28 : (root.barEdge === "right" ? 28 : 0))
-        y: root.open ? 0 : (root.barEdge === "top" ? -20 : (root.barEdge === "bottom" ? 20 : 0))
-        scale: root.open ? 1.0 : 0.88
-        transformOrigin: root.barEdge === "left" ? Item.BottomLeft :
-                         (root.barEdge === "right" ? Item.BottomRight :
-                         (root.barEdge === "bottom" ? Item.BottomRight : Item.TopRight))
+        Shape {
+            id: cardBgShape
+            anchors.fill: parent
+            layer.enabled: true
+            layer.smooth: true
+            preferredRendererType: Shape.CurveRenderer
 
-        Behavior on border.color { ColorAnimation { duration: 200 } }
-        Behavior on opacity {
-            NumberAnimation { duration: root.open ? 220 : 140; easing.type: Easing.OutCubic }
-        }
-        Behavior on x {
-            NumberAnimation {
-                duration: root.open ? 320 : 160
-                easing.type: root.open ? Easing.OutBack : Easing.OutCubic
-                easing.overshoot: 1.35
+            ShapePath {
+                fillColor: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.shellOpacity)
+                strokeColor: "transparent"
+                strokeWidth: 0
+                PathSvg { path: root.fillPath }
+            }
+
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Theme.outline
+                strokeWidth: 1
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+                PathSvg { path: root.strokePath }
             }
         }
-        Behavior on y {
+
+        opacity: root.open ? 1.0 : 0.0
+        scale: root.open ? 1.0 : 0.95
+        y: root.open ? 0 : (root.barEdge === "bottom" ? -6 : 6)
+
+        Behavior on opacity {
             NumberAnimation {
-                duration: root.open ? 320 : 160
-                easing.type: root.open ? Easing.OutBack : Easing.OutCubic
-                easing.overshoot: 1.35
+                duration: root.open ? 200 : 140
+                easing.bezierCurve: Theme.animCurves.expressiveDefaultEffects
             }
         }
         Behavior on scale {
             NumberAnimation {
-                duration: root.open ? 300 : 150
-                easing.type: root.open ? Easing.OutBack : Easing.OutCubic
-                easing.overshoot: 1.38
+                duration: root.open ? 280 : 160
+                easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel
+            }
+        }
+        Behavior on y {
+            NumberAnimation {
+                duration: root.open ? 280 : 160
+                easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel
             }
         }
 
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 12
+            anchors.leftMargin: root.barMode === "notch" ? 22 : 12
             spacing: 6
 
             RowLayout {

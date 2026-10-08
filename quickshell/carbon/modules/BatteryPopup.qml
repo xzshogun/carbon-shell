@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
@@ -87,74 +88,116 @@ Item {
     implicitHeight: 220
     width: 260
     height: 220
+    clip: true
 
     HoverHandler {
         id: hoverHandler
         onHoveredChanged: root.hovered = hoverHandler.hovered
     }
 
-    Rectangle {
+    property bool animatingOut: false
+    onOpenChanged: {
+        if (!open) {
+            animatingOut = true
+            animatingOutTimer.restart()
+        } else {
+            animatingOut = false
+            animatingOutTimer.stop()
+        }
+    }
+    Timer {
+        id: animatingOutTimer
+        interval: 200
+        onTriggered: root.animatingOut = false
+    }
+
+    property string barMode: "notch"
+
+    readonly property string fillPath: {
+        const w = card.width
+        const h = card.height
+        if (root.barMode === "pill") {
+            const r = 16
+            return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
+        }
+        const r = 18
+        const leftX = 12
+        return `M ${leftX} 0 L ${w} 0 L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${leftX + r} ${h} A ${r} ${r} 0 0 1 ${leftX} ${h - r} L ${leftX} 0 Z`
+    }
+
+    readonly property string strokePath: {
+        const w = card.width
+        const h = card.height
+        if (root.barMode === "pill") {
+            const r = 16
+            return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
+        }
+        const r = 18
+        const leftX = 12
+        return `M ${w} 0 L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${leftX + r} ${h} A ${r} ${r} 0 0 1 ${leftX} ${h - r} L ${leftX} 0`
+    }
+
+    Item {
         id: card
         width: parent.width
         height: parent.height
-        radius: 18
-        color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.90)
-        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Qt.rgba(1, 1, 1, 0.12)
-        border.width: 1
 
-        /* VisionOS Specular Rim highlight */
-        Rectangle {
+        Shape {
+            id: cardBgShape
             anchors.fill: parent
-            anchors.margins: 1
-            radius: card.radius - 1
-            color: "transparent"
-            border.width: 1
-            border.color: Qt.rgba(1, 1, 1, root.open ? 0.20 : 0.06)
-            z: 99
-        }
+            layer.enabled: true
+            layer.smooth: true
+            preferredRendererType: Shape.CurveRenderer
 
-        opacity: root.open ? 1 : 0
-        x: root.open ? 0 : (root.barEdge === "left" ? -28 : (root.barEdge === "right" ? 28 : 0))
-        y: root.open ? 0 : (root.barEdge === "top" ? -20 : (root.barEdge === "bottom" ? 20 : 0))
-        scale: root.open ? 1.0 : 0.88
-        transformOrigin: root.barEdge === "left" ? Item.BottomLeft :
-                         (root.barEdge === "right" ? Item.BottomRight :
-                         (root.barEdge === "bottom" ? Item.BottomRight : Item.TopRight))
+            ShapePath {
+                fillColor: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.shellOpacity)
+                strokeColor: "transparent"
+                strokeWidth: 0
+                PathSvg { path: root.fillPath }
+            }
 
-        Behavior on border.color { ColorAnimation { duration: 200 } }
-        Behavior on opacity {
-            NumberAnimation { duration: root.open ? 220 : 140; easing.type: Easing.OutCubic }
-        }
-        Behavior on x {
-            NumberAnimation {
-                duration: root.open ? 320 : 160
-                easing.type: root.open ? Easing.OutBack : Easing.OutCubic
-                easing.overshoot: 1.35
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Theme.outline
+                strokeWidth: 1
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+                PathSvg { path: root.strokePath }
             }
         }
-        Behavior on y {
+
+        opacity: root.open ? 1.0 : 0.0
+        scale: root.open ? 1.0 : 0.95
+        y: root.open ? 0 : (root.barEdge === "bottom" ? -6 : 6)
+
+        Behavior on opacity {
             NumberAnimation {
-                duration: root.open ? 320 : 160
-                easing.type: root.open ? Easing.OutBack : Easing.OutCubic
-                easing.overshoot: 1.35
+                duration: root.open ? 200 : 140
+                easing.bezierCurve: Theme.animCurves.expressiveDefaultEffects
             }
         }
         Behavior on scale {
             NumberAnimation {
-                duration: root.open ? 300 : 150
-                easing.type: root.open ? Easing.OutBack : Easing.OutCubic
-                easing.overshoot: 1.38
+                duration: root.open ? 280 : 160
+                easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel
+            }
+        }
+        Behavior on y {
+            NumberAnimation {
+                duration: root.open ? 280 : 160
+                easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel
             }
         }
 
         RowLayout {
             anchors.fill: parent
             anchors.margins: 12
+            anchors.leftMargin: root.barMode === "notch" ? 22 : 12
             spacing: 12
             opacity: root.open ? 1.0 : 0.0
-            y: root.open ? 0 : 8
-            Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-            Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
+            y: root.open ? 0 : 4
+            Behavior on opacity { NumberAnimation { duration: root.open ? Theme.animDurations.fastSpatial : Theme.animDurations.closePopup; easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultEffects : Theme.animCurves.standardAccel } }
+            Behavior on y { NumberAnimation { duration: root.open ? Theme.animDurations.openPopup : Theme.animDurations.closePopup; easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel } }
 
             /* ── Left: Caelestia Wavy Liquid Battery Card ───────────── */
             Rectangle {
@@ -174,9 +217,9 @@ Item {
 
                 Timer {
                     id: waveTimer
-                    interval: 33 // ~30 FPS
+                    interval: 45
                     repeat: true
-                    running: root.open
+                    running: root.open && card.opacity > 0.85
                     onTriggered: {
                         wavyCard.wavePhase = (wavyCard.wavePhase + 0.04) % 1000.0
                         waveCanvas.requestPaint()

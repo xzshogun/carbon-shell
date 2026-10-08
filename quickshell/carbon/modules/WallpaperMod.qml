@@ -7,9 +7,10 @@ Item {
     id: root
 
     readonly property string home: Quickshell.env("HOME") || ""
-    readonly property string symlink: root.home + "/.config/hypr/current_wallpaper"
-    readonly property string stateFile: root.home + "/.config/hypr/current_wallpaper_path"
-    readonly property string modeConfigFile: root.home + "/.config/hypr/carbon-bar-mode.json"
+    readonly property string configDir: Quickshell.env("CARBON_CONFIG_DIR") || (root.home + "/.config/carbon")
+    readonly property string symlink: root.configDir + "/current_wallpaper"
+    readonly property string stateFile: root.configDir + "/current_wallpaper_path"
+    readonly property string modeConfigFile: root.configDir + "/carbon-bar-mode.json"
 
     property string currentWpPath: ""
     property string pendingNewPath: ""
@@ -96,7 +97,7 @@ Item {
     /* Fallback polling in case external tools change symlink directly */
     Process {
         id: wpReader
-        command: ["sh", "-c", "readlink -f \"$HOME/.config/hypr/current_wallpaper\" 2>/dev/null || echo \"\""]
+        command: ["sh", "-c", "readlink -f \"" + root.configDir + "/current_wallpaper\" 2>/dev/null || readlink -f \"$HOME/.config/hypr/current_wallpaper\" 2>/dev/null || echo \"\""]
         stdout: StdioCollector {
             onStreamFinished: {
                 const p = wpReader.stdout.text.toString().trim()

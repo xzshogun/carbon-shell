@@ -26,6 +26,7 @@ ShellRoot {
     id: root
 
     readonly property string home: Quickshell.env("HOME") || ""
+    readonly property string carbonConfigDir: Quickshell.env("CARBON_CONFIG_DIR") || (root.home + "/.config/carbon")
     property bool launcherOpen: false
     property bool wallpaperPickerOpen: false
     property string wallpaperSource: "local"
@@ -590,7 +591,7 @@ ShellRoot {
         root.barMode = "nucleus"
         root.nucleusTransitionActive = false
         Quickshell.execDetached(["python3", "-c",
-            "import json, os; p=os.path.expanduser('~/.config/hypr/carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {}; d['mode']='nucleus'; json.dump(d, open(p,'w'), indent=2)"])
+            "import json, os; dir=os.environ.get('CARBON_CONFIG_DIR', os.path.expanduser('~/.config/carbon')); os.makedirs(dir, exist_ok=True); p=os.path.join(dir, 'carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {}; d['mode']='nucleus'; json.dump(d, open(p,'w'), indent=2)"])
     }
 
     /* ── Bar Mode Configuration: "pill" or "notch" ──────────────────── */
@@ -599,7 +600,7 @@ ShellRoot {
 
     FileView {
         id: barModeFile
-        path: root.home + "/.config/hypr/carbon-bar-mode.json"
+        path: root.carbonConfigDir + "/carbon-bar-mode.json"
         watchChanges: true
         blockLoading: true
         printErrors: false
@@ -679,20 +680,20 @@ ShellRoot {
         root.barMode = m
         console.log("[BAR-MODE] switchBarMode set root.barMode to: " + root.barMode)
         Quickshell.execDetached(["python3", "-c",
-            "import json, os; p=os.path.expanduser('~/.config/hypr/carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {};\nif d.get('mode') != '" + m + "':\n  d['mode']='" + m + "'\n  t=p+'.tmp'\n  with open(t,'w') as f: json.dump(d, f, indent=2)\n  os.replace(t, p)"])
+            "import json, os; dir=os.environ.get('CARBON_CONFIG_DIR', os.path.expanduser('~/.config/carbon')); os.makedirs(dir, exist_ok=True); p=os.path.join(dir, 'carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {};\nif d.get('mode') != '" + m + "':\n  d['mode']='" + m + "'\n  t=p+'.tmp'\n  with open(t,'w') as f: json.dump(d, f, indent=2)\n  os.replace(t, p)"])
     }
 
     function switchIslandStyle(s) {
         if (!s) return
         root.islandStyle = s
         Quickshell.execDetached(["python3", "-c",
-            "import json, os; p=os.path.expanduser('~/.config/hypr/carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {}; d['islandStyle']='" + s + "'; json.dump(d, open(p,'w'), indent=2)"])
+            "import json, os; dir=os.environ.get('CARBON_CONFIG_DIR', os.path.expanduser('~/.config/carbon')); os.makedirs(dir, exist_ok=True); p=os.path.join(dir, 'carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {}; d['islandStyle']='" + s + "'; json.dump(d, open(p,'w'), indent=2)"])
     }
 
     function switchIslandPersistent(p) {
         root.islandPersistent = Boolean(p)
         Quickshell.execDetached(["python3", "-c",
-            "import json, os; p=os.path.expanduser('~/.config/hypr/carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {}; d['islandPersistent']=" + (p ? "True" : "False") + "; json.dump(d, open(p,'w'), indent=2)"])
+            "import json, os; dir=os.environ.get('CARBON_CONFIG_DIR', os.path.expanduser('~/.config/carbon')); os.makedirs(dir, exist_ok=True); p=os.path.join(dir, 'carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {}; d['islandPersistent']=" + (p ? "True" : "False") + "; json.dump(d, open(p,'w'), indent=2)"])
     }
 
     property real shellOpacity: Theme.shellOpacity
@@ -754,7 +755,7 @@ ShellRoot {
 
     FileView {
         id: barPosFile
-        path: root.home + "/.config/hypr/carbon-bar-position.json"
+        path: root.carbonConfigDir + "/carbon-bar-position.json"
         watchChanges: true
         blockLoading: true
         printErrors: false
@@ -1305,7 +1306,7 @@ ShellRoot {
     /* ── Audio-Reactive Active Window Border Daemon (Disabled for low latency & CPU efficiency) ── */
     Process {
         id: audioBorderDaemon
-        command: ["python3", root.home + "/.config/hypr/scripts/audio-border.py"]
+        command: ["python3", root.carbonConfigDir + "/scripts/audio-border.py"]
         running: false
     }
 

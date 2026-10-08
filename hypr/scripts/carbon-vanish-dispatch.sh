@@ -4,7 +4,11 @@
 # Keeps standard desktop modes (Pill, Notch, Minimal) completely unhindered.
 
 ACTION="$1"
-MODE_FILE="$HOME/.config/hypr/carbon-bar-mode.json"
+CONFIG_DIR="${CARBON_CONFIG_DIR:-$HOME/.config/carbon}"
+if [ ! -d "$CONFIG_DIR" ] && [ -d "$HOME/.config/hypr" ]; then
+    CONFIG_DIR="$HOME/.config/hypr"
+fi
+MODE_FILE="$CONFIG_DIR/carbon-bar-mode.json"
 
 CURRENT_MODE="nucleus"
 if [ -f "$MODE_FILE" ]; then
@@ -16,27 +20,30 @@ if [ "$CURRENT_MODE" != "nucleus" ]; then
     exit 0
 fi
 
+IPC_SCRIPT="$CONFIG_DIR/scripts/carbon-ipc.sh"
+[ -f "$IPC_SCRIPT" ] || IPC_SCRIPT="$HOME/.config/hypr/scripts/carbon-ipc.sh"
+
 case "$ACTION" in
     toggle-hub)
-        sh "$HOME/.config/hypr/scripts/carbon-ipc.sh" "nucleus toggle"
+        sh "$IPC_SCRIPT" "nucleus toggle"
         ;;
     launcher)
-        sh "$HOME/.config/hypr/scripts/carbon-ipc.sh" "nucleus launcher"
+        sh "$IPC_SCRIPT" "nucleus launcher"
         ;;
     lyrics)
-        sh "$HOME/.config/hypr/scripts/carbon-ipc.sh" "nucleus lyrics"
+        sh "$IPC_SCRIPT" "nucleus lyrics"
         ;;
     wallpaper)
-        sh "$HOME/.config/hypr/scripts/carbon-ipc.sh" "nucleus wallpapers"
+        sh "$IPC_SCRIPT" "nucleus wallpapers"
         ;;
     focus-connect)
-        sh "$HOME/.config/hypr/scripts/carbon-ipc.sh" "nucleus focus connect"
+        sh "$IPC_SCRIPT" "nucleus focus connect"
         ;;
     focus-spaces)
-        sh "$HOME/.config/hypr/scripts/carbon-ipc.sh" "nucleus focus spaces"
+        sh "$IPC_SCRIPT" "nucleus focus spaces"
         ;;
     focus-alerts)
-        sh "$HOME/.config/hypr/scripts/carbon-ipc.sh" "nucleus focus alerts"
+        sh "$IPC_SCRIPT" "nucleus focus alerts"
         ;;
     *)
         exit 0

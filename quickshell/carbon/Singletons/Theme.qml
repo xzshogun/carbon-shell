@@ -15,9 +15,10 @@ Singleton {
     id: root
 
     readonly property string home: Quickshell.env("HOME") || "/home/" + (Quickshell.env("USER") || "user")
+    readonly property string configDir: Quickshell.env("CARBON_CONFIG_DIR") || (root.home + "/.config/carbon")
     readonly property string caelestiaSchemePath: root.home + "/.local/state/caelestia/scheme.json"
-    readonly property string fallbackThemePath: root.home + "/.config/hypr/theme.json"
-    readonly property string barPosPath: root.home + "/.config/hypr/carbon-bar-position.json"
+    readonly property string fallbackThemePath: root.configDir + "/theme.json"
+    readonly property string barPosPath: root.configDir + "/carbon-bar-position.json"
 
     property real shellOpacity: 0.85
 

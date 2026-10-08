@@ -42,7 +42,8 @@ Item {
 
     /* ── Configuration: musicVisualizer ("liquidHalo" | "none") ── */
     property string visualizerDesign: "liquidHalo"
-    readonly property string configPath: (Quickshell.env("HOME") || "") + "/.config/hypr/carbon-bar-mode.json"
+    readonly property string configDir: Quickshell.env("CARBON_CONFIG_DIR") || ((Quickshell.env("HOME") || "") + "/.config/carbon")
+    readonly property string configPath: root.configDir + "/carbon-bar-mode.json"
 
     FileView {
         id: cfgFile
@@ -72,7 +73,7 @@ Item {
 
     /* ── Cava Subprocess Pipeline (Runs ONLY when active, visible, and playing) ── */
     readonly property bool cavaNeeded: (root.visualizerDesign !== "none") && root.activeAndVisible && root.isPlaying
-    readonly property string cavaConfPath: (Quickshell.env("HOME") || "") + "/.config/hypr/cava-nucleus.conf"
+    readonly property string cavaConfPath: root.configDir + "/cava-nucleus.conf"
 
     Process {
         id: cavaProc

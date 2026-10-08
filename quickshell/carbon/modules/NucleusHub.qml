@@ -106,11 +106,17 @@ Item {
     function randomizeOrbitalPositions() {
         if (!lobeConnect || !lobeLaunch || !lobeSpaces || !lobeAlerts) return
 
-        // Base random orientation across the 360° field
-        var baseRot = Math.random() * 360.0
-
-        // 4 deliberate asymmetric sector angles (guarantees no two are ever directly 180° opposite)
-        var sectorBases = [0.0, 74.0, 162.0, 246.0]
+        // 4 deliberate asymmetric sectors leaving bottom zone [55°..125°] clear for music/date
+        // Sector A: Right (20° .. 50°)
+        // Sector B: Left (130° .. 160°)
+        // Sector C: Upper-Left (190° .. 255°)
+        // Sector D: Upper-Right (285° .. 345°)
+        var sectors = [
+            { min: 20.0, max: 50.0 },
+            { min: 130.0, max: 160.0 },
+            { min: 190.0, max: 255.0 },
+            { min: 285.0, max: 345.0 }
+        ]
 
         // Shuffle quadrant assignments randomly so any orb can appear in any sector
         var order = [0, 1, 2, 3]
@@ -125,14 +131,12 @@ Item {
         for (var k = 0; k < 4; k++) {
             var lobe = lobes[k]
             if (!lobe) continue
-            var baseAngle = sectorBases[order[k]]
-            // Intra-sector organic jitter between -15° and +15°
-            var jitter = (Math.random() * 30.0) - 15.0
-            var angle = (baseRot + baseAngle + jitter) % 360.0
-            if (angle < 0) angle += 360.0
+            var sec = sectors[order[k]]
+            // Random angle within assigned sector
+            var angle = sec.min + (Math.random() * (sec.max - sec.min))
 
-            // Random orbital radius between 115px and 155px (never exceeds max distance 155px)
-            var dist = Math.round(115.0 + Math.random() * 40.0)
+            // Random orbital radius between 118px and 155px (never exceeds max distance 155px)
+            var dist = Math.round(118.0 + Math.random() * 37.0)
 
             lobe.targetAngle = angle
             lobe.orbitalRadius = dist
@@ -798,16 +802,385 @@ Item {
             }
         }
 
+        /* ══════════════════════════════════════════════════════════════════════
+           CIRCULAR ORBITAL PROGRESS RING (Encircles Center Nucleus Orb)
+           ══════════════════════════════════════════════════════════════════════ */
+        Item {
+            id: musicProgressRing
+            anchors.centerIn: parent
+            width: 104
+            height: 104
+            visible: root.hubOpen && LyricsService.hasTrack && root.activeMode === "hub"
+            opacity: (root.hubProgress > 0.3 && LyricsService.hasTrack && root.activeMode === "hub") ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+
+            readonly property real rawProgress: (LyricsService.totalLength > 0)
+                ? Math.max(0.0, Math.min(1.0, LyricsService.currentPosition / LyricsService.totalLength)) : 0.0
+
+            property real animProgress: rawProgress
+            Behavior on animProgress {
+                NumberAnimation { duration: 150; easing.type: Easing.Linear }
+            }
+
+            Canvas {
+                id: progressCanvas
+                anchors.fill: parent
+                antialiasing: true
+                renderTarget: Canvas.Image
+                renderStrategy: Canvas.Immediate
+
+                readonly property real cx: width / 2
+                readonly property real cy: height / 2
+                readonly property real trackRadius: 46
+
+                Connections {
+                    target: musicProgressRing
+                    function onAnimProgressChanged() { progressCanvas.requestPaint() }
+                    function onVisibleChanged() { if (musicProgressRing.visible) progressCanvas.requestPaint() }
+                }
+
+                Connections {
+                    target: root
+                    function onColTealChanged() { progressCanvas.requestPaint() }
+                }
+
+                onPaint: {
+                    const ctx = getContext("2d");
+                    ctx.reset();
+                    const r = trackRadius;
+
+                    // 1. Subtle Orbital Track (faint guide ring)
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r, 0, 2 * Math.PI, false);
+                    ctx.lineWidth = 1.8;
+                    ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+                    ctx.stroke();
+
+                    // 2. Active Progress Arc
+                    if (musicProgressRing.animProgress > 0.002) {
+                        const startAngle = -Math.PI / 2;
+                        const endAngle = startAngle + (2 * Math.PI * musicProgressRing.animProgress);
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, r, startAngle, endAngle, false);
+                        ctx.lineWidth = 2.4;
+                        ctx.strokeStyle = root.colTeal;
+                        ctx.lineCap = "round";
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Leading Specular Glowing Dot at progress head
+            Rectangle {
+                id: progressDot
+                visible: musicProgressRing.animProgress > 0.01 && musicProgressRing.animProgress < 0.99
+                width: 6
+                height: 6
+                radius: 3
+                color: "#FFFFFF"
+                x: (parent.width / 2) + 46 * Math.cos(-Math.PI / 2 + 2 * Math.PI * musicProgressRing.animProgress) - 3
+                y: (parent.height / 2) + 46 * Math.sin(-Math.PI / 2 + 2 * Math.PI * musicProgressRing.animProgress) - 3
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 12
+                    height: 12
+                    radius: 6
+                    color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.45)
+                    z: -1
+                }
+            }
+
+            // Interactive Click & Drag to Seek
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+
+                function seekFromMouse(mouse) {
+                    const dx = mouse.x - width / 2;
+                    const dy = mouse.y - height / 2;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist >= 32 && dist <= 60) {
+                        let angle = Math.atan2(dy, dx);
+                        let frac = (angle + Math.PI / 2) / (2 * Math.PI);
+                        if (frac < 0) frac += 1.0;
+                        LyricsService.seekFraction(frac);
+                    }
+                }
+
+                onClicked: (mouse) => seekFromMouse(mouse)
+                onPositionChanged: (mouse) => {
+                    if (pressed) seekFromMouse(mouse);
+                }
+            }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           ORGANIC MUSIC & SYNCED LYRICS OVERLAY (Barless, pure circular geometry)
+           ══════════════════════════════════════════════════════════════════════ */
+        Item {
+            id: nucleusMusicOverlay
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.bottom
+            anchors.topMargin: 56
+            width: 320
+            height: 84
+            visible: root.hubOpen && LyricsService.hasTrack && root.activeMode === "hub"
+            opacity: (root.hubProgress > 0.25 && LyricsService.hasTrack && root.activeMode === "hub") ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+
+            property bool forceMetadata: false
+            readonly property bool showingLyrics: !forceMetadata && LyricsService.hasLyrics && (LyricsService.currentLine.trim().length > 0)
+
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 5
+
+                // ── 1. Track / Lyrics Display ──
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 38
+
+                    // A. Synced Lyrics View (Centered, poetic typography)
+                    ColumnLayout {
+                        anchors.fill: parent
+                        visible: nucleusMusicOverlay.showingLyrics
+                        spacing: 2
+
+                        Text {
+                            id: lyricMainText
+                            Layout.fillWidth: true
+                            horizontalAlignment: Text.AlignHCenter
+                            text: LyricsService.currentLine
+                            font.family: "Valley Sans"
+                            font.pixelSize: 13
+                            font.bold: true
+                            color: root.colTeal
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
+
+                            Behavior on color { ColorAnimation { duration: 200 } }
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            horizontalAlignment: Text.AlignHCenter
+                            text: LyricsService.nextLine.length > 0 ? ("› " + LyricsService.nextLine) : ""
+                            font.family: "Valley Sans"
+                            font.pixelSize: 10
+                            color: Qt.rgba(root.colFgDim.r, root.colFgDim.g, root.colFgDim.b, 0.65)
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
+                            visible: text.length > 0
+                        }
+                    }
+
+                    // B. Track Info View (Album art micro-orb + centered info)
+                    RowLayout {
+                        anchors.centerIn: parent
+                        visible: !nucleusMusicOverlay.showingLyrics
+                        spacing: 8
+
+                        // Circular Album Art Micro-Orb
+                        Rectangle {
+                            Layout.preferredWidth: 26
+                            Layout.preferredHeight: 26
+                            radius: 13
+                            color: "#181B22"
+                            border.color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.5)
+                            border.width: 1.2
+                            clip: true
+
+                            Image {
+                                anchors.fill: parent
+                                source: LyricsService.artUrl
+                                fillMode: Image.PreserveAspectCrop
+                                visible: status === Image.Ready && source !== ""
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "music_note"
+                                font.family: Theme.fontIcon
+                                font.pixelSize: 14
+                                color: root.colTeal
+                                visible: !LyricsService.artUrl || LyricsService.artUrl === ""
+                            }
+                        }
+
+                        ColumnLayout {
+                            spacing: 1
+
+                            Text {
+                                text: LyricsService.trackTitle || "Playing Track"
+                                font.family: "Valley Sans"
+                                font.pixelSize: 12
+                                font.bold: true
+                                color: "#FFFFFF"
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                                Layout.maximumWidth: 250
+                            }
+
+                            Text {
+                                text: LyricsService.trackArtist || "Unknown Artist"
+                                font.family: "Valley Sans"
+                                font.pixelSize: 10
+                                color: root.colFgDim
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                                Layout.maximumWidth: 250
+                            }
+                        }
+                    }
+
+                    // Click text area to toggle between lyrics and track metadata if both exist
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: LyricsService.hasLyrics ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onClicked: {
+                            if (LyricsService.hasLyrics) {
+                                nucleusMusicOverlay.forceMetadata = !nucleusMusicOverlay.forceMetadata
+                            }
+                        }
+                    }
+                }
+
+                // ── 2. ValenceDot Circular Transport Controls Row ──
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    spacing: 12
+
+                    // Elapsed Time Readout
+                    Text {
+                        text: LyricsService.formatTime(LyricsService.currentPosition)
+                        font.family: "JetBrainsMono Nerd Font"
+                        font.pixelSize: 9
+                        color: root.colFgDim
+                    }
+
+                    // Skip Previous Button (26px circle)
+                    Rectangle {
+                        Layout.preferredWidth: 26
+                        Layout.preferredHeight: 26
+                        radius: 13
+                        color: prevMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.16) : Qt.rgba(0.08, 0.10, 0.14, 0.75)
+                        border.color: prevMouse.containsMouse ? root.colTeal : Qt.rgba(1, 1, 1, 0.14)
+                        border.width: 1.2
+                        scale: prevMouse.containsMouse ? 1.14 : 1.0
+                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "skip_previous"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 15
+                            color: prevMouse.containsMouse ? root.colTeal : "#D0D6E0"
+                        }
+
+                        MouseArea {
+                            id: prevMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: LyricsService.skipPrevious()
+                        }
+                    }
+
+                    // Play / Pause Button (32px ValenceDot circle with halo)
+                    Item {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: parent.width + 10
+                            height: width
+                            radius: width / 2
+                            color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.35)
+                            visible: playMouse.containsMouse || LyricsService.isPlaying
+                            opacity: playMouse.containsMouse ? 0.75 : 0.40
+                            Behavior on opacity { NumberAnimation { duration: 180 } }
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: width / 2
+                            color: LyricsService.isPlaying ? root.colTeal : "#FFFFFF"
+                            border.color: root.colTeal
+                            border.width: 1.8
+                            scale: playMouse.containsMouse ? 1.12 : 1.0
+                            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: LyricsService.isPlaying ? "pause" : "play_arrow"
+                                font.family: Theme.fontIcon
+                                font.pixelSize: 18
+                                color: LyricsService.isPlaying ? "#0b0e14" : root.colTeal
+                            }
+
+                            MouseArea {
+                                id: playMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: LyricsService.togglePlaying()
+                            }
+                        }
+                    }
+
+                    // Skip Next Button (26px circle)
+                    Rectangle {
+                        Layout.preferredWidth: 26
+                        Layout.preferredHeight: 26
+                        radius: 13
+                        color: nextMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.16) : Qt.rgba(0.08, 0.10, 0.14, 0.75)
+                        border.color: nextMouse.containsMouse ? root.colTeal : Qt.rgba(1, 1, 1, 0.14)
+                        border.width: 1.2
+                        scale: nextMouse.containsMouse ? 1.14 : 1.0
+                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "skip_next"
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 15
+                            color: nextMouse.containsMouse ? root.colTeal : "#D0D6E0"
+                        }
+
+                        MouseArea {
+                            id: nextMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: LyricsService.skipNext()
+                        }
+                    }
+
+                    // Total Duration Readout
+                    Text {
+                        text: (LyricsService.totalLength > 0) ? LyricsService.formatTime(LyricsService.totalLength) : "--:--"
+                        font.family: "JetBrainsMono Nerd Font"
+                        font.pixelSize: 9
+                        color: root.colFgDim
+                    }
+                }
+            }
+        }
+
         // Caption: Date & Weekday below the nucleus
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.bottom
-            anchors.topMargin: 125
+            anchors.topMargin: (LyricsService.hasTrack && root.activeMode === "hub") ? 148 : 82
+            Behavior on anchors.topMargin { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
             visible: root.hubProgress > 0.1 && root.activeMode !== "wallpapers"
             opacity: root.hubProgress
             text: root.dateCaptionStr
             font.family: "Valley Sans"
-            font.pixelSize: 13
+            font.pixelSize: 12
             font.bold: true
             color: root.colFgDim
         }

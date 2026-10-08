@@ -994,11 +994,17 @@ ShellRoot {
                     }
                     else if (cmd === "nucleus wallpapers") {
                         if (root.barMode !== "nucleus") root.switchBarMode("nucleus")
-                        if (root.nucleusHubItem) root.nucleusHubItem.openWallpaperMode()
+                        if (root.nucleusHubItem) {
+                            if (root.nucleusHubItem.hubOpen) root.nucleusHubItem.close()
+                            else root.nucleusHubItem.openWallpaperMode()
+                        }
                     }
                     else if (cmd === "nucleus launcher") {
                         if (root.barMode !== "nucleus") root.switchBarMode("nucleus")
-                        if (root.nucleusHubItem) root.nucleusHubItem.openLauncherMode()
+                        if (root.nucleusHubItem) {
+                            if (root.nucleusHubItem.hubOpen) root.nucleusHubItem.close()
+                            else root.nucleusHubItem.openLauncherMode()
+                        }
                     }
                     else if (cmd === "nucleus lyrics" || cmd === "nucleus lyrics toggle" || cmd === "nucleus toggle-lyrics") {
                         if (root.barMode !== "nucleus") root.switchBarMode("nucleus")

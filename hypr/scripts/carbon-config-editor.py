@@ -27,6 +27,7 @@ import time
 
 import json
 import shutil
+import copy
 
 VARIABLES_PATH = os.path.expanduser("~/.config/hypr/variables.lua")
 BAR_MODE_PATH = os.path.expanduser("~/.config/hypr/carbon-bar-mode.json")
@@ -34,6 +35,9 @@ BAR_POS_PATH = os.path.expanduser("~/.config/hypr/carbon-bar-position.json")
 CLOCK_STYLE_PATH = os.path.expanduser("~/.config/hypr/carbon-clock-style.json")
 LOCKSCREEN_CONFIG_PATH = os.path.expanduser("~/.config/hypr/carbon-lockscreen.json")
 KEYBINDS_CONF_PATH = os.path.expanduser("~/.config/hypr/configs/keybinds.conf")
+VANISH_SHORTCUTS_PATH = os.path.expanduser("~/.config/hypr/carbon-vanish-shortcuts.json")
+VANISH_KEYBINDS_CONF_PATH = os.path.expanduser("~/.config/hypr/configs/vanish-keybinds.conf")
+VANISH_DISPATCH_SCRIPT = os.path.expanduser("~/.config/hypr/scripts/carbon-vanish-dispatch.sh")
 GESTURES_LUA_PATH = os.path.expanduser("~/.config/hypr/hyprland/gestures.lua")
 INPUT_CONF_PATH = os.path.expanduser("~/.config/hypr/configs/input.conf")
 CUSTOM_GESTURES_PATH = os.path.expanduser("~/.config/hypr/carbon-custom-gestures.json")
@@ -41,14 +45,16 @@ SCREENSHOT_FULL_CMD = os.path.expanduser("~/.config/hypr/scripts/carbon-screensh
 
 CONFIG_FILES = {
     "Bar Mode (carbon-bar-mode.json)": BAR_MODE_PATH,
-    "Bar Position & Layout (carbon-bar-position.json)": BAR_POS_PATH,
+    "Bar Position and Layout (carbon-bar-position.json)": BAR_POS_PATH,
     "Top Bar Clock Style (carbon-clock-style.json)": CLOCK_STYLE_PATH,
     "Lock Screen Options (carbon-lockscreen.json)": LOCKSCREEN_CONFIG_PATH,
     "Custom Gestures (carbon-custom-gestures.json)": CUSTOM_GESTURES_PATH,
     "Hyprland Variables (variables.lua)": VARIABLES_PATH,
     "Gestures Lua (gestures.lua)": GESTURES_LUA_PATH,
-    "Input & Touchpad (input.conf)": INPUT_CONF_PATH,
+    "Input and Touchpad (input.conf)": INPUT_CONF_PATH,
     "Keybindings (keybinds.conf)": KEYBINDS_CONF_PATH,
+    "Vanish Shortcuts (carbon-vanish-shortcuts.json)": VANISH_SHORTCUTS_PATH,
+    "Vanish Keybinds Conf (vanish-keybinds.conf)": VANISH_KEYBINDS_CONF_PATH,
     "Keybindings Lua (keybinds.lua)": os.path.expanduser("~/.config/hypr/hyprland/keybinds.lua"),
     "Main Hyprland (hyprland.conf)": os.path.expanduser("~/.config/hypr/hyprland.conf"),
     "Lock Screen (hyprlock.conf)": os.path.expanduser("~/.config/hypr/hyprlock.conf"),
@@ -496,7 +502,7 @@ def save_gesture_setting(key, value):
 
 def read_custom_gestures():
     defaults = {
-        "three_finger_swipe_up": "Workspaces & Windows Overview (sh ~/.config/hypr/scripts/carbon-ipc.sh toggle-overview)",
+        "three_finger_swipe_up": "Workspaces and Windows Overview (sh ~/.config/hypr/scripts/carbon-ipc.sh toggle-overview)",
         "three_finger_swipe_down": f"Take Full Screen Screenshot ({SCREENSHOT_FULL_CMD})",
         "three_finger_swipe_left": "Switch Workspace Backward (-1)",
         "three_finger_swipe_right": "Switch Workspace Forward (+1)",
@@ -763,7 +769,7 @@ KEYBIND_META_MAP = {
     "mouse:272": ("Move Window (Drag)", "Hold modifier and drag LMB to move window", "Mouse Bindings", "input-mouse-symbolic", "kbMoveWindow"),
     "mouse:273": ("Resize Window (Drag)", "Hold modifier and drag RMB to resize window", "Mouse Bindings", "input-mouse-symbolic", "kbResizeWindow"),
     
-    # Media & Hardware
+    # Media and Hardware
     "XF86MonBrightnessUp": ("Increase Brightness (Hardware Fn)", "Hardware Fn key to increase brightness", "Media and Audio", "display-brightness-symbolic", None),
     "XF86MonBrightnessDown": ("Decrease Brightness (Hardware Fn)", "Hardware Fn key to decrease brightness", "Media and Audio", "display-brightness-symbolic", None),
     "brightnessctl -q set 5%+": ("Increase Brightness", "Increase screen brightness (Fn + F12)", "Media and Audio", "display-brightness-symbolic", "kbBrightnessUp"),
@@ -977,6 +983,163 @@ def update_keybind_in_conf(line_idx, new_mods, new_key, original_rest=None, var_
     except Exception:
         pass
 
+
+# ── Vanish Mode Dedicated Shortcuts Model and Sync ────────────────────────
+DEFAULT_VANISH_SHORTCUTS = {
+    "hub_toggle": {
+        "title": "Toggle Vanish Hub",
+        "desc": "Open or close central clock orb and radial satellites",
+        "category": "Primary Triggers",
+        "mods": "$mainMod",
+        "key": "Alt_L",
+        "display_str": "SUPER + Alt",
+        "action": "toggle-hub",
+        "icon": "view-reveal-symbolic"
+    },
+    "app_search": {
+        "title": "App Search and Launcher",
+        "desc": "Directly open App Launcher satellite with keyboard search focus",
+        "category": "Primary Triggers",
+        "mods": "$mainMod",
+        "key": "Return",
+        "display_str": "SUPER + Return",
+        "action": "launcher",
+        "icon": "applications-system-symbolic"
+    },
+    "lyrics_toggle": {
+        "title": "Toggle Synced Lyrics",
+        "desc": "Morph bottom caption between calendar date and live lyrics",
+        "category": "Primary Triggers",
+        "mods": "$mainMod",
+        "key": "M",
+        "display_str": "SUPER + M",
+        "action": "lyrics",
+        "icon": "media-playback-start-symbolic"
+    },
+    "wallpaper_ring": {
+        "title": "Wallpaper Ring",
+        "desc": "Open circular wallpaper gallery lobe",
+        "category": "Primary Triggers",
+        "mods": "$mainMod",
+        "key": "W",
+        "display_str": "SUPER + W",
+        "action": "wallpaper",
+        "icon": "preferences-desktop-wallpaper-symbolic"
+    },
+    "focus_connect": {
+        "title": "Focus Connect Lobe",
+        "desc": "Directly bloom Audio, Network, and Battery satellite",
+        "category": "Orbital Satellites",
+        "mods": "$mainMod",
+        "key": "C",
+        "display_str": "SUPER + C",
+        "action": "focus-connect",
+        "icon": "network-wireless-symbolic"
+    },
+    "focus_spaces": {
+        "title": "Focus Spaces Lobe",
+        "desc": "Directly bloom Hyprland Workspaces satellite",
+        "category": "Orbital Satellites",
+        "mods": "$mainMod",
+        "key": "S",
+        "display_str": "SUPER + S",
+        "action": "focus-spaces",
+        "icon": "view-grid-symbolic"
+    },
+    "focus_alerts": {
+        "title": "Focus Alerts Lobe",
+        "desc": "Directly bloom Notification Center satellite",
+        "category": "Orbital Satellites",
+        "mods": "$mainMod",
+        "key": "N",
+        "display_str": "SUPER + N",
+        "action": "focus-alerts",
+        "icon": "preferences-system-notifications-symbolic"
+    }
+}
+
+
+def load_vanish_shortcuts():
+    shortcuts = copy.deepcopy(DEFAULT_VANISH_SHORTCUTS)
+    if os.path.isfile(VANISH_SHORTCUTS_PATH):
+        try:
+            with open(VANISH_SHORTCUTS_PATH, "r", encoding="utf-8") as f:
+                saved = json.load(f)
+                for k, v in saved.items():
+                    if k in shortcuts:
+                        shortcuts[k].update(v)
+                    else:
+                        shortcuts[k] = v
+        except Exception as e:
+            print("Error loading vanish shortcuts:", e)
+    return shortcuts
+
+
+def save_vanish_shortcuts(shortcuts):
+    try:
+        os.makedirs(os.path.dirname(VANISH_SHORTCUTS_PATH), exist_ok=True)
+        with open(VANISH_SHORTCUTS_PATH, "w", encoding="utf-8") as f:
+            json.dump(shortcuts, f, indent=2)
+        generate_vanish_keybinds_conf(shortcuts)
+        return True
+    except Exception as e:
+        print("Error saving vanish shortcuts:", e)
+        return False
+
+
+def generate_vanish_keybinds_conf(shortcuts):
+    lines = [
+        "#################################################################\n",
+        "# VANISH MODE DEDICATED SHORTCUTS                               #\n",
+        "# Auto-generated by Carbon Config Editor (Vanish Shortcuts tab) #\n",
+        "# Isolated from keybinds.conf and variables.lua                 #\n",
+        "#################################################################\n\n",
+    ]
+    for key_id, info in shortcuts.items():
+        mods = info.get("mods", "").strip()
+        key = info.get("key", "").strip()
+        action = info.get("action", "").strip()
+        if not key or not action:
+            continue
+        dispatch_cmd = f"sh {VANISH_DISPATCH_SCRIPT} {action}"
+
+        # Release keys for Alt_L, Super_L etc.
+        if key in ("Alt_L", "Alt_R", "Meta_L", "Meta_R", "Super_L", "Super_R"):
+            if mods:
+                lines.append(f"bindr = {mods}, {key}, exec, {dispatch_cmd}\n")
+            else:
+                lines.append(f"bindr = , {key}, exec, {dispatch_cmd}\n")
+            if "$mainMod" in mods or "SUPER" in mods:
+                if "Alt" in key:
+                    lines.append(f"bindr = ALT, Super_L, exec, {dispatch_cmd}\n")
+                    lines.append(f"bindr = ALT, Super_R, exec, {dispatch_cmd}\n")
+        else:
+            if mods:
+                lines.append(f"bind = {mods}, {key}, exec, {dispatch_cmd}\n")
+            else:
+                lines.append(f"bind = , {key}, exec, {dispatch_cmd}\n")
+
+    try:
+        os.makedirs(os.path.dirname(VANISH_KEYBINDS_CONF_PATH), exist_ok=True)
+        with open(VANISH_KEYBINDS_CONF_PATH, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+    except Exception as e:
+        print("Error writing vanish keybinds conf:", e)
+
+    cs_path = os.path.expanduser("~/carbon-shell/hypr/configs/vanish-keybinds.conf")
+    try:
+        os.makedirs(os.path.dirname(cs_path), exist_ok=True)
+        with open(cs_path, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+    except Exception:
+        pass
+
+    try:
+        subprocess.run(["hyprctl", "reload"], capture_output=True, timeout=2, check=False)
+    except Exception:
+        pass
+
+
 class CarbonSplashWidget(Gtk.DrawingArea):
     """
     Ultra-smooth, 60/120fps vsync-synchronized Cairo splash widget displaying the Carbon Lewis dot logo:
@@ -1151,7 +1314,7 @@ class CarbonBohrLogoWidget(Gtk.DrawingArea):
     """
     Ultra-smooth 60/120fps Cairo animation displaying the Carbon Bohr Atom Logo identical to the lockscreen:
     - Optically centered bold 'C' glyph with glow and specular highlight
-    - Dual concentric orbital circumcircles (K-shell & L-shell) with ambient breathing
+    - Dual concentric orbital circumcircles (K-shell and L-shell) with ambient breathing
     - Layer 1 (Inner 2 dots): Clockwise rotation at 5.8s period
     - Layer 2 (Outer 4 dots): Counter-clockwise rotation at 9.4s period
     - Periodic shockwave ripple and dot bounce pulse at 1.85s period
@@ -1240,7 +1403,7 @@ class CarbonBohrLogoWidget(Gtk.DrawingArea):
             cr.stroke()
             cr.restore()
 
-        # 2. Valence Dot Bounce Pulse & Ring Brightness Flash
+        # 2. Valence Dot Bounce Pulse and Ring Brightness Flash
         if hb_cycle < 0.18:
             dot_scale = 1.0 + 0.32 * (hb_cycle / 0.18)
             pulse_flash = (hb_cycle / 0.18) * 0.38
@@ -1550,7 +1713,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
         # Apply Button in Header
         apply_btn = Gtk.Button(label="Apply Configuration")
-        apply_btn.set_tooltip_text("Save all changes and reload Hyprland & Carbon Shell")
+        apply_btn.set_tooltip_text("Save all changes and reload Hyprland and Carbon Shell")
         apply_btn.add_css_class("suggested-action")
         apply_btn.connect("clicked", self.on_apply_quick_tweaks)
         header.pack_end(apply_btn)
@@ -1595,9 +1758,10 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
         # Sidebar navigation items (Bar is FIRST as requested)
         nav_items = [
-            ("bar", "Bar & Layout", "view-grid-symbolic"),
+            ("bar", "Bar and Layout", "view-grid-symbolic"),
             ("minimal", "Minimal Mode", "open-menu-symbolic"),
             ("vanish", "Vanish Mode", "view-reveal-symbolic"),
+            ("vanish_shortcuts", "Vanish Shortcuts", "input-keyboard-symbolic"),
             ("clock", "Clock Styles", "preferences-system-time-symbolic"),
             ("wifi", "Wi-Fi Networks", "network-wireless-symbolic"),
             ("bluetooth", "Bluetooth", "bluetooth-symbolic"),
@@ -1638,6 +1802,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             "bar": self.build_bar_page,
             "minimal": self.build_minimal_page,
             "vanish": self.build_vanish_page,
+            "vanish_shortcuts": self.build_vanish_shortcuts_page,
             "clock": self.build_clock_page,
             "wifi": self.build_wifi_page,
             "bluetooth": self.build_bluetooth_page,
@@ -1650,7 +1815,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             "about": self.build_about_page,
         }
         self._built_pages = set()
-        self._idle_pages_queue = ["minimal", "vanish", "clock", "wifi", "bluetooth", "lockscreen", "appearance", "apps", "keybinds", "gestures", "files", "about"]
+        self._idle_pages_queue = ["minimal", "vanish", "vanish_shortcuts", "clock", "wifi", "bluetooth", "lockscreen", "appearance", "apps", "keybinds", "gestures", "files", "about"]
 
         # Select initial page (default "bar" or from self.initial_page or --page arg)
         initial_page = getattr(self, "initial_page", None) or "bar"
@@ -1775,15 +1940,15 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             return Gdk.EVENT_STOP
 
         # If Escape is pressed with no modifiers: cancel
-        if key_name == "Escape" and not self.held_modifiers and not (state & (Gdk.ModifierType.SUPER_MASK | Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK)):
+        if key_name == "Escape" and not self.held_modifiers and not (state and (Gdk.ModifierType.SUPER_MASK | Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK)):
             self.cancel_recording()
             return Gdk.EVENT_STOP
 
         # Check modifier presence
-        has_super = bool(state & Gdk.ModifierType.SUPER_MASK) or ("SUPER" in self.held_modifiers)
-        has_ctrl = bool(state & Gdk.ModifierType.CONTROL_MASK) or ("CTRL" in self.held_modifiers)
-        has_alt = bool(state & Gdk.ModifierType.ALT_MASK) or ("ALT" in self.held_modifiers)
-        has_shift = bool(state & Gdk.ModifierType.SHIFT_MASK) or ("SHIFT" in self.held_modifiers)
+        has_super = bool(state and Gdk.ModifierType.SUPER_MASK) or ("SUPER" in self.held_modifiers)
+        has_ctrl = bool(state and Gdk.ModifierType.CONTROL_MASK) or ("CTRL" in self.held_modifiers)
+        has_alt = bool(state and Gdk.ModifierType.ALT_MASK) or ("ALT" in self.held_modifiers)
+        has_shift = bool(state and Gdk.ModifierType.SHIFT_MASK) or ("SHIFT" in self.held_modifiers)
 
         # Normalize key name
         hypr_key = normalize_key(key_name)
@@ -1813,7 +1978,38 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         disp_list.append(hypr_key)
         new_display_str = " + ".join(disp_list)
 
-        # Apply immediately to keybinds.conf
+        # Check if recording a Vanish Mode shortcut
+        if self.recording_bind_info.get("is_vanish"):
+            key_id = self.recording_bind_info["key_id"]
+            if not hasattr(self, "vanish_shortcuts") or not self.vanish_shortcuts:
+                self.vanish_shortcuts = load_vanish_shortcuts()
+            if key_id not in self.vanish_shortcuts:
+                self.vanish_shortcuts[key_id] = {}
+            self.vanish_shortcuts[key_id]["mods"] = hypr_mods
+            self.vanish_shortcuts[key_id]["key"] = hypr_key
+            self.vanish_shortcuts[key_id]["display_str"] = new_display_str
+            success = save_vanish_shortcuts(self.vanish_shortcuts)
+
+            btn = self.recording_btn
+            btn.set_label(new_display_str)
+            btn.remove_css_class("keybind-pill-listening")
+            btn.add_css_class("keybind-pill")
+
+            item_title = self.recording_bind_info.get("title", key_id)
+            self.remove_controller(self.key_controller)
+            self.key_controller = None
+            self.recording_btn = None
+            self.recording_bind_info = None
+            self.held_modifiers.clear()
+
+            if success:
+                self.show_toast("Vanish Shortcut Applied", f"{item_title} -> {new_display_str}")
+            else:
+                self.show_toast("Update Failed", "Could not write to carbon-vanish-shortcuts.json")
+
+            return Gdk.EVENT_STOP
+
+        # Apply immediately to keybinds.conf (Standard Modes)
         success = update_keybind_in_conf(
             line_idx=self.recording_bind_info["line_idx"],
             new_mods=hypr_mods,
@@ -1881,7 +2077,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         self.ui_scale_labels.append(lbl_val)
         return row_scale
 
-    # ── Page 1: Bar & Bar Modes ─────────────────────────────────────
+    # ── Page 1: Bar and Bar Modes ─────────────────────────────────────
     def build_bar_page(self):
         page = Adw.PreferencesPage()
         page.set_title("Bar")
@@ -2071,7 +2267,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         page.add(grp_vanish)
         self.grp_vanish = grp_vanish
 
-        # Vanish Mode Status & Quick Activation row
+        # Vanish Mode Status and Quick Activation row
         row_vanish_status = Adw.ActionRow()
         row_vanish_status.set_title("Vanish Mode State")
         row_vanish_status.set_subtitle("Vanish Mode is active" if self.current_bar_mode == "nucleus" else "Currently inactive - click to activate")
@@ -2138,7 +2334,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         page.set_title("Minimal Mode")
         page.set_icon_name("open-menu-symbolic")
 
-        # Group 1: Dynamic Island Status & Conversion
+        # Group 1: Dynamic Island Status and Conversion
         grp_status = Adw.PreferencesGroup(
             title="Dynamic Island Status",
             description="Ultra-lightweight single bar mode engineered for minimum CPU, GPU, and RAM consumption"
@@ -2306,7 +2502,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         page.set_title("Vanish Mode")
         page.set_icon_name("view-reveal-symbolic")
 
-        # Group 1: Vanish Mode Status & Quick Activation
+        # Group 1: Vanish Mode Status and Quick Activation
         grp_status = Adw.PreferencesGroup(
             title="Vanish Mode (Atomic Desktop)",
             description="Barless spatial desktop with ambient center clock orb, organic floating lobes, and gesture-activated hub"
@@ -2366,7 +2562,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         row_convert.add_suffix(box_convert)
         grp_status.add(row_convert)
 
-        # Group 2: Interactive Controls & Triggers
+        # Group 2: Interactive Controls and Triggers
         grp_controls = Adw.PreferencesGroup(
             title="Interactive Controls",
             description="Directly trigger and test Vanish Mode radial components via IPC"
@@ -2418,7 +2614,17 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
         grp_controls.add(exp_lobes)
 
-        # Group 3: Architecture & Interaction Guide
+        # Shortcut Row to dedicated Vanish Shortcuts page
+        row_to_v_shortcuts = Adw.ActionRow()
+        row_to_v_shortcuts.set_title("Vanish Mode Shortcuts")
+        row_to_v_shortcuts.set_subtitle("Customize independent keyboard shortcuts for Hub, Launcher, Lyrics, and Lobes")
+        row_to_v_shortcuts.set_activatable(True)
+        row_to_v_shortcuts.add_prefix(Gtk.Image.new_from_icon_name("input-keyboard-symbolic"))
+        row_to_v_shortcuts.add_suffix(Gtk.Image.new_from_icon_name("go-next-symbolic"))
+        row_to_v_shortcuts.connect("activated", lambda r: self.navigate_to_page("vanish_shortcuts"))
+        grp_controls.add(row_to_v_shortcuts)
+
+        # Group 3: Architecture and Interaction Guide
         grp_guide = Adw.PreferencesGroup(
             title="Design and Gesture Guide",
             description="Overview of zero-rectangle radial gestures and desktop interactions"
@@ -2440,6 +2646,98 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             grp_guide.add(grow)
 
         self.view_stack.add_named(page, "vanish")
+
+    # ── Page: Vanish Mode Shortcuts ─────────────────────────────────
+    def build_vanish_shortcuts_page(self):
+        page = Adw.PreferencesPage()
+        page.set_title("Vanish Shortcuts")
+        page.set_icon_name("input-keyboard-symbolic")
+
+        grp_banner = Adw.PreferencesGroup(
+            title="Vanish Mode Shortcuts",
+            description="Dedicated keyboard shortcuts for the Vanish Mode (Atomic / Nucleus) spatial desktop. Rebinding keys here operates independently and never modifies shortcuts in other desktop modes."
+        )
+        page.add(grp_banner)
+
+        # Mode status indicator row
+        row_mode_status = Adw.ActionRow()
+        row_mode_status.set_title("Vanish Mode Integration")
+        is_vanish = (self.current_bar_mode == "nucleus")
+        row_mode_status.set_subtitle("Vanish shortcuts active and live on screen" if is_vanish else "Vanish shortcuts will activate whenever Vanish Mode is switched on")
+        row_mode_status.add_prefix(Gtk.Image.new_from_icon_name("view-reveal-symbolic"))
+        if not is_vanish:
+            btn_act = Gtk.Button(label="Activate Vanish Mode")
+            btn_act.add_css_class("suggested-action")
+            btn_act.connect("clicked", lambda b: self.select_bar_mode("nucleus"))
+            row_mode_status.add_suffix(btn_act)
+        grp_banner.add(row_mode_status)
+
+        categories = [
+            ("Primary Triggers", "Core shortcuts for opening the hub, launcher, lyrics, and wallpapers"),
+            ("Orbital Satellites", "Direct shortcuts to bloom specific orbital control lobes"),
+        ]
+
+        self.vanish_shortcuts = load_vanish_shortcuts()
+        self.vanish_shortcut_btns = {}
+
+        for cat_name, cat_desc in categories:
+            grp = Adw.PreferencesGroup(title=cat_name, description=cat_desc)
+            page.add(grp)
+
+            for key_id, info in self.vanish_shortcuts.items():
+                if info.get("category") != cat_name:
+                    continue
+
+                row = Adw.ActionRow()
+                row.set_title(info.get("title", key_id))
+                row.set_subtitle(info.get("desc", ""))
+                row.set_title_lines(1)
+                row.set_subtitle_lines(2)
+
+                icon_name = info.get("icon", "input-keyboard-symbolic")
+                img = Gtk.Image.new_from_icon_name(icon_name)
+                img.set_pixel_size(16)
+                row.add_prefix(img)
+
+                btn = Gtk.Button(label=info.get("display_str", "Unset"))
+                btn.set_valign(Gtk.Align.CENTER)
+                btn.set_halign(Gtk.Align.END)
+                btn.add_css_class("keybind-pill")
+                btn.set_tooltip_text("Click to reassign this Vanish Mode shortcut")
+
+                bind_info = {
+                    "is_vanish": True,
+                    "key_id": key_id,
+                    "title": info.get("title", key_id),
+                    "action": info.get("action", "")
+                }
+                btn.connect("clicked", self.on_keybind_btn_clicked, bind_info)
+                self.vanish_shortcut_btns[key_id] = btn
+
+                row.add_suffix(btn)
+                grp.add(row)
+
+        # Reset button group
+        grp_reset = Adw.PreferencesGroup()
+        page.add(grp_reset)
+        row_reset = Adw.ActionRow()
+        row_reset.set_title("Reset Vanish Shortcuts")
+        row_reset.set_subtitle("Restore all Vanish Mode shortcuts to default combinations")
+        row_reset.add_prefix(Gtk.Image.new_from_icon_name("view-refresh-symbolic"))
+        btn_reset = Gtk.Button(label="Reset Defaults")
+        btn_reset.set_valign(Gtk.Align.CENTER)
+        def on_reset_clicked(b):
+            self.vanish_shortcuts = copy.deepcopy(DEFAULT_VANISH_SHORTCUTS)
+            save_vanish_shortcuts(self.vanish_shortcuts)
+            for k_id, k_btn in self.vanish_shortcut_btns.items():
+                if k_id in self.vanish_shortcuts:
+                    k_btn.set_label(self.vanish_shortcuts[k_id].get("display_str", "Unset"))
+            self.show_toast("Shortcuts Reset", "Vanish Mode shortcuts restored to defaults")
+        btn_reset.connect("clicked", on_reset_clicked)
+        row_reset.add_suffix(btn_reset)
+        grp_reset.add(row_reset)
+
+        self.view_stack.add_named(page, "vanish_shortcuts")
 
     def build_clock_page(self):
         page = Adw.PreferencesPage()
@@ -2849,7 +3147,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         page.set_title("Bluetooth")
         page.set_icon_name("bluetooth-symbolic")
 
-        # Group 1: Adapter Status & Power
+        # Group 1: Adapter Status and Power
         grp_adapter = Adw.PreferencesGroup(
             title="Bluetooth Adapter",
             description="Manage Bluetooth radio and device connections"
@@ -2961,7 +3259,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
                 subprocess.run(["bluetoothctl", "trust", mac], capture_output=True, text=True, timeout=5)
                 p2 = subprocess.run(["bluetoothctl", "connect", mac], capture_output=True, text=True, timeout=15)
                 if p1.returncode == 0 or p2.returncode == 0:
-                    GLib.idle_add(lambda: self.show_toast("Bluetooth", f"Paired & Connected to {name}"))
+                    GLib.idle_add(lambda: self.show_toast("Bluetooth", f"Paired and Connected to {name}"))
                 else:
                     err = p1.stderr.strip() or p2.stderr.strip() or p1.stdout.strip() or "Pairing timed out"
                     err = re.sub(r"^Failed to pair:\s*", "", err)
@@ -3168,7 +3466,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         row_heartbeat.connect("notify::active", on_heartbeat_toggled)
         grp_atom.add(row_heartbeat)
 
-        # Group 4: Widgets & Overlays
+        # Group 4: Widgets and Overlays
         grp_widgets = Adw.PreferencesGroup(
             title="Lock Screen Widgets",
             description="Corner widgets and overlays displayed on the lock surface"
@@ -3207,7 +3505,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         row_clock.connect("notify::active", on_clock_toggled)
         grp_widgets.add(row_clock)
 
-        # Group 4: Preview & Actions
+        # Group 4: Preview and Actions
         grp_actions = Adw.PreferencesGroup(
             title="Preview and Actions",
             description="Immediately preview your lock screen customizations"
@@ -3264,13 +3562,13 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             "Bar Mode Selected", f"Active mode set to: {active_name}"
         ], check=False)
 
-    # ── Page 2: Window Appearance & Effects ─────────────────────────
+    # ── Page 2: Window Appearance and Effects ─────────────────────────
     def build_appearance_page(self):
         page = Adw.PreferencesPage()
         page.set_title("Window Appearance")
         page.set_icon_name("preferences-desktop-appearance-symbolic")
 
-        # Group 1: Window Geometry & Opacity
+        # Group 1: Window Geometry and Opacity
         grp_win = Adw.PreferencesGroup(title="Window Appearance", description="Visual styling of client windows")
         page.add(grp_win)
 
@@ -3301,7 +3599,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         grp_win.add(row_border)
         self.inputs["windowBorderSize"] = row_border
 
-        # Group 2: Gaps & Spacing
+        # Group 2: Gaps and Spacing
         grp_gaps = Adw.PreferencesGroup(title="Gaps and Spacing", description="Margins between tiled windows and screen edges")
         page.add(grp_gaps)
 
@@ -3332,7 +3630,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         grp_gaps.add(row_ws_gaps)
         self.inputs["workspaceGaps"] = row_ws_gaps
 
-        # Group 3: Blur & Shadow
+        # Group 3: Blur and Shadow
         grp_effects = Adw.PreferencesGroup(title="Effects", description="Hardware-accelerated blur and drop shadows")
         page.add(grp_effects)
 
@@ -3379,7 +3677,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         page.add(grp_wp)
 
         anim_styles = [
-            ("cinematic", "Cinematic Zoom (Depth Zoom & Crossfade)"),
+            ("cinematic", "Cinematic Zoom (Depth Zoom and Crossfade)"),
             ("crossfade", "Smooth Dissolve (Pure Crossfade)"),
             ("slide-left", "Slide Left (Horizontal Carousel Push)"),
             ("slide-right", "Slide Right (Horizontal Carousel Push)"),
@@ -3457,10 +3755,22 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
         # Top Group with description and search
         top_grp = Adw.PreferencesGroup(
-            title="Keyboard Shortcuts",
-            description="Click on any keybind to reassign it. Press the shortcut combination you want, and it will be applied automatically."
+            title="Keyboard Shortcuts (Standard Modes)",
+            description="Shortcuts for standard desktop modes (Pill, Notch, Minimal). Rebinding keys here updates keybinds.conf without affecting Vanish Mode."
         )
         page.add(top_grp)
+
+        row_jump_vanish = Adw.ActionRow()
+        row_jump_vanish.set_title("Looking for Vanish Mode Shortcuts?")
+        row_jump_vanish.set_subtitle("Vanish Mode has a dedicated, decoupled shortcuts tab")
+        row_jump_vanish.set_activatable(True)
+        row_jump_vanish.add_prefix(Gtk.Image.new_from_icon_name("view-reveal-symbolic"))
+        btn_go_vanish = Gtk.Button(label="Open Vanish Shortcuts")
+        btn_go_vanish.set_valign(Gtk.Align.CENTER)
+        btn_go_vanish.connect("clicked", lambda b: self.navigate_to_page("vanish_shortcuts"))
+        row_jump_vanish.add_suffix(btn_go_vanish)
+        row_jump_vanish.connect("activated", lambda r: self.navigate_to_page("vanish_shortcuts"))
+        top_grp.add(row_jump_vanish)
 
         search_entry = Gtk.SearchEntry()
         search_entry.set_placeholder_text("Search keybindings, actions, or shortcuts...")
@@ -3590,7 +3900,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         )
         page.add(grp_actions)
 
-        # 3-finger swipe up (Workspaces & Windows Overview)
+        # 3-finger swipe up (Workspaces and Windows Overview)
         row_up = Adw.ActionRow()
         row_up.set_title("3-Finger Swipe Up")
         row_up.set_subtitle("Workspaces and Windows Overview (animated list of workspaces and open apps)")
@@ -4039,7 +4349,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         self.bar_pos["musicBarContent"] = content
         save_bar_position(self.bar_pos)
         self.update_pos_buttons_ui()
-        names = {"both": "Clock & Music (Both)", "clock": "Clock Only", "music": "Music Only"}
+        names = {"both": "Clock and Music (Both)", "clock": "Clock Only", "music": "Music Only"}
         cname = names.get(content, content)
         subprocess.run([
             "notify-send", "-a", "Carbon Config", "-i", "preferences-system",
@@ -4122,7 +4432,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         except Exception:
             pass
 
-        # Visual feedback: update button label & styling temporarily
+        # Visual feedback: update button label and styling temporarily
         orig_label = btn.get_label()
         btn.set_label("✓ Applied!")
         btn.remove_css_class("suggested-action")
@@ -4138,7 +4448,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
         # In-app toast notification
         if hasattr(self, "toast_overlay") and self.toast_overlay:
-            toast = Adw.Toast.new("Configuration Applied & Shell Reloaded")
+            toast = Adw.Toast.new("Configuration Applied and Shell Reloaded")
             toast.set_timeout(2)
             self.toast_overlay.add_toast(toast)
 

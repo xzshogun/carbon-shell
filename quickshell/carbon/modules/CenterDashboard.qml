@@ -32,6 +32,21 @@ Item {
     height: implicitHeight
     clip: true
 
+    focus: root.open
+    Keys.enabled: root.open
+    Keys.onPressed: (event) => {
+        if (event.key === Qt.Key_Escape) {
+            console.log("[CenterDashboard] ESCAPE PRESSED - requesting close")
+            root.closeRequested()
+            event.accepted = true
+        }
+    }
+    Keys.onEscapePressed: (event) => {
+        console.log("[CenterDashboard] onEscapePressed - requesting close")
+        root.closeRequested()
+        event.accepted = true
+    }
+
     HoverHandler {
         id: rootHover
     }
@@ -326,10 +341,11 @@ Item {
             }
         }
 
-        opacity: root.open ? 1.0 : 0.0
+        opacity: root.showBackground ? (root.open ? 1.0 : 0.0) : 1.0
         y: root.showBackground ? (root.open ? 0 : (root.attachedBottom ? height : -height)) : 0
 
         Behavior on opacity {
+            enabled: root.showBackground
             NumberAnimation {
                 duration: root.open ? 180 : 140
                 easing.bezierCurve: Theme.animCurves.expressiveDefaultEffects
@@ -1458,7 +1474,7 @@ Item {
                         Layout.preferredHeight: 144
                         Layout.maximumHeight: 148
                         radius: 14
-                        color: Qt.rgba(Theme.bgAlt.r, Theme.bgAlt.g, Theme.bgAlt.b, 0.78)
+                        color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.94)
                         border.color: Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.28)
                         border.width: 1
                         clip: true
@@ -1475,9 +1491,12 @@ Item {
                         Image {
                             anchors.fill: parent
                             source: root.musicArtUrl
+                            asynchronous: true
+                            cache: true
                             fillMode: Image.PreserveAspectCrop
-                            opacity: 0.12
-                            visible: root.hasMusicTrack && root.musicArtUrl.length > 0
+                            opacity: (status === Image.Ready) ? 0.12 : 0.0
+                            visible: root.hasMusicTrack && root.musicArtUrl.length > 0 && status === Image.Ready
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
                         }
 
                         ColumnLayout {
@@ -1552,7 +1571,9 @@ Item {
                                     Image {
                                         anchors.fill: parent
                                         source: root.musicArtUrl
-                                        visible: root.hasMusicTrack && root.musicArtUrl.length > 0
+                                        asynchronous: true
+                                        cache: true
+                                        visible: root.hasMusicTrack && root.musicArtUrl.length > 0 && status === Image.Ready
                                         fillMode: Image.PreserveAspectCrop
                                     }
 

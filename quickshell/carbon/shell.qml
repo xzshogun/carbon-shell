@@ -130,10 +130,8 @@ ShellRoot {
         root.centerDashboardOpen = true
     }
     function closeCenterDashboard(force) {
-        if (force || !root.centerDashboardPinned) {
-            root.centerDashboardPinned = false
-            root.centerDashboardOpen = false
-        }
+        root.centerDashboardPinned = false
+        root.centerDashboardOpen = false
     }
     function toggleCenterDashboard() {
         if (root.centerDashboardOpen && root.centerDashboardPinned) {
@@ -1810,8 +1808,27 @@ ShellRoot {
             }
 
             implicitHeight: 280
-            WlrLayershell.keyboardFocus: root.centerDashboardOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: root.centerDashboardOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             visible: root.barMode === "notch"
+
+            Item {
+                id: notchKeyHandler
+                anchors.fill: parent
+                focus: root.centerDashboardOpen
+                Keys.enabled: root.centerDashboardOpen
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Escape) {
+                        console.log("[notchBarWindow] ESCAPE PRESSED - closing center dashboard")
+                        root.closeCenterDashboard()
+                        event.accepted = true
+                    }
+                }
+                Keys.onEscapePressed: (event) => {
+                    console.log("[notchBarWindow] onEscapePressed - closing center dashboard")
+                    root.closeCenterDashboard()
+                    event.accepted = true
+                }
+            }
 
             mask: (root.barMode === "notch" && notchBarWindow.visible) ? notchMask : null
             Region {
@@ -1857,13 +1874,14 @@ ShellRoot {
                 visible: root.musicBarEdge === root.mainBarEdge
                 barContent: root.musicBarContent
                 attachedBottom: root.mainBarEdge === "bottom"
-                hasAttachedPopup: root.centerDashboardOpen || root.calendarOpen || root.smallMusicOpen
+                hasAttachedPopup: (root.calendarOpen || root.smallMusicOpen) && !root.centerDashboardOpen
                 anchors.top: root.mainBarEdge !== "bottom" ? parent.top : undefined
                 anchors.bottom: root.mainBarEdge === "bottom" ? parent.bottom : undefined
                 anchors.horizontalCenter: parent.horizontalCenter
                 leftFillet: true
                 rightFillet: true
                 onToggleCenterDashboard: root.toggleCenterDashboard()
+                onCloseCenterDashboard: root.closeCenterDashboard()
                 onToggleMusic: root.toggleCenterDashboard()
                 onOpenMusic: root.toggleCenterDashboard()
                 onToggleControls: root.toggleCenterDashboard()
@@ -2449,9 +2467,14 @@ ShellRoot {
         color: "transparent"
         WlrLayershell.namespace: "carbon-center-dashboard"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.centerDashboardOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: root.centerDashboardOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         exclusionMode: ExclusionMode.Ignore
         aboveWindows: true
+
+        Keys.onEscapePressed: (event) => {
+            root.closeCenterDashboard();
+            event.accepted = true;
+        }
 
         anchors {
             top: root.mainBarEdge !== "bottom"

@@ -17,6 +17,8 @@ NotchContainer {
     id: root
 
     property bool isExpanded: false
+    clip: true
+    bottomRadius: isExpanded ? 20 : 12
     implicitHeight: isExpanded ? 270 : 34
     implicitWidth: isExpanded ? 860 : (contentImplicitWidth + (leftFillet ? filletRadius : 0) + (rightFillet ? filletRadius : 0) + (horizontalPadding * 2))
 
@@ -36,7 +38,26 @@ NotchContainer {
 
     focus: root.isExpanded
     Keys.enabled: root.isExpanded
-    Keys.onEscapePressed: root.closeCenterDashboard()
+    Keys.onPressed: (event) => {
+        if (event.key === Qt.Key_Escape) {
+            console.log("[NotchCenter] ESCAPE PRESSED - closing center dashboard")
+            root.closeCenterDashboard()
+            event.accepted = true
+        }
+    }
+    Keys.onEscapePressed: (event) => {
+        console.log("[NotchCenter] onEscapePressed - closing center dashboard")
+        root.closeCenterDashboard()
+        event.accepted = true
+    }
+
+    onIsExpandedChanged: {
+        console.log("[NotchCenter] isExpanded: " + root.isExpanded + ", hasActiveFocus before: " + root.activeFocus)
+        if (root.isExpanded) {
+            root.forceActiveFocus()
+            console.log("[NotchCenter] hasActiveFocus after: " + root.activeFocus)
+        }
+    }
 
     mouseArea.hoverEnabled: false
     mouseArea.cursorShape: Qt.PointingHandCursor
@@ -326,10 +347,10 @@ NotchContainer {
         opacity: root.isExpanded ? 1.0 : 0.0
         scale: root.isExpanded ? 1.0 : 0.96
         Behavior on opacity {
-            NumberAnimation { duration: 180; easing.type: Easing.OutQuad }
+            NumberAnimation { duration: root.isExpanded ? 220 : 150; easing.type: Easing.OutCubic }
         }
         Behavior on scale {
-            NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: root.isExpanded ? 260 : 180; easing.type: Easing.OutCubic }
         }
         onCloseRequested: root.closeCenterDashboard()
     }

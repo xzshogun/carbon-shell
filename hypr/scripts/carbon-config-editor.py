@@ -13,7 +13,7 @@ import shutil
 import re
 
 # Ensure fast GTK4 launch without GPU enumeration stalls
-os.environ.setdefault("GSK_RENDERER", "cairo")
+os.environ["GSK_RENDERER"] = "cairo"
 
 import gi
 gi.require_version("Gtk", "4.0")
@@ -289,8 +289,9 @@ def update_looknfeel_setting(key: str, val_str: str):
 class CarbonConfigApp(Adw.Application):
     def __init__(self):
         super().__init__(application_id="org.carbon.configeditor", flags=Gio.ApplicationFlags.FLAGS_NONE)
+        self.connect("activate", self.on_activate)
 
-    def do_activate(self):
+    def on_activate(self, app):
         win = self.props.active_window
         if not win:
             win = ConfigEditorWindow(self)

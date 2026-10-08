@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
@@ -37,8 +36,6 @@ Item {
     property bool hubOpen: false
     property string activeMode: "hub" // "hub" | "wallpapers" | "appsearch"
     property string focusedLobe: ""    // "" | "connect" | "launch" | "spaces" | "alerts"
-    property bool showRestingDot: true
-    property bool idleBreathing: false
 
     /* External IPC Triggers */
     function toggle() {
@@ -186,9 +183,6 @@ Item {
         var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         return days[root.currentTime.getDay()] + " " + root.currentTime.getDate() + " " + months[root.currentTime.getMonth()]
     }
-
-    readonly property int currentDay: root.currentTime.getDate()
-    readonly property int daysInMonth: new Date(root.currentTime.getFullYear(), root.currentTime.getMonth() + 1, 0).getDate()
 
     /* ── Services Integration ── */
     // 1. Audio Sink

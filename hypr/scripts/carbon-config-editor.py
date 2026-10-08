@@ -75,6 +75,12 @@ BAR_MODES = [
         "name": "Minimal Mode (Dynamic Island)",
         "subtitle": "Ultra-lightweight single dynamic island capsule optimized for lowest CPU, GPU, and RAM usage",
         "icon": "open-menu-symbolic"
+    },
+    {
+        "id": "nucleus",
+        "name": "Vanish Mode",
+        "subtitle": "Barless atomic desktop with center clock orb, organic floating orbital lobes, and gesture-activated hub",
+        "icon": "view-reveal-symbolic"
     }
 ]
 
@@ -1591,6 +1597,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         nav_items = [
             ("bar", "Bar & Layout", "view-grid-symbolic"),
             ("minimal", "Minimal Mode", "open-menu-symbolic"),
+            ("vanish", "Vanish Mode", "view-reveal-symbolic"),
             ("clock", "Clock Styles", "preferences-system-time-symbolic"),
             ("wifi", "Wi-Fi Networks", "network-wireless-symbolic"),
             ("bluetooth", "Bluetooth", "bluetooth-symbolic"),
@@ -1630,6 +1637,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         self._page_builders = {
             "bar": self.build_bar_page,
             "minimal": self.build_minimal_page,
+            "vanish": self.build_vanish_page,
             "clock": self.build_clock_page,
             "wifi": self.build_wifi_page,
             "bluetooth": self.build_bluetooth_page,
@@ -1642,7 +1650,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             "about": self.build_about_page,
         }
         self._built_pages = set()
-        self._idle_pages_queue = ["minimal", "clock", "wifi", "bluetooth", "lockscreen", "appearance", "apps", "keybinds", "gestures", "files", "about"]
+        self._idle_pages_queue = ["minimal", "vanish", "clock", "wifi", "bluetooth", "lockscreen", "appearance", "apps", "keybinds", "gestures", "files", "about"]
 
         # Select initial page (default "bar" or from self.initial_page or --page arg)
         initial_page = getattr(self, "initial_page", None) or "bar"
@@ -1882,7 +1890,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         # Group 1: Bar Modes Selection
         grp_modes = Adw.PreferencesGroup(
             title="Bar Modes",
-            description="Choose from 3 desktop bar layout modes"
+            description="Choose from 4 desktop layout modes"
         )
         page.add(grp_modes)
 
@@ -2055,6 +2063,72 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         row_notch_clock.connect("activated", lambda r: self.navigate_to_page("clock"))
         grp_notch.add(row_notch_clock)
 
+        # ── Section 3: Vanish Mode Configuration ───────────────────────────
+        grp_vanish = Adw.PreferencesGroup(
+            title="Vanish Mode",
+            description="Barless zero-rectangle atomic desktop with center clock orb and gesture-activated radial hub"
+        )
+        page.add(grp_vanish)
+        self.grp_vanish = grp_vanish
+
+        # Vanish Mode Status & Quick Activation row
+        row_vanish_status = Adw.ActionRow()
+        row_vanish_status.set_title("Vanish Mode State")
+        row_vanish_status.set_subtitle("Vanish Mode is active" if self.current_bar_mode == "nucleus" else "Currently inactive - click to activate")
+        row_vanish_status.add_prefix(Gtk.Image.new_from_icon_name("view-reveal-symbolic"))
+
+        box_vanish_status = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        box_vanish_status.set_valign(Gtk.Align.CENTER)
+
+        btn_vanish_act = Gtk.Button(label="Activate")
+        btn_vanish_act.add_css_class("suggested-action")
+        btn_vanish_act.connect("clicked", lambda b: self.select_bar_mode("nucleus"))
+        box_vanish_status.append(btn_vanish_act)
+        self.bar_vanish_activate_btn = btn_vanish_act
+
+        badge_vanish_act = Gtk.Label(label="ACTIVE")
+        badge_vanish_act.add_css_class("accent")
+        box_vanish_status.append(badge_vanish_act)
+        self.bar_vanish_status_badge = badge_vanish_act
+
+        is_vanish = (self.current_bar_mode == "nucleus")
+        btn_vanish_act.set_visible(not is_vanish)
+        badge_vanish_act.set_visible(is_vanish)
+
+        row_vanish_status.add_suffix(box_vanish_status)
+        grp_vanish.add(row_vanish_status)
+        self.bar_vanish_status_row = row_vanish_status
+
+        # Vanish Mode Quick Controls (Toggle Hub / Synced Lyrics)
+        row_vanish_actions = Adw.ActionRow()
+        row_vanish_actions.set_title("Interactive Controls")
+        row_vanish_actions.set_subtitle("Trigger and test Vanish Hub or Synced Lyrics directly via IPC")
+        row_vanish_actions.add_prefix(Gtk.Image.new_from_icon_name("media-playback-start-symbolic"))
+
+        box_vanish_actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        box_vanish_actions.set_valign(Gtk.Align.CENTER)
+
+        btn_toggle_hub = Gtk.Button(label="Toggle Hub")
+        btn_toggle_hub.connect("clicked", lambda b: subprocess.run(["sh", os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh"), "nucleus toggle"], check=False))
+        box_vanish_actions.append(btn_toggle_hub)
+
+        btn_toggle_lyrics = Gtk.Button(label="Toggle Lyrics")
+        btn_toggle_lyrics.connect("clicked", lambda b: subprocess.run(["sh", os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh"), "nucleus lyrics"], check=False))
+        box_vanish_actions.append(btn_toggle_lyrics)
+
+        row_vanish_actions.add_suffix(box_vanish_actions)
+        grp_vanish.add(row_vanish_actions)
+
+        # Shortcut to dedicated Vanish Mode page
+        row_to_vanish_page = Adw.ActionRow()
+        row_to_vanish_page.set_title("Vanish Mode Details and Architecture")
+        row_to_vanish_page.set_subtitle("Configure resting orb, gesture keybinds, and radial lobe interactions")
+        row_to_vanish_page.set_activatable(True)
+        row_to_vanish_page.add_prefix(Gtk.Image.new_from_icon_name("open-menu-symbolic"))
+        row_to_vanish_page.add_suffix(Gtk.Image.new_from_icon_name("go-next-symbolic"))
+        row_to_vanish_page.connect("activated", lambda r: self.navigate_to_page("vanish"))
+        grp_vanish.add(row_to_vanish_page)
+
         self.update_mode_sensitivity()
 
         self.view_stack.add_named(page, "bar")
@@ -2226,6 +2300,146 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         grp_metrics.add(row_event)
 
         self.view_stack.add_named(page, "minimal")
+
+    def build_vanish_page(self):
+        page = Adw.PreferencesPage()
+        page.set_title("Vanish Mode")
+        page.set_icon_name("view-reveal-symbolic")
+
+        # Group 1: Vanish Mode Status & Quick Activation
+        grp_status = Adw.PreferencesGroup(
+            title="Vanish Mode (Atomic Desktop)",
+            description="Barless spatial desktop with ambient center clock orb, organic floating lobes, and gesture-activated hub"
+        )
+        page.add(grp_status)
+
+        # Status row
+        row_status = Adw.ActionRow()
+        row_status.set_title("Vanish Mode Active")
+        row_status.set_subtitle("Vanish Mode is currently active on screen" if self.current_bar_mode == "nucleus" else f"Currently inactive ({self.current_bar_mode.capitalize()} Mode active) - click below to activate")
+        row_status.add_prefix(Gtk.Image.new_from_icon_name("view-reveal-symbolic"))
+
+        box_status_action = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        box_status_action.set_valign(Gtk.Align.CENTER)
+
+        btn_activate = Gtk.Button(label="Activate")
+        btn_activate.add_css_class("suggested-action")
+        btn_activate.connect("clicked", lambda b: self.select_bar_mode("nucleus"))
+        box_status_action.append(btn_activate)
+        self.vanish_activate_btn = btn_activate
+
+        badge_active = Gtk.Label(label="ACTIVE")
+        badge_active.add_css_class("accent")
+        box_status_action.append(badge_active)
+        self.vanish_status_badge = badge_active
+
+        is_vanish = (self.current_bar_mode == "nucleus")
+        btn_activate.set_visible(not is_vanish)
+        badge_active.set_visible(is_vanish)
+
+        row_status.add_suffix(box_status_action)
+        grp_status.add(row_status)
+        self.vanish_status_row = row_status
+
+        # Convert / Switch to Traditional Bar row
+        row_convert = Adw.ActionRow()
+        row_convert.set_title("Switch Desktop Bar")
+        row_convert.set_subtitle("Switch to a traditional screen edge bar")
+        row_convert.add_prefix(Gtk.Image.new_from_icon_name("view-grid-symbolic"))
+
+        box_convert = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        box_convert.add_css_class("linked")
+        box_convert.set_valign(Gtk.Align.CENTER)
+
+        btn_to_pill = Gtk.Button(label="Pill")
+        btn_to_pill.connect("clicked", lambda b: self.select_bar_mode("pill"))
+        box_convert.append(btn_to_pill)
+
+        btn_to_notch = Gtk.Button(label="Notch")
+        btn_to_notch.connect("clicked", lambda b: self.select_bar_mode("notch"))
+        box_convert.append(btn_to_notch)
+
+        btn_to_min = Gtk.Button(label="Minimal")
+        btn_to_min.connect("clicked", lambda b: self.select_bar_mode("minimal"))
+        box_convert.append(btn_to_min)
+
+        row_convert.add_suffix(box_convert)
+        grp_status.add(row_convert)
+
+        # Group 2: Interactive Controls & Triggers
+        grp_controls = Adw.PreferencesGroup(
+            title="Interactive Controls",
+            description="Directly trigger and test Vanish Mode radial components via IPC"
+        )
+        page.add(grp_controls)
+
+        # Hub Toggle
+        row_hub = Adw.ActionRow()
+        row_hub.set_title("Radial Hub Overlay")
+        row_hub.set_subtitle("Open or close the sp3 radial hub with center clock, orbital lobes, and controls")
+        row_hub.add_prefix(Gtk.Image.new_from_icon_name("view-paged-symbolic"))
+        btn_hub = Gtk.Button(label="Toggle Hub")
+        btn_hub.connect("clicked", lambda b: subprocess.run(["sh", os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh"), "nucleus toggle"], check=False))
+        row_hub.add_suffix(btn_hub)
+        grp_controls.add(row_hub)
+
+        # Synced Lyrics Toggle
+        row_lyrics = Adw.ActionRow()
+        row_lyrics.set_title("Live Synced Lyrics")
+        row_lyrics.set_subtitle("Morph bottom caption between calendar date and live synced lyrics (also scrollable)")
+        row_lyrics.add_prefix(Gtk.Image.new_from_icon_name("media-playback-start-symbolic"))
+        btn_lyrics = Gtk.Button(label="Toggle Lyrics")
+        btn_lyrics.connect("clicked", lambda b: subprocess.run(["sh", os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh"), "nucleus lyrics"], check=False))
+        row_lyrics.add_suffix(btn_lyrics)
+        grp_controls.add(row_lyrics)
+
+        # Lobe Focus Controls (Expander Row)
+        exp_lobes = Adw.ExpanderRow()
+        exp_lobes.set_title("Focus Orbital Lobes")
+        exp_lobes.set_subtitle("Expand to test blooming individual satellite controls")
+        exp_lobes.add_prefix(Gtk.Image.new_from_icon_name("preferences-system-symbolic"))
+
+        lobe_list = [
+            ("connect", "Connect (Network, Volume, Battery)", "network-wireless-symbolic"),
+            ("launch", "Launch (App Grid and Search)", "applications-system-symbolic"),
+            ("spaces", "Spaces (Hyprland Workspaces)", "view-grid-symbolic"),
+            ("alerts", "Alerts (Notification Center)", "preferences-system-notifications-symbolic")
+        ]
+        for lid, lname, licon in lobe_list:
+            lrow = Adw.ActionRow()
+            lrow.set_title(lname)
+            lrow.add_prefix(Gtk.Image.new_from_icon_name(licon))
+            btn_f = Gtk.Button(label="Focus")
+            def make_lobe_focus_handler(target_id):
+                return lambda b: subprocess.run(["sh", os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh"), f"nucleus focus {target_id}"], check=False)
+            btn_f.connect("clicked", make_lobe_focus_handler(lid))
+            lrow.add_suffix(btn_f)
+            exp_lobes.add_row(lrow)
+
+        grp_controls.add(exp_lobes)
+
+        # Group 3: Architecture & Interaction Guide
+        grp_guide = Adw.PreferencesGroup(
+            title="Design and Gesture Guide",
+            description="Overview of zero-rectangle radial gestures and desktop interactions"
+        )
+        page.add(grp_guide)
+
+        guide_items = [
+            ("Center Resting Dot", "Tiny 16px ambient nucleus at screen center with 2 rotating electron rings. Left-click anywhere on the dot to bloom the hub."),
+            ("Scroll-Morph Lyrics", "Hover the date pill beneath the center orb and scroll mouse wheel down to reveal live lyrics; scroll up to return to calendar date."),
+            ("Circular Music Arc", "Hardware-accelerated QtQuick Shape circular progress ring. Click or drag along the circle arc to seek media directly."),
+            ("Randomized Orbital Lobes", "On each hub launch, the 4 orbital lobes take organic, natural positions in the upper dome while keeping music controls unobstructed."),
+            ("Instant Dismissal", "Click the center orb or any blank desktop area to seamlessly close the hub with smooth OutCubic easing.")
+        ]
+        for title, desc in guide_items:
+            grow = Adw.ActionRow()
+            grow.set_title(title)
+            grow.set_subtitle(desc)
+            grow.add_prefix(Gtk.Image.new_from_icon_name("help-about-symbolic"))
+            grp_guide.add(grow)
+
+        self.view_stack.add_named(page, "vanish")
 
     def build_clock_page(self):
         page = Adw.PreferencesPage()
@@ -3667,10 +3881,21 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         is_pill = (self.current_bar_mode == "pill")
         is_notch = (self.current_bar_mode == "notch")
         is_minimal = (self.current_bar_mode == "minimal")
+        is_vanish = (self.current_bar_mode == "nucleus")
         if getattr(self, "grp_pill", None):
             self.grp_pill.set_sensitive(is_pill)
         if getattr(self, "grp_notch", None):
             self.grp_notch.set_sensitive(is_notch)
+        if getattr(self, "grp_vanish", None):
+            self.grp_vanish.set_sensitive(True)
+        if getattr(self, "bar_vanish_status_badge", None):
+            self.bar_vanish_status_badge.set_visible(is_vanish)
+        if getattr(self, "bar_vanish_activate_btn", None):
+            self.bar_vanish_activate_btn.set_visible(not is_vanish)
+        if getattr(self, "bar_vanish_status_row", None):
+            self.bar_vanish_status_row.set_subtitle(
+                "Vanish Mode is active" if is_vanish else f"Currently inactive ({self.current_bar_mode.capitalize()} Mode active) - click to activate"
+            )
         if getattr(self, "grp_island_mode", None):
             self.grp_island_mode.set_sensitive(is_minimal)
         if getattr(self, "grp_minimal_settings", None):
@@ -3686,6 +3911,14 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         if getattr(self, "minimal_status_row", None):
             self.minimal_status_row.set_subtitle(
                 "Dynamic Island is currently active on screen" if is_minimal else f"Currently inactive ({self.current_bar_mode.capitalize()} Mode active) - click below to activate"
+            )
+        if getattr(self, "vanish_status_badge", None):
+            self.vanish_status_badge.set_visible(is_vanish)
+        if getattr(self, "vanish_activate_btn", None):
+            self.vanish_activate_btn.set_visible(not is_vanish)
+        if getattr(self, "vanish_status_row", None):
+            self.vanish_status_row.set_subtitle(
+                "Vanish Mode is currently active on screen" if is_vanish else f"Currently inactive ({self.current_bar_mode.capitalize()} Mode active) - click below to activate"
             )
 
     def update_pos_buttons_ui(self):

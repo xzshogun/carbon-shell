@@ -1921,10 +1921,6 @@ ShellRoot {
         }
     }
 
-
-
-
-
     /* ── Nucleus Mode: Fullscreen Radial Desktop Layer ── */
     readonly property QtObject nucleusHubItem: QtObject {
         property bool hubOpen: false

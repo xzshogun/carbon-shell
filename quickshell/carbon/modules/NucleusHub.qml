@@ -48,6 +48,14 @@ Item {
 
     Component.onCompleted: {
         root.randomizeOrbitalPositions()
+        root.loadApps()
+    }
+
+    Connections {
+        target: DesktopEntries
+        function onApplicationsChanged() {
+            root.loadApps()
+        }
     }
 
     onHubOpenChanged: {
@@ -90,13 +98,28 @@ Item {
         fetchWallpapers()
     }
 
-    function openLauncherMode() {
-        if (!root.hubOpen) root.open()
+    Timer {
+        id: focusSearchTimer
+        interval: 75
+        onTriggered: {
+            if (appSearchInput) {
+                appSearchInput.forceActiveFocus()
+            }
+        }
+    }
+
+    function openLauncherMode(initialText) {
+        if (!root.hubOpen) {
+            root.randomizeOrbitalPositions()
+            root.hubOpen = true
+        }
         root.activeMode = "appsearch"
         root.focusedLobe = "launch"
-        appSearchInput.text = ""
-        appSearchInput.forceActiveFocus()
-        refreshAppList()
+        if (appSearchInput) {
+            appSearchInput.text = (initialText !== undefined && initialText !== null) ? initialText : ""
+        }
+        root.loadApps()
+        focusSearchTimer.restart()
     }
 
     function toggleLyrics() {
@@ -255,9 +278,10 @@ Item {
         }
     }
 
-    /* ── Keyboard Handling (Escape to close or back) ── */
+    /* ── Keyboard Handling (Escape to close or back, typing to search) ── */
     Item {
-        focus: root.hubOpen
+        id: globalKeyHandler
+        focus: root.hubOpen && root.activeMode !== "appsearch"
         Keys.onEscapePressed: {
             if (root.activeMode === "wallpapers" || root.activeMode === "appsearch") {
                 root.activeMode = "hub"
@@ -265,6 +289,14 @@ Item {
                 root.focusedLobe = ""
             } else {
                 root.close()
+            }
+        }
+        Keys.onPressed: (event) => {
+            if (root.activeMode === "hub" && event.text && event.text.length > 0 && (!event.modifiers || event.modifiers === Qt.ShiftModifier)) {
+                const ch = event.text
+                if (ch.trim().length > 0) {
+                    root.openLauncherMode(ch)
+                }
             }
         }
     }
@@ -289,8 +321,8 @@ Item {
         Item {
             id: lobesLayer
             anchors.centerIn: parent
-            visible: root.hubProgress > 0.05 && root.activeMode !== "wallpapers"
-            opacity: (root.activeMode === "wallpapers") ? 0.0 : root.hubProgress
+            visible: root.hubProgress > 0.05 && root.activeMode === "hub"
+            opacity: (root.activeMode === "hub") ? root.hubProgress : 0.0
             Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
             // Lobe template component
@@ -755,6 +787,9 @@ Item {
             anchors.centerIn: parent
             width: root.hubOpen ? 58 : 16
             height: width
+            visible: root.activeMode === "hub"
+            opacity: (root.activeMode === "hub") ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
 
             // Glowing Outer Halo (matches lockscreen ValenceDot halo)
@@ -1147,8 +1182,9 @@ Item {
             anchors.top: parent.bottom
             anchors.topMargin: (LyricsService.hasTrack && root.activeMode === "hub") ? 148 : 82
             Behavior on anchors.topMargin { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
-            visible: root.hubProgress > 0.1 && root.activeMode !== "wallpapers"
-            opacity: root.hubProgress
+            visible: root.hubProgress > 0.1 && root.activeMode === "hub"
+            opacity: (root.activeMode === "hub") ? root.hubProgress : 0.0
+            Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
             width: 360
             height: 24
             clip: true
@@ -1286,94 +1322,355 @@ Item {
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           PHASE 3: Keyboard-First App Search (Inside Launch Lobe space)
+           PHASE 3: Keyboard-First App Search (Inside Vanish Mode)
            ══════════════════════════════════════════════════════════════════════ */
         Item {
             id: appSearchContainer
             anchors.centerIn: parent
             visible: root.activeMode === "appsearch"
-            width: 320
-            height: 280
+            opacity: root.activeMode === "appsearch" ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+            width: 380
+            height: 460
 
-            ColumnLayout {
-                anchors.centerIn: parent
-                spacing: 8
+            // Consume clicks inside the search container so clicking on empty areas doesn't close the hub
+            MouseArea {
+                anchors.fill: parent
+                onClicked: (mouse) => mouse.accepted = true
+            }
 
-                // Search field pill
-                Rectangle {
-                    Layout.alignment: Qt.AlignHCenter
-                    width: 220
-                    height: 32
-                    radius: 16
-                    color: Qt.rgba(root.colBgDark.r, root.colBgDark.g, root.colBgDark.b, 0.90)
-                    border.color: root.colPurple
-                    border.width: 1.5
+            // Outer Glow / Halo
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -4
+                radius: 32
+                color: "transparent"
+                border.color: Qt.rgba(root.colPurple.r, root.colPurple.g, root.colPurple.b, 0.25)
+                border.width: 4
+                opacity: 0.8
+            }
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 10
-                        spacing: 6
+            // Main Glass Card
+            Rectangle {
+                anchors.fill: parent
+                radius: 28
+                color: Qt.rgba(root.colBgDark.r, root.colBgDark.g, root.colBgDark.b, 0.94)
+                border.color: Qt.rgba(root.colPurple.r, root.colPurple.g, root.colPurple.b, 0.45)
+                border.width: 1.5
 
-                        Text {
-                            text: "search"
-                            font.family: Theme.fontIcon
-                            font.pixelSize: 14
-                            color: root.colPurple
-                        }
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 18
+                    spacing: 12
 
-                        TextInput {
-                            id: appSearchInput
-                            Layout.fillWidth: true
-                            font.family: "Valley Sans"
-                            font.pixelSize: 12
-                            color: "#ffffff"
-                            clip: true
-                            onTextChanged: root.filterApps(text)
-                            Keys.onReturnPressed: {
-                                if (appMatches.count > 0) {
-                                    root.launchApp(appMatches.get(0).entry)
+                    // 1. Search Bar Pill
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 44
+                        radius: 22
+                        color: Qt.rgba(0, 0, 0, 0.42)
+                        border.color: appSearchInput.activeFocus ? root.colPurple : Qt.rgba(root.colPurple.r, root.colPurple.g, root.colPurple.b, 0.3)
+                        border.width: appSearchInput.activeFocus ? 2 : 1
+                        Behavior on border.color { ColorAnimation { duration: 160 } }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 14
+                            anchors.rightMargin: 12
+                            spacing: 10
+
+                            Text {
+                                text: "search"
+                                font.family: Theme.fontIcon
+                                font.pixelSize: 18
+                                color: root.colPurple
+                            }
+
+                            TextInput {
+                                id: appSearchInput
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignVCenter
+                                font.family: "Valley Sans"
+                                font.pixelSize: 14
+                                font.weight: Font.Medium
+                                color: "#ffffff"
+                                clip: true
+                                selectByMouse: true
+                                selectionColor: Qt.rgba(root.colPurple.r, root.colPurple.g, root.colPurple.b, 0.5)
+
+                                Text {
+                                    text: "Search apps..."
+                                    font.family: "Valley Sans"
+                                    font.pixelSize: 14
+                                    color: Qt.rgba(1, 1, 1, 0.35)
+                                    visible: !appSearchInput.text && !appSearchInput.inputMethodComposing
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                onTextChanged: root.filterApps(text)
+
+                                Keys.onDownPressed: (event) => {
+                                    if (appMatches.count > 0) {
+                                        root.selectedAppIndex = Math.min(appMatches.count - 1, root.selectedAppIndex + 1)
+                                        appListView.positionViewAtIndex(root.selectedAppIndex, ListView.Contain)
+                                    }
+                                    event.accepted = true
+                                }
+                                Keys.onUpPressed: (event) => {
+                                    if (appMatches.count > 0) {
+                                        root.selectedAppIndex = Math.max(0, root.selectedAppIndex - 1)
+                                        appListView.positionViewAtIndex(root.selectedAppIndex, ListView.Contain)
+                                    }
+                                    event.accepted = true
+                                }
+                                Keys.onReturnPressed: (event) => {
+                                    if (appMatches.count > 0 && root.selectedAppIndex >= 0 && root.selectedAppIndex < appMatches.count) {
+                                        const item = appMatches.get(root.selectedAppIndex)
+                                        root.launchAppIndex(item.appIndex)
+                                    }
+                                    event.accepted = true
+                                }
+                                Keys.onEscapePressed: (event) => {
+                                    if (text.length > 0) {
+                                        text = ""
+                                    } else {
+                                        root.activeMode = "hub"
+                                    }
+                                    event.accepted = true
+                                }
+                            }
+
+                            // Clear / Close button
+                            Item {
+                                Layout.preferredWidth: 24
+                                Layout.preferredHeight: 24
+                                visible: appSearchInput.text.length > 0
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 12
+                                    color: clearHover.hovered ? Qt.rgba(1, 1, 1, 0.15) : "transparent"
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "close"
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: 14
+                                        color: Qt.rgba(1, 1, 1, 0.6)
+                                    }
+                                    HoverHandler { id: clearHover }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            appSearchInput.text = ""
+                                            appSearchInput.forceActiveFocus()
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                // Circular app result chips arranged in an organic arc around lobe
-                ListView {
-                    id: appListView
-                    Layout.alignment: Qt.AlignHCenter
-                    width: 240
-                    height: 140
-                    clip: true
-                    model: ListModel { id: appMatches }
-                    delegate: Rectangle {
-                        width: 240
-                        height: 28
-                        radius: 14
-                        color: index === 0 ? Qt.rgba(root.colPurple.r, root.colPurple.g, root.colPurple.b, 0.3) : "transparent"
-                        border.color: index === 0 ? root.colPurple : "transparent"
-                        border.width: 1
+                    // 2. Apps List
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
 
-                        RowLayout {
+                        ListView {
+                            id: appListView
                             anchors.fill: parent
-                            anchors.leftMargin: 12
-                            anchors.rightMargin: 12
-                            spacing: 8
+                            clip: true
+                            spacing: 4
+                            boundsBehavior: Flickable.StopAtBounds
+                            model: ListModel { id: appMatches }
 
-                            Text {
-                                text: model.name
-                                font.family: "Valley Sans"
-                                font.pixelSize: 11
-                                font.bold: true
-                                color: "#ffffff"
+                            delegate: Rectangle {
+                                id: appRow
+                                width: appListView.width
+                                height: 46
+                                radius: 14
+                                readonly property bool isSelected: index === root.selectedAppIndex
+
+                                color: isSelected
+                                    ? Qt.rgba(root.colPurple.r, root.colPurple.g, root.colPurple.b, 0.22)
+                                    : (rowHover.hovered ? Qt.rgba(1, 1, 1, 0.05) : "transparent")
+                                border.color: isSelected
+                                    ? Qt.rgba(root.colPurple.r, root.colPurple.g, root.colPurple.b, 0.5)
+                                    : "transparent"
+                                border.width: 1
+                                Behavior on color { ColorAnimation { duration: 120 } }
+
+                                HoverHandler {
+                                    id: rowHover
+                                    onHoveredChanged: {
+                                        if (hovered) root.selectedAppIndex = index
+                                    }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.launchAppIndex(model.appIndex)
+                                }
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 10
+                                    anchors.rightMargin: 12
+                                    spacing: 12
+
+                                    // App Icon with Fallback Initial
+                                    Rectangle {
+                                        Layout.preferredWidth: 32
+                                        Layout.preferredHeight: 32
+                                        radius: 16
+                                        color: Qt.rgba(0, 0, 0, 0.35)
+                                        border.color: isSelected ? root.colPurple : Qt.rgba(1, 1, 1, 0.1)
+                                        border.width: 1
+
+                                        Image {
+                                            id: appIconImg
+                                            anchors.centerIn: parent
+                                            width: 22
+                                            height: 22
+                                            source: model.icon ? Quickshell.iconPath(model.icon, "application-x-executable") : ""
+                                            sourceSize: Qt.size(44, 44)
+                                            fillMode: Image.PreserveAspectFit
+                                            visible: status === Image.Ready
+                                        }
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            visible: appIconImg.status !== Image.Ready
+                                            text: (model.name && model.name.length > 0) ? model.name.charAt(0).toUpperCase() : "?"
+                                            font.family: "Valley Sans"
+                                            font.pixelSize: 13
+                                            font.bold: true
+                                            color: root.colPurple
+                                        }
+                                    }
+
+                                    // App Details
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 1
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: model.name || ""
+                                            font.family: "Valley Sans"
+                                            font.pixelSize: 13
+                                            font.weight: isSelected ? Font.DemiBold : Font.Normal
+                                            color: isSelected ? "#ffffff" : Qt.rgba(1, 1, 1, 0.88)
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            visible: text.length > 0
+                                            text: model.comment || ""
+                                            font.family: "Valley Sans"
+                                            font.pixelSize: 10
+                                            color: Qt.rgba(1, 1, 1, 0.45)
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+
+                                    // Enter Glyph indicator for selected item
+                                    Text {
+                                        visible: isSelected
+                                        text: "keyboard_return"
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: 14
+                                        color: root.colPurple
+                                        opacity: 0.8
+                                    }
+                                }
                             }
                         }
 
-                        MouseArea {
+                        // Empty State if no apps match
+                        Item {
                             anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.launchApp(model.entry)
+                            visible: appMatches.count === 0
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: 8
+
+                                Text {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    text: "search_off"
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: 32
+                                    color: Qt.rgba(root.colPurple.r, root.colPurple.g, root.colPurple.b, 0.4)
+                                }
+
+                                Text {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    text: "No applications found"
+                                    font.family: "Valley Sans"
+                                    font.pixelSize: 12
+                                    color: Qt.rgba(1, 1, 1, 0.4)
+                                }
+                            }
+                        }
+                    }
+
+                    // 3. Bottom Footer Hint Pill
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 16
+
+                        RowLayout {
+                            spacing: 4
+                            Text {
+                                text: "↑↓"
+                                font.family: "Valley Sans"
+                                font.pixelSize: 11
+                                font.bold: true
+                                color: Qt.rgba(1, 1, 1, 0.45)
+                            }
+                            Text {
+                                text: "Navigate"
+                                font.family: "Valley Sans"
+                                font.pixelSize: 10
+                                color: Qt.rgba(1, 1, 1, 0.35)
+                            }
+                        }
+
+                        RowLayout {
+                            spacing: 4
+                            Text {
+                                text: "↵"
+                                font.family: "Valley Sans"
+                                font.pixelSize: 11
+                                font.bold: true
+                                color: root.colPurple
+                            }
+                            Text {
+                                text: "Launch"
+                                font.family: "Valley Sans"
+                                font.pixelSize: 10
+                                color: Qt.rgba(1, 1, 1, 0.35)
+                            }
+                        }
+
+                        RowLayout {
+                            spacing: 4
+                            Text {
+                                text: "ESC"
+                                font.family: "Valley Sans"
+                                font.pixelSize: 10
+                                font.bold: true
+                                color: Qt.rgba(1, 1, 1, 0.45)
+                            }
+                            Text {
+                                text: "Back"
+                                font.family: "Valley Sans"
+                                font.pixelSize: 10
+                                color: Qt.rgba(1, 1, 1, 0.35)
+                            }
                         }
                     }
                 }
@@ -1625,30 +1922,56 @@ Item {
 
     /* ── App Scanning & Filtering Logic (Reusing DesktopEntries) ── */
     property var allAppsList: []
-    function refreshAppList() {
+    property int selectedAppIndex: 0
+
+    function loadApps() {
         const values = DesktopEntries.applications.values || []
         const list = []
         for (let i = 0; i < values.length; i++) {
             const e = values[i]
-            if (e.noDisplay || !e.name || !e.command || e.command.length === 0) continue
+            if (!e || e.noDisplay || !e.name || !e.command || e.command.length === 0) continue
             list.push(e)
         }
         list.sort((a, b) => a.name.localeCompare(b.name))
         root.allAppsList = list
-        filterApps("")
+        filterApps(appSearchInput ? appSearchInput.text : "")
+    }
+
+    function refreshAppList() {
+        root.loadApps()
     }
 
     function filterApps(needle) {
         appMatches.clear()
         const n = (needle || "").trim().toLowerCase()
         let count = 0
-        for (let i = 0; i < root.allAppsList.length && count < 8; i++) {
+        for (let i = 0; i < root.allAppsList.length && count < 20; i++) {
             const a = root.allAppsList[i]
-            if (n.length === 0 || a.name.toLowerCase().includes(n)) {
-                appMatches.append({ name: a.name, entry: a })
+            const name = a.name || ""
+            const comment = a.comment || a.genericName || ""
+            if (n.length === 0 || name.toLowerCase().includes(n) || comment.toLowerCase().includes(n)) {
+                appMatches.append({
+                    name: name,
+                    comment: comment,
+                    icon: a.icon || "",
+                    appIndex: i
+                })
                 count++
             }
         }
+        root.selectedAppIndex = 0
+    }
+
+    function launchAppIndex(idx) {
+        if (idx < 0 || idx >= root.allAppsList.length) return
+        const entry = root.allAppsList[idx]
+        if (!entry) return
+        if (entry.runInTerminal) {
+            Quickshell.execDetached(["kitty", "-e", "sh", "-c", entry.command.join(" ")])
+        } else {
+            entry.execute()
+        }
+        root.close()
     }
 
     function launchApp(entry) {

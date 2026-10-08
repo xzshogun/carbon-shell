@@ -837,7 +837,12 @@ ShellRoot {
                     }
                     else if (cmd === "launcher" || cmd === "toggle-launcher") {
                         if (root.barMode === "nucleus") {
-                            if (root.nucleusHubItem) root.nucleusHubItem.toggle()
+                            if (root.nucleusHubItem.hubOpen) {
+                                if (cmd === "toggle-launcher") root.nucleusHubItem.close()
+                                else root.nucleusHubItem.openLauncherMode()
+                            } else {
+                                root.nucleusHubItem.openLauncherMode()
+                            }
                         } else {
                             if (cmd === "launcher") root.openLauncher()
                             else root.toggleLauncher()
@@ -2080,6 +2085,7 @@ ShellRoot {
             color: "transparent"
             WlrLayershell.namespace: "carbon-nucleus-hub"
             WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: (root.barMode === "nucleus" && root.nucleusHubItem.hubOpen) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             exclusionMode: ExclusionMode.Ignore
             aboveWindows: true
             anchors {

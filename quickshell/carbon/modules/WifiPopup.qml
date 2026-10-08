@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import "../Singletons"
@@ -16,14 +17,21 @@ Item {
     id: root
 
     property bool open: false
+    property string barEdge: "top"
     property bool powerOn: true
     property string wifiName: ""
+
+    property string barMode: "notch"
+    property real notchOpacity: 0.96
 
     signal requestedClose()
     signal powerToggled(bool on)
 
-    width: 250
+    implicitWidth: 260
+    implicitHeight: 286
+    width: 260
     height: 286
+    clip: true
 
     function shellQuote(s) {
         return "'" + String(s).replace(/'/g, "'\\''") + "'"
@@ -37,13 +45,24 @@ Item {
     property string pwBssid: ""
     property string status: ""
 
+    property bool animatingOut: false
     onOpenChanged: {
         if (root.open) {
             root.status = ""
             root.pwVisible = false
             root.connecting = false
             if (root.powerOn) root.listNetworks()
+            root.animatingOut = false
+            animatingOutTimer.stop()
+        } else {
+            root.animatingOut = true
+            animatingOutTimer.restart()
         }
+    }
+    Timer {
+        id: animatingOutTimer
+        interval: 200
+        onTriggered: root.animatingOut = false
     }
 
     /* --------------------------- list backend --------------------------- */
@@ -220,62 +239,84 @@ Item {
         root.scanning = false
     }
 
+    readonly property string fillPath: {
+        const w = sheet.width
+        const h = sheet.height
+        if (root.barMode === "notch") {
+            const r = 16
+            if (root.barEdge === "bottom") {
+                return `M 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 L ${w} 0 L ${w} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} Z`
+            }
+            return `M 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 L ${w} 0 L ${w} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} Z`
+        }
+        const r = 16
+        return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
+    }
+
+    readonly property string strokePath: {
+        const w = sheet.width
+        const h = sheet.height
+        if (root.barMode === "notch") {
+            const r = 16
+            if (root.barEdge === "bottom") {
+                return `M 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 L ${w} 0`
+            }
+            return `M 0 ${r} L 0 ${h - r} A ${r} ${r} 0 0 0 ${r} ${h} L ${w} ${h}`
+        }
+        const r = 16
+        return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`
+    }
+
     /* ----------------------------- visuals ----------------------------- */
-    Rectangle {
+    Item {
         id: sheet
         width: parent.width
         height: parent.height
-        radius: 18
-        color: Theme.isDark ? "#101116" : "#ffffff"
-        border.width: 1
-        border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.65) : Qt.rgba(1, 1, 1, 0.12)
 
-        /* Subtle glowing halo border like app window border */
-        Rectangle {
+        Shape {
+            id: cardBgShape
             anchors.fill: parent
-            anchors.margins: -1
-            radius: sheet.radius + 1
-            color: "transparent"
-            border.width: 1.5
-            border.color: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.40) : "transparent"
-            z: -1
-            opacity: root.open ? 1.0 : 0.0
-            Behavior on opacity { NumberAnimation { duration: 200 } }
+            preferredRendererType: Shape.GeometryRenderer
+            antialiasing: true
+            asynchronous: false
+
+            ShapePath {
+                fillColor: root.barMode === "notch" ? (Theme.isDark ? Qt.rgba(0.04, 0.04, 0.06, root.notchOpacity) : Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, root.notchOpacity)) : Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.shellOpacity)
+                strokeColor: "transparent"
+                strokeWidth: 0
+                PathSvg { path: root.fillPath }
+            }
+
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Theme.outline
+                strokeWidth: 1
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+                PathSvg { path: root.strokePath }
+            }
         }
 
-        /* Specular Rim highlight */
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: 1
-            radius: sheet.radius - 1
-            color: "transparent"
-            border.width: 1
-            border.color: Qt.rgba(1, 1, 1, root.open ? 0.14 : 0.04)
-            z: 99
-        }
+        opacity: root.open ? 1.0 : 0.0
+        scale: root.open ? 1.0 : 0.95
+        y: root.open ? 0 : (root.barEdge === "bottom" ? -6 : 6)
 
-        opacity: root.open ? 1 : 0
-        scale: root.open ? 1.0 : 0.88
-        y: root.open ? 0 : -20
-        transformOrigin: Item.Top
-        visible: opacity > 0.001
-
-        Behavior on border.color { ColorAnimation { duration: 200 } }
         Behavior on opacity {
-            NumberAnimation { duration: root.open ? 220 : 140; easing.type: Easing.OutCubic }
-        }
-        Behavior on y {
             NumberAnimation {
-                duration: root.open ? 320 : 160
-                easing.type: root.open ? Easing.OutBack : Easing.OutCubic
-                easing.overshoot: 1.35
+                duration: root.open ? 200 : 140
+                easing.bezierCurve: Theme.animCurves.expressiveDefaultEffects
             }
         }
         Behavior on scale {
             NumberAnimation {
-                duration: root.open ? 300 : 150
-                easing.type: root.open ? Easing.OutBack : Easing.OutCubic
-                easing.overshoot: 1.38
+                duration: root.open ? 280 : 160
+                easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel
+            }
+        }
+        Behavior on y {
+            NumberAnimation {
+                duration: root.open ? 280 : 160
+                easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel
             }
         }
 
@@ -289,6 +330,7 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.margins: 14
+            anchors.leftMargin: root.barMode === "notch" ? 24 : 14
             height: 18
             spacing: 8
 
@@ -355,7 +397,7 @@ Item {
             anchors.topMargin: 10
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.leftMargin: 14
+            anchors.leftMargin: root.barMode === "notch" ? 24 : 14
             anchors.rightMargin: 14
             height: 1
             color: Theme.outline
@@ -369,7 +411,7 @@ Item {
             anchors.bottom: footRow.top
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.leftMargin: 6
+            anchors.leftMargin: root.barMode === "notch" ? 18 : 6
             anchors.rightMargin: 6
             clip: true
             model: networkModel

@@ -7,7 +7,8 @@ IFS=$'\n\t'
 # Define directories
 waybar_styles="$HOME/.config/waybar/style"
 waybar_style="$HOME/.config/waybar/style.css"
-SCRIPTSDIR="$HOME/.config/hypr/scripts"
+CARBON_DIR="${CARBON_CONFIG_DIR:-$HOME/.config/carbon}"
+SCRIPTSDIR="${CARBON_DIR}/scripts"
 rofi_config="$HOME/.config/rofi/config.rasi"
 msg=' Choose Waybar Style'
 
@@ -25,8 +26,10 @@ menu() {
 
 # Apply selected style
 apply_style() {
-    ln -sf "$waybar_styles/$1.css" "$waybar_style"
-    "${SCRIPTSDIR}/wbrestart.sh" &
+    cp -f "$waybar_styles/$1.css" "$waybar_style"
+    if [ -x "${SCRIPTSDIR}/wbrestart.sh" ]; then
+        "${SCRIPTSDIR}/wbrestart.sh" &
+    fi
 }
 
 # Main function

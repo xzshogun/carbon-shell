@@ -13,17 +13,19 @@ WALL_IN="$1"
 WALL="$(readlink -f -- "$WALL_IN")"
 [ -f "$WALL" ] || exit 1
 
+CONFIG_DIR="${CARBON_CONFIG_DIR:-$HOME/.config/carbon}"
+mkdir -p "$CONFIG_DIR"
 CACHE_DIR="$HOME/.cache/carbon"
 mkdir -p "$CACHE_DIR"
 
 SCALED="$CACHE_DIR/wpscale/$(basename "$WALL" | tr '.' '_').jpg"
 if [ -s "$SCALED" ]; then
-    ln -sfn "$SCALED" "$CACHE_DIR/wallpaper_scaled.jpg"
+    cp -f "$SCALED" "$CACHE_DIR/wallpaper_scaled.jpg"
 else
     magick "$WALL" -auto-orient -resize '2049x1152^' -gravity south -extent 2049x1152 \
         -quality 90 "$CACHE_DIR/wallpaper_scaled.jpg" 2>/dev/null || exit 1
 fi
 
-ln -sfn "$WALL" "$HOME/.config/hypr/current_wallpaper"
-echo "$WALL" > "$HOME/.config/hypr/current_wallpaper_path"
+cp -f "$WALL" "$CONFIG_DIR/current_wallpaper"
+echo "$WALL" > "$CONFIG_DIR/current_wallpaper_path"
 echo "preview-ready: $WALL"

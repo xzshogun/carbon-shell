@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
@@ -21,6 +22,7 @@ Item {
     property bool open: false
     property bool minimalCalendarOnly: false
     property bool attachedBottom: false
+    property bool showBackground: true
     readonly property bool hovered: (rootHover && rootHover.hovered) || (mainCardHover && mainCardHover.hovered)
     signal closeRequested()
 
@@ -28,6 +30,22 @@ Item {
     implicitHeight: root.minimalCalendarOnly ? 276 : 260
     width: implicitWidth
     height: implicitHeight
+    clip: true
+
+    focus: root.open
+    Keys.enabled: root.open
+    Keys.onPressed: (event) => {
+        if (event.key === Qt.Key_Escape) {
+            console.log("[CenterDashboard] ESCAPE PRESSED - requesting close")
+            root.closeRequested()
+            event.accepted = true
+        }
+    }
+    Keys.onEscapePressed: (event) => {
+        console.log("[CenterDashboard] onEscapePressed - requesting close")
+        root.closeRequested()
+        event.accepted = true
+    }
 
     HoverHandler {
         id: rootHover
@@ -35,7 +53,7 @@ Item {
 
     readonly property var cardItem: mainCard
     readonly property var rightColItem: rightCol
-    readonly property bool animatingOut: !root.open && mainCard.opacity > 0.001
+    property bool animatingOut: false
 
     /* ── Live Clock State ────────────────────────────────────────────── */
     property var currentDate: new Date()
@@ -63,6 +81,8 @@ Item {
 
     onOpenChanged: {
         if (root.open) {
+            root.animatingOut = false
+            animatingOutTimer.stop()
             root.currentDate = new Date()
             root.calendarViewMode = "grid"
             root.eventFormMode = false
@@ -72,7 +92,16 @@ Item {
                 if (centerCol.levAnim) centerCol.levAnim.restart()
                 if (centerCol.breathAnim) centerCol.breathAnim.restart()
             }
+        } else {
+            root.animatingOut = true
+            animatingOutTimer.restart()
         }
+    }
+
+    Timer {
+        id: animatingOutTimer
+        interval: 200
+        onTriggered: root.animatingOut = false
     }
 
     Timer {
@@ -103,8 +132,8 @@ Item {
     readonly property string weatherCond: curDayForecast ? curDayForecast.condition : WeatherService.condition
     readonly property string weatherIcon: curDayForecast ? curDayForecast.icon : WeatherService.icon
     readonly property string weatherDayTitle: curDayForecast ? curDayForecast.day : root.dayOfWeekStr.toUpperCase()
-    readonly property string weatherWind: curDayForecast ? curDayForecast.wind : WeatherService.wind
-    readonly property string weatherHumid: curDayForecast ? curDayForecast.humidity : WeatherService.humidity
+    readonly property string weatherWind: curDayForecast ? (curDayForecast.wind || "") : (WeatherService.wind || "")
+    readonly property string weatherHumid: curDayForecast ? (curDayForecast.humidity || "") : (WeatherService.humidity || "")
 
     function prevWeatherDay() {
         if (root.weatherDayIndex > 0) root.weatherDayIndex--
@@ -261,14 +290,10 @@ Item {
     }
 
     /* ── Main Card ───────────────────────────────────────────────────── */
-    Rectangle {
+    Item {
         id: mainCard
-        anchors.fill: parent
-        radius: 20
-        color: Theme.isDark ? Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.94) : Theme.m3surfaceContainerLowest
-        border.color: root.open ? (Theme.isDark ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.25) : Qt.rgba(0, 0, 0, 0.12)) : Theme.outline
-        border.width: 1
-        clip: true
+        width: parent.width
+        height: parent.height
 
         HoverHandler {
             id: mainCardHover
@@ -280,22 +305,57 @@ Item {
             z: 0
         }
 
-        scale: root.open ? 1.0 : 0.94
-        opacity: root.open ? 1.0 : 0.0
-        transform: Translate {
-            y: root.open ? 0 : (root.attachedBottom ? 14 : -14)
-            Behavior on y { NumberAnimation { duration: root.open ? 260 : 150; easing.type: root.open ? Easing.OutCubic : Easing.InQuad } }
-        }
-        Behavior on scale { NumberAnimation { duration: root.open ? 260 : 150; easing.type: root.open ? Easing.OutCubic : Easing.InQuad } }
-        Behavior on opacity { NumberAnimation { duration: root.open ? 200 : 130; easing.type: Easing.OutQuad } }
-
-        /* Inner subtle glow line */
-        Rectangle {
+        Shape {
+            id: cardBgShape
             anchors.fill: parent
-            radius: 20
-            color: "transparent"
-            border.color: Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.10)
-            border.width: 1
+            layer.enabled: true
+            layer.smooth: true
+            preferredRendererType: Shape.CurveRenderer
+            visible: root.showBackground
+
+            // 1. Fill background (Seamlessly attached: square top, rounded bottom)
+            ShapePath {
+                fillColor: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.shellOpacity)
+                strokeColor: "transparent"
+                strokeWidth: 0
+                startX: 0; startY: 0
+                PathLine { x: mainCard.width; y: 0 }
+                PathLine { x: mainCard.width; y: mainCard.height - 20 }
+                PathArc { x: mainCard.width - 20; y: mainCard.height; radiusX: 20; radiusY: 20 }
+                PathLine { x: 20; y: mainCard.height }
+                PathArc { x: 0; y: mainCard.height - 20; radiusX: 20; radiusY: 20 }
+                PathLine { x: 0; y: 0 }
+            }
+
+            // 2. Continuous stroke (Right, Bottom, Left - NO stroke on top edge to blend seamlessly into the bar)
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: root.open ? Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.45) : Theme.outline
+                strokeWidth: 1
+                startX: mainCard.width; startY: 0
+                PathLine { x: mainCard.width; y: mainCard.height - 20 }
+                PathArc { x: mainCard.width - 20; y: mainCard.height; radiusX: 20; radiusY: 20 }
+                PathLine { x: 20; y: mainCard.height }
+                PathArc { x: 0; y: mainCard.height - 20; radiusX: 20; radiusY: 20 }
+                PathLine { x: 0; y: 0 }
+            }
+        }
+
+        opacity: root.showBackground ? (root.open ? 1.0 : 0.0) : 1.0
+        y: root.showBackground ? (root.open ? 0 : (root.attachedBottom ? height : -height)) : 0
+
+        Behavior on opacity {
+            enabled: root.showBackground
+            NumberAnimation {
+                duration: root.open ? 180 : 140
+                easing.bezierCurve: Theme.animCurves.expressiveDefaultEffects
+            }
+        }
+        Behavior on y {
+            NumberAnimation {
+                duration: root.open ? 240 : 160
+                easing.bezierCurve: root.open ? Theme.animCurves.expressiveDefaultSpatial : Theme.animCurves.standardAccel
+            }
         }
 
         /* Ambient subtle color blobs from imperative-dots */
@@ -1414,7 +1474,7 @@ Item {
                         Layout.preferredHeight: 144
                         Layout.maximumHeight: 148
                         radius: 14
-                        color: Qt.rgba(Theme.bgAlt.r, Theme.bgAlt.g, Theme.bgAlt.b, 0.78)
+                        color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.94)
                         border.color: Qt.rgba(Theme.accentLit.r, Theme.accentLit.g, Theme.accentLit.b, 0.28)
                         border.width: 1
                         clip: true
@@ -1431,9 +1491,12 @@ Item {
                         Image {
                             anchors.fill: parent
                             source: root.musicArtUrl
+                            asynchronous: true
+                            cache: true
                             fillMode: Image.PreserveAspectCrop
-                            opacity: 0.12
-                            visible: root.hasMusicTrack && root.musicArtUrl.length > 0
+                            opacity: (status === Image.Ready) ? 0.12 : 0.0
+                            visible: root.hasMusicTrack && root.musicArtUrl.length > 0 && status === Image.Ready
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
                         }
 
                         ColumnLayout {
@@ -1508,7 +1571,9 @@ Item {
                                     Image {
                                         anchors.fill: parent
                                         source: root.musicArtUrl
-                                        visible: root.hasMusicTrack && root.musicArtUrl.length > 0
+                                        asynchronous: true
+                                        cache: true
+                                        visible: root.hasMusicTrack && root.musicArtUrl.length > 0 && status === Image.Ready
                                         fillMode: Image.PreserveAspectCrop
                                     }
 

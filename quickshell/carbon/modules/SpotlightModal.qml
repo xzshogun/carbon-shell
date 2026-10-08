@@ -18,19 +18,85 @@ Item {
     id: root
 
     property bool open: false
+    property real shellOpacity: Theme.shellOpacity
     signal closeRequested()
     readonly property string home: Quickshell.env("HOME") || ""
 
+    /* Caelestia Shell bottom slide-up & fluid pop-in animation */
+    readonly property bool animatingOut: !root.open && (root.opacity > 0.005 || opacityAnim.running || slideAnim.running)
+
+    property real yOffset: root.open ? 0 : 20
+    transform: Translate { y: root.yOffset }
+    transformOrigin: Item.Center
+    scale: root.open ? 1.0 : 0.97
+    opacity: root.open ? 1.0 : 0.0
+
+    Behavior on yOffset {
+        NumberAnimation {
+            id: slideAnim
+            duration: root.open ? 130 : 95
+            easing.type: root.open ? Easing.OutCubic : Easing.InCubic
+        }
+    }
+
+    Behavior on scale {
+        NumberAnimation {
+            duration: root.open ? 130 : 95
+            easing.type: root.open ? Easing.OutCubic : Easing.InCubic
+        }
+    }
+
+    Behavior on opacity {
+        NumberAnimation {
+            id: opacityAnim
+            duration: root.open ? 120 : 85
+            easing.type: Easing.OutCubic
+        }
+    }
+
     width: 620
     implicitWidth: 620
-    height: Math.max(140, Math.min(520, 115 + (resultsModel.count * 46) + (calcCard.visible ? 65 : 0)))
+
+    // Dynamic height calculation: guarantees proper breathing room so 1-item lists are never clipped
+    readonly property int calculatedHeight: {
+        let h = 155 // base: margins (28) + search header (42) + divider (1) + tabs (24) + footer (20) + 4 spacings (40)
+        if (calcCard.visible) {
+            h += 66
+        }
+        if (resultsModel.count > 0) {
+            h += 10 + Math.min(240, resultsModel.count * 48)
+        } else if (!calcCard.visible) {
+            h += 58 // empty placeholder
+        }
+        return Math.max(160, Math.min(460, h))
+    }
+    height: calculatedHeight
     implicitHeight: height
 
     Behavior on height {
-        NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+        NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
     }
 
-    property string currentTab: "all" // "all", "apps", "clipboard", "commands"
+    property string currentTab: "apps" // "apps", "clipboard", "commands"
+    property real tabContentOpacity: 1.0
+    property real tabContentY: 0
+
+    onCurrentTabChanged: {
+        tabSwitchAnim.restart()
+    }
+
+    SequentialAnimation {
+        id: tabSwitchAnim
+        ParallelAnimation {
+            NumberAnimation { target: root; property: "tabContentOpacity"; to: 0.20; duration: 40; easing.type: Easing.OutQuad }
+            NumberAnimation { target: root; property: "tabContentY"; to: 6; duration: 40; easing.type: Easing.OutQuad }
+        }
+        ParallelAnimation {
+            NumberAnimation { target: root; property: "tabContentOpacity"; to: 1.0; duration: 120; easing.type: Easing.OutCubic }
+            NumberAnimation { target: root; property: "tabContentY"; to: 0; duration: 120; easing.type: Easing.OutCubic }
+        }
+    }
+
     property string calcResult: ""
     property bool hasCalcResult: false
 
@@ -163,39 +229,41 @@ Item {
     /* ── Clipboard Fetcher via cliphist ───────────────────────────────── */
     Process {
         id: cliphistProcess
-        command: ["sh", "-c", "cliphist list | head -n 35"]
+        command: ["sh", "-c", "cliphist list | head -n 40"]
         running: false
         stdout: StdioCollector {
-            onDataChanged: {
-                if (!data) return
-                const lines = data.trim().split("\n")
-                const items = []
-                for (let i = 0; i < lines.length; i++) {
-                    const l = lines[i]
-                    if (!l) continue
-                    const tabIdx = l.indexOf("\t")
-                    if (tabIdx > 0) {
-                        const id = l.substring(0, tabIdx)
-                        const preview = l.substring(tabIdx + 1).trim()
-                        items.push({ id: id, raw: l, preview: preview })
-                    }
-                }
-                root.clipboardItems = items
-                if (root.currentTab === "clipboard") {
-                    root.rebuildResults()
+            id: clipCol
+            waitForEnd: true
+        }
+        onExited: {
+            const raw = String(clipCol.text || "").trim()
+            if (!raw) return
+            const lines = raw.split("\n")
+            const items = []
+            for (let i = 0; i < lines.length; i++) {
+                const l = lines[i]
+                if (!l) continue
+                const tabIdx = l.indexOf("\t")
+                if (tabIdx > 0) {
+                    const id = l.substring(0, tabIdx).trim()
+                    const preview = l.substring(tabIdx + 1).trim()
+                    items.push({ id: id, raw: l, preview: preview })
                 }
             }
+            root.clipboardItems = items
+            root.rebuildResults()
         }
     }
 
     function refreshClipboard() {
+        cliphistProcess.running = false
         cliphistProcess.running = true
     }
 
     /* ── Math & Conversion Evaluator via qalc ─────────────────────────── */
     Timer {
         id: qalcDebounceTimer
-        interval: 70
+        interval: 60
         onTriggered: {
             const q = searchInput.text.trim()
             if (q.length === 0) {
@@ -204,9 +272,11 @@ Item {
                 return
             }
             // Check if input might be an expression
-            const hasMath = /[0-9]/.test(q) && (/[+\-*/^%=]|to\s+[a-z]+|sqrt|sin|cos|tan|log|pi|eur|usd|inr|gbp|km|mile|kg|lb|c\s+to\s+f/i.test(q))
+            const hasMath = /^[=]/.test(q) || (/[0-9]/.test(q) && /[+\-*/^%=()]/.test(q)) || /(sqrt|sin|cos|tan|log|ln|pi|to\s+[a-z]+)/i.test(q)
             if (hasMath) {
-                qalcProcess.command = ["qalc", "-t", q]
+                const expr = q.replace(/^=\s*/, "")
+                qalcProcess.running = false
+                qalcProcess.command = ["qalc", "-t", "-m", "500", expr]
                 qalcProcess.running = true
             } else {
                 root.calcResult = ""
@@ -219,17 +289,19 @@ Item {
         id: qalcProcess
         running: false
         stdout: StdioCollector {
-            onDataChanged: {
-                if (!data) return
-                const res = data.trim()
-                if (res.length > 0 && !res.startsWith("error") && !res.includes("syntax error")) {
-                    root.calcResult = res
-                    root.hasCalcResult = true
-                } else {
-                    root.calcResult = ""
-                    root.hasCalcResult = false
-                }
+            id: qalcCol
+            waitForEnd: true
+        }
+        onExited: {
+            const res = String(qalcCol.text || "").trim()
+            if (res.length > 0 && !res.toLowerCase().startsWith("error") && !res.toLowerCase().includes("syntax error") && !res.toLowerCase().includes("parse error")) {
+                root.calcResult = res
+                root.hasCalcResult = true
+            } else {
+                root.calcResult = ""
+                root.hasCalcResult = false
             }
+            root.rebuildResults()
         }
     }
 
@@ -243,15 +315,15 @@ Item {
             const subQ = q.startsWith("clip ") ? q.substring(5).trim() : (q.startsWith("c ") ? q.substring(2).trim() : q)
             for (let i = 0; i < root.clipboardItems.length; i++) {
                 const item = root.clipboardItems[i]
-                if (subQ.length === 0 || item.preview.toLowerCase().includes(subQ)) {
+                if (subQ.length === 0 || (item.preview && item.preview.toLowerCase().includes(subQ))) {
                     resultsModel.append({
                         itemType: "clipboard",
                         itemId: item.id,
-                        title: item.preview,
+                        title: item.preview || "",
                         subTitle: "Press Enter to copy to clipboard",
                         glyph: "content_paste",
                         iconSource: "",
-                        rawRef: item.raw
+                        rawRef: item.raw || ""
                     })
                 }
             }
@@ -280,45 +352,25 @@ Item {
             return
         }
 
-        // 3. System Actions match (for All tab)
-        if (root.currentTab === "all") {
-            for (let i = 0; i < root.systemActions.length; i++) {
-                const act = root.systemActions[i]
-                if (q.length === 0 || act.title.toLowerCase().includes(q) || act.desc.toLowerCase().includes(q)) {
-                    resultsModel.append({
-                        itemType: "action",
-                        itemId: act.id,
-                        title: act.title,
-                        subTitle: act.desc,
-                        glyph: act.glyph,
-                        iconSource: "",
-                        rawRef: ""
-                    })
-                }
-            }
-        }
-
-        // 4. Applications match (for All or Apps tab)
-        if (root.currentTab === "all" || root.currentTab === "apps") {
-            let count = 0
-            for (let i = 0; i < root.allApps.length; i++) {
-                const app = root.allApps[i]
-                const name = (app.name || "").toLowerCase()
-                const generic = (app.genericName || "").toLowerCase()
-                const comment = (app.comment || "").toLowerCase()
-                if (q.length === 0 || name.includes(q) || generic.includes(q) || comment.includes(q)) {
-                    resultsModel.append({
-                        itemType: "app",
-                        itemId: app.id || app.name,
-                        title: app.name,
-                        subTitle: app.genericName || app.comment || "Application",
-                        glyph: "apps",
-                        iconSource: app.icon ? ("image://icon/" + app.icon) : "",
-                        rawRef: ""
-                    })
-                    count++
-                    if (count > 30) break
-                }
+        // 3. Applications mode (default)
+        let count = 0
+        for (let i = 0; i < root.allApps.length; i++) {
+            const app = root.allApps[i]
+            const name = (app.name || "").toLowerCase()
+            const generic = (app.genericName || "").toLowerCase()
+            const comment = (app.comment || "").toLowerCase()
+            if (q.length === 0 || name.includes(q) || generic.includes(q) || comment.includes(q)) {
+                resultsModel.append({
+                    itemType: "app",
+                    itemId: app.id || app.name,
+                    title: app.name,
+                    subTitle: app.genericName || app.comment || "Application",
+                    glyph: "apps",
+                    iconSource: app.icon ? ("image://icon/" + app.icon) : "",
+                    rawRef: ""
+                })
+                count++
+                if (count > 30) break
             }
         }
 
@@ -326,8 +378,10 @@ Item {
     }
 
     function executeCurrentItem() {
-        // If calculation is active and Enter is pressed while index is -1 or 0
-        if (root.hasCalcResult && resultsList.currentIndex === -1) {
+        const q = searchInput.text.trim()
+        const isMathQuery = root.hasCalcResult && (/^[=]/.test(q) || /[+\-*/^%]/.test(q) || /(sqrt|sin|cos|tan|log|ln)/i.test(q))
+
+        if (root.hasCalcResult && (resultsList.currentIndex <= 0 || isMathQuery)) {
             copyCalcResult()
             return
         }
@@ -359,13 +413,13 @@ Item {
             }
         } else if (item.itemType === "clipboard") {
             root.closeRequested()
-            Quickshell.execDetached(["sh", "-c", `echo -e "${item.rawRef.replace(/"/g, '\\"')}" | cliphist decode | wl-copy`])
+            Quickshell.execDetached(["sh", "-c", "cliphist decode " + item.itemId + " | wl-copy"])
         }
     }
 
     function copyCalcResult() {
         if (!root.calcResult) return
-        Quickshell.execDetached(["sh", "-c", `printf "%s" "${root.calcResult.replace(/"/g, '\\"')}" | wl-copy`])
+        Quickshell.execDetached(["sh", "-c", "printf '%s' " + JSON.stringify(root.calcResult) + " | wl-copy"])
         root.closeRequested()
     }
 
@@ -375,7 +429,7 @@ Item {
             searchInput.text = ""
             root.calcResult = ""
             root.hasCalcResult = false
-            root.currentTab = "all"
+            root.currentTab = "apps"
             root.refreshClipboard()
             root.rebuildResults()
             searchInput.forceActiveFocus()
@@ -386,13 +440,19 @@ Item {
     Rectangle {
         id: bgCard
         anchors.fill: parent
-        radius: 16
-        color: Theme.bg
-        border.color: Qt.alpha(Theme.outline, 0.45)
+        radius: 20
+        color: Qt.rgba(Theme.m3surfaceContainer.r, Theme.m3surfaceContainer.g, Theme.m3surfaceContainer.b, root.shellOpacity)
+        border.color: Qt.alpha(Theme.outline, 0.35)
         border.width: 1
 
-        Behavior on height {
-            NumberAnimation { duration: 180; easing.type: Easing.OutQuad }
+        // Bottom flattener to cleanly merge flush with bottom of the screen
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 20
+            color: bgCard.color
+            z: 0
         }
 
         ColumnLayout {
@@ -428,7 +488,7 @@ Item {
 
                     Text {
                         anchors.fill: parent
-                        text: "Search apps, calculate, clipboard, or > commands..."
+                        text: root.currentTab === "clipboard" ? "Search clipboard history..." : (root.currentTab === "commands" ? "Search commands..." : "Search applications or calculate...")
                         font.family: "Valley Sans"
                         font.pixelSize: 15
                         color: Theme.fgFaint
@@ -455,7 +515,7 @@ Item {
                         }
                     }
                     Keys.onTabPressed: {
-                        const tabs = ["all", "apps", "clipboard", "commands"]
+                        const tabs = ["apps", "clipboard", "commands"]
                         const nextIdx = (tabs.indexOf(root.currentTab) + 1) % tabs.length
                         root.currentTab = tabs[nextIdx]
                         root.rebuildResults()
@@ -490,43 +550,122 @@ Item {
             }
 
             /* 2. Category Filter Tabs */
-            Row {
+            Item {
                 id: modeTabs
                 Layout.fillWidth: true
-                spacing: 6
+                Layout.preferredHeight: 26
 
-                Repeater {
-                    model: [
-                        { id: "all", label: "All" },
-                        { id: "apps", label: "Applications" },
-                        { id: "clipboard", label: "Clipboard" },
-                        { id: "commands", label: "Commands" }
-                    ]
+                // Animated sliding background indicator pill
+                Rectangle {
+                    id: tabIndicator
+                    y: 1
+                    height: 24
+                    radius: 12
+                    color: Qt.alpha(Theme.accent, 0.22)
+                    border.color: Qt.alpha(Theme.accent, 0.7)
+                    border.width: 1
+                    x: {
+                        if (root.currentTab === "clipboard") return tabClip.x
+                        if (root.currentTab === "commands") return tabCmd.x
+                        return tabApps.x
+                    }
+                    width: {
+                        if (root.currentTab === "clipboard") return tabClip.width
+                        if (root.currentTab === "commands") return tabCmd.width
+                        return tabApps.width
+                    }
 
-                    delegate: Rectangle {
-                        required property var modelData
-                        width: tabText.implicitWidth + 16
-                        height: 24
-                        radius: 12
-                        color: root.currentTab === modelData.id ? Qt.alpha(Theme.accent, 0.2) : Qt.alpha(Theme.fg, 0.05)
-                        border.color: root.currentTab === modelData.id ? Theme.accent : "transparent"
-                        border.width: 1
+                    Behavior on x {
+                        NumberAnimation {
+                            duration: 180
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                    Behavior on width {
+                        NumberAnimation {
+                            duration: 180
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                }
+
+                Row {
+                    anchors.fill: parent
+                    spacing: 6
+
+                    Item {
+                        id: tabApps
+                        width: tabAppsText.implicitWidth + 20
+                        height: 26
 
                         Text {
-                            id: tabText
+                            id: tabAppsText
                             anchors.centerIn: parent
-                            text: parent.modelData.label
+                            text: "Applications"
                             font.family: "Valley Sans"
                             font.pixelSize: 10
-                            font.weight: root.currentTab === parent.modelData.id ? Font.Bold : Font.Normal
-                            color: root.currentTab === parent.modelData.id ? Theme.accent : Theme.fgDim
+                            font.weight: root.currentTab === "apps" ? Font.Bold : Font.Normal
+                            color: root.currentTab === "apps" ? Theme.accent : Theme.fgDim
+                            Behavior on color { ColorAnimation { duration: 150 } }
                         }
 
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                root.currentTab = parent.modelData.id
+                                root.currentTab = "apps"
+                                root.rebuildResults()
+                            }
+                        }
+                    }
+
+                    Item {
+                        id: tabClip
+                        width: tabClipText.implicitWidth + 20
+                        height: 26
+
+                        Text {
+                            id: tabClipText
+                            anchors.centerIn: parent
+                            text: "Clipboard"
+                            font.family: "Valley Sans"
+                            font.pixelSize: 10
+                            font.weight: root.currentTab === "clipboard" ? Font.Bold : Font.Normal
+                            color: root.currentTab === "clipboard" ? Theme.accent : Theme.fgDim
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                root.currentTab = "clipboard"
+                                root.rebuildResults()
+                            }
+                        }
+                    }
+
+                    Item {
+                        id: tabCmd
+                        width: tabCmdText.implicitWidth + 20
+                        height: 26
+
+                        Text {
+                            id: tabCmdText
+                            anchors.centerIn: parent
+                            text: "Commands"
+                            font.family: "Valley Sans"
+                            font.pixelSize: 10
+                            font.weight: root.currentTab === "commands" ? Font.Bold : Font.Normal
+                            color: root.currentTab === "commands" ? Theme.accent : Theme.fgDim
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                root.currentTab = "commands"
                                 root.rebuildResults()
                             }
                         }
@@ -618,11 +757,15 @@ Item {
                 id: resultsList
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.preferredHeight: Math.min(340, resultsModel.count * 48)
+                Layout.preferredHeight: Math.min(240, resultsModel.count * 48)
+                Layout.minimumHeight: resultsModel.count > 0 ? Math.min(240, resultsModel.count * 48) : 0
                 clip: true
                 spacing: 4
+                boundsBehavior: Flickable.StopAtBounds
                 model: resultsModel
                 visible: resultsModel.count > 0
+                opacity: root.tabContentOpacity
+                transform: Translate { y: root.tabContentY }
 
                 delegate: Rectangle {
                     id: rowDelegate
@@ -721,6 +864,23 @@ Item {
                 }
             }
 
+            /* Empty State Placeholder */
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 48
+                visible: resultsModel.count === 0 && !root.hasCalcResult
+                opacity: root.tabContentOpacity
+                transform: Translate { y: root.tabContentY }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: root.currentTab === "clipboard" ? "Clipboard is empty" : (root.currentTab === "commands" ? "No commands found" : "No applications found")
+                    font.family: "Valley Sans"
+                    font.pixelSize: 12
+                    color: Theme.fgDim
+                }
+            }
+
             /* 5. Footer Shortcuts */
             RowLayout {
                 Layout.fillWidth: true
@@ -728,7 +888,7 @@ Item {
                 spacing: 12
 
                 Text {
-                    text: resultsModel.count + " results"
+                    text: resultsModel.count === 1 ? "1 result" : (resultsModel.count + " results")
                     font.family: "Valley Sans"
                     font.pixelSize: 9
                     color: Theme.fgFaint

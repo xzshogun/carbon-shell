@@ -40,8 +40,6 @@ DynamicIslandPill DynamicIslandPill.qml
 SpotlightModal SpotlightModal.qml
 AmbientEdgeGlow AmbientEdgeGlow.qml
 WallpaperTransition WallpaperTransition.qml
-AtomicValenceBar AtomicValenceBar.qml
-AtomicOrb AtomicOrb.qml
 KineticShardBar KineticShardBar.qml
 NucleusHub NucleusHub.qml
 NucleusTransitionOverlay NucleusTransitionOverlay.qml

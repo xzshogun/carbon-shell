@@ -16,8 +16,11 @@ import urllib.request
 import urllib.parse
 import subprocess
 
-WALLPAPER_DIR = os.path.expanduser("~/Pictures/Wallpapers")
-WP_APPLY_SCRIPT = os.path.expanduser("~/.config/hypr/scripts/wp-apply.sh")
+CARBON_CONFIG_DIR = os.environ.get("CARBON_CONFIG_DIR", os.path.expanduser("~/.config/carbon"))
+WP_APPLY_SCRIPT = os.path.join(CARBON_CONFIG_DIR, "scripts", "wp-apply.sh")
+if not os.path.isfile(WP_APPLY_SCRIPT):
+    WP_APPLY_SCRIPT = os.path.expanduser("~/.config/hypr/scripts/wp-apply.sh")
+
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
 
 

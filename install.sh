@@ -1,324 +1,672 @@
 #!/usr/bin/env bash
 # ==============================================================================
-#  Carbon Shell Installer
-#  Created by Kazu — Special thanks to reduct.sh
+# Carbon Shell — Interactive Installer
 # ==============================================================================
 
-set -e
+set -euo pipefail
 
-RED="\033[1;31m"
-GREEN="\033[1;32m"
-YELLOW="\033[1;33m"
-BLUE="\033[1;34m"
-MAGENTA="\033[1;35m"
-CYAN="\033[1;36m"
-WHITE="\033[1;37m"
-RESET="\033[0m"
-
+# Directory locations
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKUP_DIR="${HOME}/.config/carbon_backup_$(date +%Y%m%d_%H%M%S)"
+CONFIG_DIR="${CARBON_CONFIG_DIR:-$HOME/.config/carbon}"
+HYPR_CONFIG_DIR="$HOME/.config/hypr"
+QUICKSHELL_DIR="$HOME/.local/share/quickshell/carbon"
+BIN_DIR="$HOME/.local/bin"
+SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
+DEFAULT_WALLPAPER_DIR="$HOME/Pictures/Wallpapers"
+TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+BACKUP_DIR="${HOME}/.config/carbon_backup_${TIMESTAMP}"
 
-echo -e "${CYAN}"
-cat << "BANNER"
-   ______           __                   _____ __          ____
-  / ____/___ ______/ /_  ____  ____     / ___// /_  ___   / / /
- / /   / __ `/ ___/ __ \/ __ \/ __ \    \__ \/ __ \/ _ \ / / / 
-/ /___/ /_/ / /  / /_/ / /_/ / / / /   ___/ / / / /  __// / /  
-\____/\__,_/_/  /_.___/\____/_/ /_/   /____/_/ /_/\___//_/_/   
-                                                               
-      Atom-Fluid Hyprland Desktop Environment & Config
-BANNER
-echo -e "${RESET}"
-echo -e "${WHITE}Created by ${CYAN}Kazu${WHITE} — Special thanks to ${MAGENTA}reduct.sh${RESET}\n"
+# Flags
+AUTO_YES=0
+NO_DEPS=0
+NO_RELOAD=0
+KEYBIND_MODE="" # "carbon" or "keep"
+CUSTOM_BACKUP=""
 
-# ------------------------------------------------------------------------------
-# 1. Distro Detection
-# ------------------------------------------------------------------------------
-echo -e "${BLUE}[1/5]${RESET} Checking system environment..."
-DISTRO="unknown"
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    DISTRO=$ID
+# Colors
+if [[ -t 1 ]]; then
+    C_BLUE="\033[1;34m"
+    C_GREEN="\033[1;32m"
+    C_YELLOW="\033[1;33m"
+    C_RED="\033[1;31m"
+    C_CYAN="\033[1;36m"
+    C_BOLD="\033[1m"
+    C_DIM="\033[2m"
+    C_RESET="\033[0m"
+else
+    C_BLUE=""
+    C_GREEN=""
+    C_YELLOW=""
+    C_RED=""
+    C_CYAN=""
+    C_BOLD=""
+    C_DIM=""
+    C_RESET=""
 fi
-echo -e "      Detected distribution: ${GREEN}${DISTRO}${RESET}"
+
+msg()    { printf "${C_BLUE}::${C_RESET} ${C_BOLD}%s${C_RESET}\n" "$*"; }
+info()   { printf " ${C_GREEN}->${C_RESET} %s\n" "$*"; }
+warn()   { printf " ${C_YELLOW}!${C_RESET} %s\n" "$*"; }
+err()    { printf " ${C_RED}error:${C_RESET} %s\n" "$*" >&2; }
+ok()     { printf "   ${C_GREEN}[✓]${C_RESET} %s\n" "$*"; }
+fail()   { printf "   ${C_RED}[✗]${C_RESET} %s\n" "$*"; }
+notice() { printf "   ${C_YELLOW}[!]${C_RESET} %s\n" "$*"; }
+die()    { err "$@"; exit 1; }
+
+prompt_confirm() {
+    local prompt_msg="$1"
+    local default_val="${2:-Y}" # Y or N
+    local choice=""
+
+    if [[ "$AUTO_YES" -eq 1 || ! -t 0 ]]; then
+        [[ "$default_val" =~ ^[Yy]$ ]] && return 0 || return 1
+    fi
+
+    printf "${prompt_msg}" >&2
+    read -r choice
+    choice="${choice:-$default_val}"
+    [[ "$choice" =~ ^[Yy]$ ]] && return 0 || return 1
+}
+
+prompt_choice() {
+    local prompt_msg="$1"
+    local default_val="$2"
+    local choice=""
+
+    if [[ "$AUTO_YES" -eq 1 || ! -t 0 ]]; then
+        echo "$default_val"
+        return
+    fi
+
+    printf "${prompt_msg}" >&2
+    read -r choice
+    echo "${choice:-$default_val}"
+}
+
+usage() {
+    cat << EOF
+Usage: ./install.sh [OPTIONS]
+
+Interactive installer for Carbon Shell. Sets up the isolated Carbon runtime
+environment, Quickshell components, scripts, and keybindings without overwriting
+existing user configurations.
+
+Options:
+  -u, --update             Run updater (or ./update.sh)
+  -y, --yes                Non-interactive mode (accept all defaults)
+      --keybinds=<MODE>    Keybinding mode: 'carbon' (full) or 'keep' (shell-only)
+      --no-deps            Skip package manager dependency checking and installation
+      --no-reload          Do not restart Quickshell or reload Hyprland after install
+      --backup-dir <DIR>   Specify custom backup directory
+  -h, --help               Show this help message and exit
+
+Examples:
+  ./install.sh                      # Guided interactive installation
+  ./install.sh -y --keybinds=keep   # Non-interactive install keeping current keybinds
+  ./install.sh --update             # Update existing installation
+EOF
+    exit 0
+}
+
+# Parse options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            usage
+            ;;
+        -u|--update)
+            if [[ -x "$REPO_DIR/update.sh" ]]; then
+                exec "$REPO_DIR/update.sh" "${@:2}"
+            elif [[ -x "$REPO_DIR/carbon-update" ]]; then
+                exec "$REPO_DIR/carbon-update" "${@:2}"
+            elif command -v carbon-update >/dev/null 2>&1; then
+                exec carbon-update "${@:2}"
+            else
+                die "Updater script not found."
+            fi
+            ;;
+        -y|--yes)
+            AUTO_YES=1
+            shift
+            ;;
+        --keybinds=*)
+            KEYBIND_MODE="${1#*=}"
+            shift
+            ;;
+        --keybinds)
+            [[ -n "${2:-}" ]] || die "Option --keybinds requires an argument ('carbon' or 'keep')"
+            KEYBIND_MODE="$2"
+            shift 2
+            ;;
+        --no-deps)
+            NO_DEPS=1
+            shift
+            ;;
+        --no-reload)
+            NO_RELOAD=1
+            shift
+            ;;
+        --backup-dir)
+            [[ -n "${2:-}" ]] || die "Option --backup-dir requires a path argument"
+            CUSTOM_BACKUP="$2"
+            shift 2
+            ;;
+        *)
+            die "Unknown option: $1 (run with --help for usage)"
+            ;;
+    esac
+done
+
+if [[ -n "$CUSTOM_BACKUP" ]]; then
+    BACKUP_DIR="$CUSTOM_BACKUP"
+fi
+
+if [[ -n "$KEYBIND_MODE" && "$KEYBIND_MODE" != "carbon" && "$KEYBIND_MODE" != "keep" ]]; then
+    die "Invalid keybinding mode: '$KEYBIND_MODE'. Must be 'carbon' or 'keep'."
+fi
+
+# ==============================================================================
+# Header & Welcome
+# ==============================================================================
+printf "\n"
+msg "Carbon Shell — Desktop Environment Setup"
+printf "   ${C_DIM}Repository: %s${C_RESET}\n" "$REPO_DIR"
+printf "   ${C_DIM}Target:     %s${C_RESET}\n\n" "$CONFIG_DIR"
 
 # ------------------------------------------------------------------------------
-# 2. Dependency Checking
+# 1. Existing Installation Detection
 # ------------------------------------------------------------------------------
-echo -e "\n${BLUE}[2/5]${RESET} Checking dependencies..."
+if [[ -d "$CONFIG_DIR" && -z "$KEYBIND_MODE" && "$AUTO_YES" -eq 0 ]]; then
+    warn "Existing Carbon Shell installation detected at $CONFIG_DIR"
+    printf "\n  How would you like to proceed?\n"
+    printf "    ${C_BOLD}[1] Update existing installation${C_RESET} (Preserves your custom configs & keybindings)\n"
+    printf "    ${C_BOLD}[2] Reinstall / Fresh setup${C_RESET}      (Creates backup in ~/.config/carbon_backup_...)\n"
+    printf "    ${C_BOLD}[3] Cancel${C_RESET}\n\n"
 
-DEPENDENCIES=(
-    "hyprland"
-    "quickshell"
-    "matugen"
-    "python3"
-    "playerctl"
-    "fastfetch"
-    "grim"
-    "slurp"
-    "socat"
-    "jq"
-    "brightnessctl"
-    "pipewire"
-    "wireplumber"
-    "wpctl"
-)
+    EXISTING_CHOICE="$(prompt_choice "  Select option [1-3] (Default: 1): " "1")"
+    case "$EXISTING_CHOICE" in
+        1)
+            info "Launching Carbon Shell updater..."
+            if [[ -x "$REPO_DIR/update.sh" ]]; then
+                exec "$REPO_DIR/update.sh"
+            elif [[ -x "$REPO_DIR/carbon-update" ]]; then
+                exec "$REPO_DIR/carbon-update"
+            else
+                die "Updater script not found."
+            fi
+            ;;
+        2)
+            info "Proceeding with fresh installation and configuration backup."
+            ;;
+        *)
+            info "Installation cancelled."
+            exit 0
+            ;;
+    esac
+fi
 
-MISSING_DEPS=()
-for dep in "${DEPENDENCIES[@]}"; do
-    if ! command -v "$dep" >/dev/null 2>&1; then
-        MISSING_DEPS+=("$dep")
+# ------------------------------------------------------------------------------
+# 2. Distro Detection
+# ------------------------------------------------------------------------------
+msg "Detecting system distribution..."
+DISTRO_ID="unknown"
+DISTRO_LIKE=""
+DISTRO_NAME="Linux"
+
+if [[ -f /etc/os-release ]]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    DISTRO_ID="${ID:-unknown}"
+    DISTRO_LIKE="${ID_LIKE:-}"
+    DISTRO_NAME="${PRETTY_NAME:-$NAME}"
+fi
+
+info "Detected distribution: $DISTRO_NAME ($DISTRO_ID)"
+
+# ------------------------------------------------------------------------------
+# 3. Interactive Dependency Check & Package Installation
+# ------------------------------------------------------------------------------
+if [[ "$NO_DEPS" -eq 0 ]]; then
+    msg "Checking dependencies..."
+
+    CORE_DEPS=(
+        "hyprland"
+        "quickshell"
+        "python3"
+        "playerctl"
+        "brightnessctl"
+        "grim"
+        "slurp"
+        "socat"
+        "jq"
+        "fastfetch"
+    )
+
+    MISSING_CORE=()
+    for cmd in "${CORE_DEPS[@]}"; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            MISSING_CORE+=("$cmd")
+            fail "$cmd"
+        else
+            ok "$cmd"
+        fi
+    done
+
+    # Python module check
+    PYTHON_MODULES=("PIL" "gi")
+    MISSING_PY_MODS=()
+    for mod in "${PYTHON_MODULES[@]}"; do
+        if ! python3 -c "import $mod" >/dev/null 2>&1; then
+            MISSING_PY_MODS+=("$mod")
+            notice "python module: $mod (missing)"
+        else
+            ok "python module: $mod"
+        fi
+    done
+
+    if [[ ${#MISSING_CORE[@]} -gt 0 || ${#MISSING_PY_MODS[@]} -gt 0 ]]; then
+        warn "Some required or recommended dependencies are missing."
+        printf "\n"
+        if prompt_confirm "  Would you like to install missing dependencies via system package manager? [Y/n]: " "Y"; then
+            case "$DISTRO_ID" in
+                arch|cachyos|endeavouros|manjaro|artix)
+                    info "Installing packages for Arch Linux..."
+                    AUR_HELPER=""
+                    if command -v yay >/dev/null 2>&1; then AUR_HELPER="yay";
+                    elif command -v paru >/dev/null 2>&1; then AUR_HELPER="paru"; fi
+
+                    ARCH_PKGS=(
+                        hyprland quickshell python python-pillow python-gobject
+                        gtk4 libadwaita cava playerctl brightnessctl grim slurp
+                        socat jq fastfetch pipewire wireplumber
+                        ttf-jetbrains-mono-nerd ttf-material-symbols-variable
+                    )
+
+                    if [[ -n "$AUR_HELPER" ]]; then
+                        "$AUR_HELPER" -S --needed --noconfirm "${ARCH_PKGS[@]}" || true
+                    else
+                        sudo pacman -S --needed --noconfirm "${ARCH_PKGS[@]}" || true
+                    fi
+                    ;;
+                fedora|nobara|centos|rhel)
+                    info "Installing packages via dnf..."
+                    FEDORA_PKGS=(
+                        hyprland python3 python3-pillow python3-gobject
+                        gtk4 libadwaita cava playerctl brightnessctl grim slurp
+                        socat jq fastfetch pipewire wireplumber
+                    )
+                    sudo dnf install -y "${FEDORA_PKGS[@]}" || true
+                    if ! command -v quickshell >/dev/null 2>&1; then
+                        warn "Quickshell is not available in official Fedora repos."
+                        info "Please install Quickshell via COPR or build from source:"
+                        info "https://git.outfoxxed.me/outfoxxed/quickshell"
+                    fi
+                    ;;
+                ubuntu|debian|pop|linuxmint|elementary)
+                    info "Installing packages via apt..."
+                    DEBIAN_PKGS=(
+                        python3 python3-pil python3-gi gir1.2-gtk-4.0 gir1.2-adw-1
+                        cava playerctl brightnessctl grim slurp socat jq fastfetch
+                        pipewire wireplumber
+                    )
+                    sudo apt-get update -qq || true
+                    sudo apt-get install -y "${DEBIAN_PKGS[@]}" || true
+                    if ! command -v quickshell >/dev/null 2>&1; then
+                        warn "Quickshell must be installed or built manually on Debian/Ubuntu:"
+                        info "https://git.outfoxxed.me/outfoxxed/quickshell"
+                    fi
+                    ;;
+                opensuse*|suse)
+                    info "Installing packages via zypper..."
+                    SUSE_PKGS=(
+                        hyprland python3 python3-Pillow python3-gobject
+                        gtk4 libadwaita playerctl brightnessctl grim slurp socat jq
+                    )
+                    sudo zypper --non-interactive install "${SUSE_PKGS[@]}" || true
+                    ;;
+                void)
+                    info "Installing packages via xbps-install..."
+                    VOID_PKGS=(
+                        hyprland python3 python3-Pillow python3-gobject
+                        gtk4 libadwaita playerctl brightnessctl grim slurp socat jq
+                    )
+                    sudo xbps-install -Syu -y "${VOID_PKGS[@]}" || true
+                    ;;
+                alpine)
+                    info "Installing packages via apk..."
+                    APK_PKGS=(
+                        hyprland python3 py3-pillow py3-gobject3
+                        gtk4 libadwaita playerctl brightnessctl grim slurp socat jq
+                    )
+                    sudo apk add "${APK_PKGS[@]}" || true
+                    ;;
+                nixos)
+                    info "NixOS detected. Ensure quickshell, hyprland, and python packages are enabled in configuration.nix or home-manager."
+                    ;;
+                *)
+                    warn "Unrecognized distribution. Please install required dependencies manually."
+                    ;;
+            esac
+        else
+            info "Skipping automatic package installation as requested."
+        fi
+    else
+        ok "All primary dependencies are present."
+    fi
+else
+    info "Skipping dependency checks (--no-deps specified)."
+fi
+
+# ------------------------------------------------------------------------------
+# 4. Safe Non-Destructive Backup
+# ------------------------------------------------------------------------------
+if [[ -d "$CONFIG_DIR" || -d "$QUICKSHELL_DIR" ]]; then
+    msg "Creating safety backup of existing configurations..."
+    mkdir -p "$BACKUP_DIR"
+    if [[ -d "$CONFIG_DIR" ]]; then
+        cp -rf "$CONFIG_DIR" "$BACKUP_DIR/carbon_config"
+        ok "Backed up $CONFIG_DIR to $BACKUP_DIR/carbon_config"
+    fi
+    if [[ -d "$QUICKSHELL_DIR" ]]; then
+        cp -rf "$QUICKSHELL_DIR" "$BACKUP_DIR/quickshell_carbon"
+        ok "Backed up $QUICKSHELL_DIR to $BACKUP_DIR/quickshell_carbon"
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 5. Interactive Keybinding Selection
+# ------------------------------------------------------------------------------
+msg "Keybinding configuration"
+
+if [[ -z "$KEYBIND_MODE" ]]; then
+    printf "\n  Select your preferred keybinding profile:\n\n"
+    printf "    ${C_BOLD}[1] Full Carbon Keybindings${C_RESET} (Recommended)\n"
+    printf "        Complete desktop experience with dedicated shortcuts:\n"
+    printf "        - Super + Return  : Terminal (kitty)\n"
+    printf "        - Super + Tab     : Workspace & Window Overview\n"
+    printf "        - Super + Space   : Application Launcher\n"
+    printf "        - Super + C       : Carbon Settings GUI\n"
+    printf "        - Super + 1..0    : Workspace switching & window movement\n"
+    printf "        - Super + L       : Lock screen with atomic visualizer\n\n"
+    printf "    ${C_BOLD}[2] Keep Existing Keybindings${C_RESET}\n"
+    printf "        Keeps all your current window & app shortcuts untouched.\n"
+    printf "        Only registers non-conflicting Carbon shell triggers:\n"
+    printf "        - Super + C       : Carbon Settings GUI\n"
+    printf "        - Super + Tab     : Workspace & Window Overview\n"
+    printf "        - Super + Space   : Application Launcher\n"
+    printf "        - Super + N       : Wallpaper Picker\n"
+    printf "        - Super + T       : Pomodoro Timer\n"
+    printf "        - Super + L       : Lock screen\n\n"
+    printf "  ${C_DIM}(You can switch between profiles anytime in Carbon Settings: Super + C)${C_RESET}\n\n"
+
+    KB_SELECTION="$(prompt_choice "  Select profile [1/2] (Default: 1): " "1")"
+    case "$KB_SELECTION" in
+        2|keep|minimal)
+            KEYBIND_MODE="keep"
+            ;;
+        *)
+            KEYBIND_MODE="carbon"
+            ;;
+    esac
+fi
+
+info "Selected profile: $KEYBIND_MODE"
+
+# ------------------------------------------------------------------------------
+# 6. Deploy Isolated Configuration (~/.config/carbon) — Zero Symlinks
+# ------------------------------------------------------------------------------
+msg "Deploying isolated configuration to $CONFIG_DIR..."
+mkdir -p "$CONFIG_DIR/scripts"
+
+# Save repository path for carbon-update
+echo "$REPO_DIR" > "$CONFIG_DIR/repo_path"
+
+# Copy runtime scripts (Direct copy, NO symlinks)
+cp -rf "$REPO_DIR/hypr/scripts/"* "$CONFIG_DIR/scripts/"
+chmod +x "$CONFIG_DIR/scripts/"* 2>/dev/null || true
+ok "Copied runtime scripts to $CONFIG_DIR/scripts"
+
+# Deploy windowrules and looknfeel
+cp -f "$REPO_DIR/hypr/windowrules.conf" "$CONFIG_DIR/windowrules.conf"
+if [[ -f "$REPO_DIR/hypr/looknfeel.conf" ]]; then
+    cp -f "$REPO_DIR/hypr/looknfeel.conf" "$CONFIG_DIR/looknfeel.conf"
+fi
+
+# Deploy keybinding templates
+# Always provide both so the Settings app can switch between them anytime
+cp -f "$REPO_DIR/hypr/keybinds.conf" "$CONFIG_DIR/keybinds.conf"
+cp -f "$REPO_DIR/hypr/keybinds-shell-only.conf" "$CONFIG_DIR/keybinds-shell-only.conf"
+
+# Deploy colors template if not already present
+if [[ ! -f "$CONFIG_DIR/colors.conf" && -f "$REPO_DIR/hypr/colors.conf" ]]; then
+    cp -f "$REPO_DIR/hypr/colors.conf" "$CONFIG_DIR/colors.conf"
+fi
+
+# Generate carbon.conf with the chosen keybinding source
+cat << EOF > "$CONFIG_DIR/carbon.conf"
+# ==============================================================================
+# Carbon Shell — Hyprland Environment Integration
+# Automatically loaded by ~/.config/hypr/hyprland.conf
+# ==============================================================================
+
+# Isolated Config Environment
+env = CARBON_CONFIG_DIR,\$HOME/.config/carbon
+
+# Dynamic Material You Theme Colors
+source = ~/.config/carbon/colors.conf
+
+# Window & Layer Rules (Blur for QuickSettings, Overview, Island)
+source = ~/.config/carbon/windowrules.conf
+
+# Keybindings:
+# Managed live from Carbon Settings App (Super + C) or by editing this line:
+# - Full Carbon keybindings: source = ~/.config/carbon/keybinds.conf
+# - Keep your own keybindings: source = ~/.config/carbon/keybinds-shell-only.conf
+EOF
+
+if [[ "$KEYBIND_MODE" == "keep" ]]; then
+    echo "source = ~/.config/carbon/keybinds-shell-only.conf" >> "$CONFIG_DIR/carbon.conf"
+else
+    echo "source = ~/.config/carbon/keybinds.conf" >> "$CONFIG_DIR/carbon.conf"
+fi
+
+cat << EOF >> "$CONFIG_DIR/carbon.conf"
+
+# Autostart Carbon Quickshell Service
+exec-once = systemctl --user start carbon-quickshell.service
+EOF
+
+ok "Generated $CONFIG_DIR/carbon.conf"
+
+# ------------------------------------------------------------------------------
+# 7. Non-Destructive Hyprland Integration
+# ------------------------------------------------------------------------------
+msg "Integrating with Hyprland..."
+mkdir -p "$HYPR_CONFIG_DIR"
+
+HYPR_MAIN_CONF="$HYPR_CONFIG_DIR/hyprland.conf"
+CARBON_SOURCE_LINE="source = ~/.config/carbon/carbon.conf"
+
+if [[ -f "$HYPR_MAIN_CONF" ]]; then
+    if grep -Fq "$CARBON_SOURCE_LINE" "$HYPR_MAIN_CONF"; then
+        ok "Carbon Shell is already sourced in $HYPR_MAIN_CONF"
+    else
+        printf "\n# Carbon Shell Integration\n%s\n" "$CARBON_SOURCE_LINE" >> "$HYPR_MAIN_CONF"
+        ok "Safely appended source entry to $HYPR_MAIN_CONF"
+    fi
+else
+    cat << EOF > "$HYPR_MAIN_CONF"
+# ==============================================================================
+# Hyprland Main Configuration
+# Autogenerated by Carbon Shell Installer
+# ==============================================================================
+
+source = ~/.config/carbon/carbon.conf
+EOF
+    ok "Created starter $HYPR_MAIN_CONF"
+fi
+
+# ------------------------------------------------------------------------------
+# 8. Deploy Quickshell Components (Zero Symlinks)
+# ------------------------------------------------------------------------------
+msg "Deploying Quickshell components..."
+mkdir -p "$QUICKSHELL_DIR"
+cp -rf "$REPO_DIR/quickshell/carbon/"* "$QUICKSHELL_DIR/"
+ok "Quickshell assets deployed to $QUICKSHELL_DIR"
+
+# ------------------------------------------------------------------------------
+# 9. Wallpapers & Initial Color Scheme (Zero Symlinks)
+# ------------------------------------------------------------------------------
+msg "Configuring wallpaper and theme..."
+mkdir -p "$DEFAULT_WALLPAPER_DIR"
+
+DEFAULT_WP_SRC="$REPO_DIR/assets/wallpapers/default.png"
+DEFAULT_WP_DEST="$DEFAULT_WALLPAPER_DIR/wallhaven-6ly7yw.png"
+
+SET_DEFAULT_WP=1
+if [[ -f "$CONFIG_DIR/current_wallpaper" && "$AUTO_YES" -eq 0 ]]; then
+    if ! prompt_confirm "  Configure Carbon default wallpaper? [Y/n]: " "Y"; then
+        SET_DEFAULT_WP=0
+    fi
+fi
+
+if [[ "$SET_DEFAULT_WP" -eq 1 ]]; then
+    if [[ -f "$DEFAULT_WP_SRC" && ! -f "$DEFAULT_WP_DEST" ]]; then
+        cp -f "$DEFAULT_WP_SRC" "$DEFAULT_WP_DEST"
+    fi
+
+    if [[ -f "$DEFAULT_WP_DEST" ]]; then
+        cp -f "$DEFAULT_WP_DEST" "$CONFIG_DIR/current_wallpaper"
+        echo "$DEFAULT_WP_DEST" > "$CONFIG_DIR/current_wallpaper_path"
+        ok "Configured default wallpaper: $DEFAULT_WP_DEST"
+    elif [[ -f "$DEFAULT_WP_SRC" ]]; then
+        cp -f "$DEFAULT_WP_SRC" "$CONFIG_DIR/current_wallpaper"
+        echo "$DEFAULT_WP_SRC" > "$CONFIG_DIR/current_wallpaper_path"
+        ok "Configured default wallpaper from repository assets"
+    fi
+
+    # Run theme generator
+    if [[ -f "$CONFIG_DIR/scripts/theme-mk.py" ]]; then
+        info "Generating initial theme colors..."
+        python3 "$CONFIG_DIR/scripts/theme-mk.py" >/dev/null 2>&1 || true
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 10. Install Fonts
+# ------------------------------------------------------------------------------
+if [[ -d "$REPO_DIR/fonts" ]]; then
+    msg "Installing custom fonts..."
+    USER_FONT_DIR="$HOME/.local/share/fonts"
+    mkdir -p "$USER_FONT_DIR"
+    cp -f "$REPO_DIR/fonts/"*.ttf "$USER_FONT_DIR/" 2>/dev/null || true
+    if command -v fc-cache >/dev/null 2>&1; then
+        fc-cache -f >/dev/null 2>&1 || true
+    fi
+    ok "Installed fonts to $USER_FONT_DIR"
+fi
+
+# ------------------------------------------------------------------------------
+# 11. Deploy User Binaries (~/.local/bin)
+# ------------------------------------------------------------------------------
+msg "Deploying user binaries to $BIN_DIR..."
+mkdir -p "$BIN_DIR"
+
+# Install updater
+if [[ -f "$REPO_DIR/update.sh" ]]; then
+    cp -f "$REPO_DIR/update.sh" "$BIN_DIR/carbon-update"
+    cp -f "$REPO_DIR/update.sh" "$BIN_DIR/carbon-shell-update"
+elif [[ -f "$REPO_DIR/carbon-update" ]]; then
+    cp -f "$REPO_DIR/carbon-update" "$BIN_DIR/carbon-update"
+    cp -f "$REPO_DIR/carbon-update" "$BIN_DIR/carbon-shell-update"
+fi
+chmod +x "$BIN_DIR/carbon-update" "$BIN_DIR/carbon-shell-update" 2>/dev/null || true
+
+# Install launchers
+cp -f "$CONFIG_DIR/scripts/carbon-config-editor" "$BIN_DIR/carbon-config-editor"
+cp -f "$CONFIG_DIR/scripts/carbon-pomodoro" "$BIN_DIR/carbon-pomodoro"
+
+# Install screenshot tools
+for s in "$CONFIG_DIR/scripts/carbon-screenshot-"*.sh; do
+    if [[ -f "$s" ]]; then
+        base="$(basename "$s" .sh)"
+        cp -f "$s" "$BIN_DIR/$base"
+        cp -f "$s" "$BIN_DIR/$base.sh"
     fi
 done
 
-if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
-    echo -e "      ${YELLOW}Notice: The following optional/required utilities are missing:${RESET}"
-    for m in "${MISSING_DEPS[@]}"; do
-        echo -e "        - ${RED}${m}${RESET}"
-    done
-    
-    if [ "$DISTRO" = "arch" ] || [ "$DISTRO" = "cachyos" ] || [ "$DISTRO" = "endeavouros" ] || [ "$DISTRO" = "manjaro" ]; then
-        echo -e "\n      ${CYAN}Would you like to attempt installing missing dependencies now? [y/N]${RESET} "
-        read -r -p "      > " install_choice
-        if [[ "$install_choice" =~ ^[Yy]$ ]]; then
-            AUR_HELPER=""
-            if command -v yay >/dev/null 2>&1; then
-                AUR_HELPER="yay"
-            elif command -v paru >/dev/null 2>&1; then
-                AUR_HELPER="paru"
-            fi
-            
-            if [ -n "$AUR_HELPER" ]; then
-                echo -e "      Installing via ${AUR_HELPER}..."
-                $AUR_HELPER -S --needed --noconfirm "${MISSING_DEPS[@]}" python-pillow python-gobject gtk4 libadwaita cava ttf-jetbrains-mono-nerd ttf-material-symbols-variable alsa-utils brightnessctl || true
-            else
-                echo -e "      Installing official packages via sudo pacman..."
-                sudo pacman -S --needed --noconfirm "${MISSING_DEPS[@]}" python-pillow python-gobject gtk4 libadwaita alsa-utils brightnessctl || true
-            fi
-        fi
-    else
-        echo -e "      ${YELLOW}Please ensure missing dependencies are installed via your package manager.${RESET}"
+chmod +x "$BIN_DIR/carbon-"* 2>/dev/null || true
+ok "Installed binaries in $BIN_DIR"
+
+# ------------------------------------------------------------------------------
+# 12. Optional Configs (Fastfetch & Desktop Portals)
+# ------------------------------------------------------------------------------
+if [[ -d "$REPO_DIR/fastfetch" && ! -d "$HOME/.config/fastfetch" ]]; then
+    mkdir -p "$HOME/.config/fastfetch"
+    cp -rf "$REPO_DIR/fastfetch/"* "$HOME/.config/fastfetch/" 2>/dev/null || true
+fi
+
+if [[ -d "$REPO_DIR/xdg-desktop-portal" && ! -d "$HOME/.config/xdg-desktop-portal" ]]; then
+    mkdir -p "$HOME/.config/xdg-desktop-portal"
+    cp -rf "$REPO_DIR/xdg-desktop-portal/"* "$HOME/.config/xdg-desktop-portal/" 2>/dev/null || true
+fi
+
+# ------------------------------------------------------------------------------
+# 13. Systemd User Service Configuration
+# ------------------------------------------------------------------------------
+msg "Configuring systemd user service..."
+if [[ -f "$REPO_DIR/systemd/carbon-quickshell.service" ]]; then
+    mkdir -p "$SYSTEMD_USER_DIR"
+    cp -f "$REPO_DIR/systemd/carbon-quickshell.service" "$SYSTEMD_USER_DIR/"
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user daemon-reload >/dev/null 2>&1 || true
+        systemctl --user enable carbon-quickshell.service >/dev/null 2>&1 || true
+        ok "Enabled carbon-quickshell.service"
     fi
-else
-    echo -e "      ${GREEN}All primary dependencies are present!${RESET}"
 fi
 
 # ------------------------------------------------------------------------------
-# 2.1 Hardware, Permissions & Security Diagnostics
+# 14. Audio Hardware Initialization
 # ------------------------------------------------------------------------------
-echo -e "\n${BLUE}[2.1]${RESET} Running pre-flight system & hardware diagnostics..."
-DIAG_ERRORS=()
-DIAG_WARNINGS=()
-
-# Audio & PipeWire Service Check
-if systemctl --user is-active pipewire >/dev/null 2>&1 && systemctl --user is-active wireplumber >/dev/null 2>&1; then
-    echo -e "      ${GREEN}✓${RESET} Audio Engine: PipeWire and WirePlumber active"
-else
-    DIAG_WARNINGS+=("PipeWire / WirePlumber user services are not currently active. Audio slider / mute toggles may be non-responsive.")
-    echo -e "      ${YELLOW}⚠${RESET} Audio Engine: PipeWire or WirePlumber service is inactive"
+if [[ -f "$CONFIG_DIR/scripts/carbon-audio-init.sh" ]]; then
+    bash "$CONFIG_DIR/scripts/carbon-audio-init.sh" >/dev/null 2>&1 || true
 fi
 
-# Audio Hardware Controls (amixer / wpctl)
-if command -v amixer >/dev/null 2>&1 || command -v wpctl >/dev/null 2>&1; then
-    echo -e "      ${GREEN}✓${RESET} Audio Hardware Link: ALSA / WirePlumber controller found"
-else
-    DIAG_WARNINGS+=("Neither amixer (alsa-utils) nor wpctl (wireplumber) was found. Install alsa-utils or wireplumber.")
-    echo -e "      ${YELLOW}⚠${RESET} Audio Hardware Link: Missing mixer controller"
-fi
+# ------------------------------------------------------------------------------
+# 15. Reload & Summary
+# ------------------------------------------------------------------------------
+printf "\n"
+msg "Installation complete!"
+printf "\n"
+printf "   Configuration directory : %s\n" "$CONFIG_DIR"
+printf "   Keybinding profile      : %s\n" "$KEYBIND_MODE"
+printf "   Settings GUI            : Super + C (or 'carbon-config-editor')\n"
+printf "   Single-command update   : 'carbon-update' (or './update.sh')\n"
+printf "\n"
 
-# Display Backlight & brightnessctl Permissions
-BACKLIGHT_FOUND=false
-if [ -d "/sys/class/backlight" ] && [ "$(ls -A /sys/class/backlight 2>/dev/null)" ]; then
-    BACKLIGHT_FOUND=true
-    if command -v brightnessctl >/dev/null 2>&1; then
-        if brightnessctl g >/dev/null 2>&1; then
-            echo -e "      ${GREEN}✓${RESET} Brightness Control: Hardware backlight detected and accessible"
+if [[ "$NO_RELOAD" -eq 0 ]]; then
+    if prompt_confirm "Start Carbon Quickshell and reload Hyprland now? [Y/n]: " "Y"; then
+        info "Starting Carbon services..."
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl --user restart carbon-quickshell.service >/dev/null 2>&1 || {
+                pkill -x quickshell 2>/dev/null || true
+                sleep 0.5
+                nohup quickshell --config "$QUICKSHELL_DIR" >/dev/null 2>&1 &
+            }
         else
-            DIAG_WARNINGS+=("Backlight detected but non-root write access denied. Add user to video group: sudo usermod -aG video \$USER")
-            echo -e "      ${YELLOW}⚠${RESET} Brightness Control: Permission denied for backlight write"
+            pkill -x quickshell 2>/dev/null || true
+            sleep 0.5
+            nohup quickshell --config "$QUICKSHELL_DIR" >/dev/null 2>&1 &
         fi
-    fi
-else
-    echo -e "      ${BLUE}ℹ${RESET} Brightness Control: Desktop / external monitor detected (no internal laptop backlight)"
-fi
 
-# Font Verification (Material Symbols Rounded & JetBrainsMono Nerd Font)
-if fc-list : family 2>/dev/null | grep -iq "Material Symbols Rounded"; then
-    echo -e "      ${GREEN}✓${RESET} Fonts: Material Symbols Rounded available"
-elif fc-list : family 2>/dev/null | grep -iq "Material Symbols"; then
-    echo -e "      ${GREEN}✓${RESET} Fonts: Material Symbols (generic) available"
-else
-    DIAG_WARNINGS+=("Material Symbols Rounded font is missing. Shell icons may render as raw text. Install ttf-material-symbols-variable or similar.")
-    echo -e "      ${YELLOW}⚠${RESET} Fonts: Material Symbols Rounded NOT detected"
-fi
-
-if fc-list : family 2>/dev/null | grep -iq "JetBrainsMono Nerd Font"; then
-    echo -e "      ${GREEN}✓${RESET} Fonts: JetBrainsMono Nerd Font available"
-else
-    DIAG_WARNINGS+=("JetBrainsMono Nerd Font is missing. Install ttf-jetbrains-mono-nerd for terminal & widget glyphs.")
-    echo -e "      ${YELLOW}⚠${RESET} Fonts: JetBrainsMono Nerd Font NOT detected"
-fi
-
-# PAM Authentication Check for hyprlock / lock screen
-if command -v hyprlock >/dev/null 2>&1; then
-    if [ -f "/etc/pam.d/hyprlock" ]; then
-        echo -e "      ${GREEN}✓${RESET} PAM Authentication: /etc/pam.d/hyprlock is configured"
-    elif [ -f "/etc/pam.d/system-auth" ] || [ -f "/etc/pam.d/login" ]; then
-        echo -e "      ${YELLOW}⚠${RESET} PAM Authentication: /etc/pam.d/hyprlock missing (fallback to system-auth/login)"
-        DIAG_WARNINGS+=("/etc/pam.d/hyprlock missing. Recommended fix: sudo cp /etc/pam.d/system-auth /etc/pam.d/hyprlock")
-    else
-        DIAG_ERRORS+=("No valid PAM configuration found for screen locker! Locking screen could result in lockout.")
-        echo -e "      ${RED}✗${RESET} PAM Authentication: Critical PAM configuration missing!"
-    fi
-fi
-
-# Summary Diagnostic Alert
-if [ ${#DIAG_ERRORS[@]} -gt 0 ] || [ ${#DIAG_WARNINGS[@]} -gt 0 ]; then
-    echo -e "\n  ${YELLOW}┌────────────────────────────────────────────────────────────────────────┐${RESET}"
-    echo -e "  ${YELLOW}│${RESET}  ${YELLOW}PRE-FLIGHT DIAGNOSTIC NOTICES${RESET}                                         ${YELLOW}│${RESET}"
-    echo -e "  ${YELLOW}├────────────────────────────────────────────────────────────────────────┤${RESET}"
-    for w in "${DIAG_WARNINGS[@]}"; do
-        echo -e "  ${YELLOW}│${RESET}  ${YELLOW}[WARN]${RESET} $w"
-    done
-    for e in "${DIAG_ERRORS[@]}"; do
-        echo -e "  ${YELLOW}│${RESET}  ${RED}[FAIL]${RESET} $e"
-    done
-    echo -e "  ${YELLOW}└────────────────────────────────────────────────────────────────────────┘${RESET}\n"
-    if [ ${#DIAG_ERRORS[@]} -gt 0 ]; then
-        echo -e "      ${RED}Critical pre-flight checks failed. Do you still wish to proceed? [y/N]${RESET} "
-        read -r -p "      > " proceed_choice
-        if [[ ! "$proceed_choice" =~ ^[Yy]$ ]]; then
-            echo -e "      ${RED}Installation aborted by user.${RESET}"
-            exit 1
+        if command -v hyprctl >/dev/null 2>&1; then
+            if hyprctl instances >/dev/null 2>&1; then
+                hyprctl reload >/dev/null 2>&1 || true
+                ok "Hyprland reloaded"
+            fi
         fi
-    fi
-else
-    echo -e "      ${GREEN}Pre-flight diagnostics passed with zero warnings!${RESET}"
-fi
-
-# ------------------------------------------------------------------------------
-# 3. Safe Backups
-# ------------------------------------------------------------------------------
-echo -e "\n${BLUE}[3/5]${RESET} Creating safety backup of existing configurations..."
-mkdir -p "$BACKUP_DIR"
-
-if [ -d "${HOME}/.local/share/quickshell/carbon" ]; then
-    cp -r "${HOME}/.local/share/quickshell/carbon" "${BACKUP_DIR}/quickshell_carbon"
-    echo -e "      Backed up Quickshell carbon to: ${CYAN}${BACKUP_DIR}/quickshell_carbon${RESET}"
-fi
-
-if [ -d "${HOME}/.config/hypr" ]; then
-    cp -r "${HOME}/.config/hypr" "${BACKUP_DIR}/hypr"
-    echo -e "      Backed up Hyprland configs to: ${CYAN}${BACKUP_DIR}/hypr${RESET}"
-fi
-
-if [ -d "${HOME}/.config/fastfetch" ]; then
-    cp -r "${HOME}/.config/fastfetch" "${BACKUP_DIR}/fastfetch"
-    echo -e "      Backed up Fastfetch configs to: ${CYAN}${BACKUP_DIR}/fastfetch${RESET}"
-fi
-
-# ------------------------------------------------------------------------------
-# 4. Installing Fonts & Assets
-# ------------------------------------------------------------------------------
-echo -e "\n${BLUE}[4/5]${RESET} Installing custom fonts & assets..."
-FONT_DIR="${HOME}/.local/share/fonts"
-mkdir -p "$FONT_DIR"
-if [ -d "${REPO_DIR}/fonts" ]; then
-    cp -r "${REPO_DIR}/fonts/"*.ttf "$FONT_DIR/" 2>/dev/null || true
-    echo -e "      Updating font cache..."
-    fc-cache -f >/dev/null 2>&1 || true
-    echo -e "      ${GREEN}Fonts (Valley Sans & Caveat) installed successfully.${RESET}"
-fi
-
-# Wallpapers
-WALLPAPER_DIR="${HOME}/Pictures/Wallpapers"
-mkdir -p "$WALLPAPER_DIR"
-if [ -f "${REPO_DIR}/assets/wallpapers/default.png" ]; then
-    if [ ! -f "${WALLPAPER_DIR}/wallhaven-6ly7yw.png" ]; then
-        cp "${REPO_DIR}/assets/wallpapers/default.png" "${WALLPAPER_DIR}/wallhaven-6ly7yw.png"
+        ok "Carbon Shell is now active"
     fi
 fi
 
-# ------------------------------------------------------------------------------
-# 5. Installing Shell Configurations
-# ------------------------------------------------------------------------------
-echo -e "\n${BLUE}[5/5]${RESET} Deploying Carbon Shell, Hyprland configs, and Fastfetch..."
-
-# Deploy Quickshell Carbon
-mkdir -p "${HOME}/.local/share/quickshell"
-rm -rf "${HOME}/.local/share/quickshell/carbon"
-cp -r "${REPO_DIR}/quickshell/carbon" "${HOME}/.local/share/quickshell/carbon"
-
-# Deploy Hyprland configs & scripts
-mkdir -p "${HOME}/.config/hypr"
-cp -r "${REPO_DIR}/hypr/"* "${HOME}/.config/hypr/"
-chmod +x "${HOME}/.config/hypr/scripts/"*.sh 2>/dev/null || true
-chmod +x "${HOME}/.config/hypr/scripts/"*.py 2>/dev/null || true
-chmod +x "${HOME}/.config/hypr/scripts/carbon-config-editor" 2>/dev/null || true
-chmod +x "${HOME}/.config/hypr/scripts/carbon-pomodoro" 2>/dev/null || true
-
-# Deploy user binaries (~/.local/bin)
-mkdir -p "${HOME}/.local/bin"
-cp "${HOME}/.config/hypr/scripts/carbon-screenshot-"*.sh "${HOME}/.local/bin/" 2>/dev/null || true
-chmod +x "${HOME}/.local/bin/carbon-screenshot-"*.sh 2>/dev/null || true
-
-# Restore default wallpaper symlink
-if [ -f "${WALLPAPER_DIR}/wallhaven-6ly7yw.png" ]; then
-    ln -sf "${WALLPAPER_DIR}/wallhaven-6ly7yw.png" "${HOME}/.config/hypr/current_wallpaper"
-    echo "${WALLPAPER_DIR}/wallhaven-6ly7yw.png" > "${HOME}/.config/hypr/current_wallpaper_path"
-fi
-
-# Deploy Fastfetch
-mkdir -p "${HOME}/.config/fastfetch"
-cp -r "${REPO_DIR}/fastfetch/"* "${HOME}/.config/fastfetch/"
-
-# Deploy xdg-desktop-portal configs for Wayland Screen Casting
-mkdir -p "${HOME}/.config/xdg-desktop-portal"
-cp -r "${REPO_DIR}/xdg-desktop-portal/"* "${HOME}/.config/xdg-desktop-portal/"
-
-# Generate initial theme with theme-mk.py
-echo -e "      Initializing color scheme via Matugen & theme-mk..."
-if [ -f "${HOME}/.config/hypr/scripts/theme-mk.py" ]; then
-    python3 "${HOME}/.config/hypr/scripts/theme-mk.py" >/dev/null 2>&1 || true
-fi
-
-# Configure & unmute ALSA / Realtek ALC audio hardware
-echo -e "      Configuring ALSA / Realtek ALC audio hardware..."
-if [ -f "${HOME}/.config/hypr/scripts/carbon-audio-init.sh" ]; then
-    bash "${HOME}/.config/hypr/scripts/carbon-audio-init.sh" >/dev/null 2>&1 || true
-fi
-
-# Clean up any deprecated config keys (e.g. dwindle.pseudotile, misc.vfr)
-sed -i '/dwindle\.pseudotile/d; /misc\.vfr/d' "${HOME}/.config/hypr/"*.lua "${HOME}/.config/hypr/hyprland/"*.lua 2>/dev/null || true
-
-# Dynamic portability sanitization: ensure any residual developer paths are mapped to current user
-echo -e "      Ensuring 100% path portability for user: ${USER} (${HOME})..."
-find "${HOME}/.local/share/quickshell/carbon" "${HOME}/.config/hypr" "${HOME}/.config/fastfetch" "${HOME}/.config/systemd/user" -type f \( -name "*.qml" -o -name "*.conf" -o -name "*.lua" -o -name "*.json" -o -name "*.jsonc" -o -name "*.sh" -o -name "*.py" -o -name "*.service" \) -exec sed -i "s|/home/shogun|${HOME}|g" {} + 2>/dev/null || true
-
-# Install & enable carbon-quickshell systemd user service
-mkdir -p "${HOME}/.config/systemd/user"
-if [ -f "${REPO_DIR}/systemd/carbon-quickshell.service" ]; then
-    cp "${REPO_DIR}/systemd/carbon-quickshell.service" "${HOME}/.config/systemd/user/"
-    systemctl --user daemon-reload >/dev/null 2>&1 || true
-    systemctl --user enable carbon-quickshell.service >/dev/null 2>&1 || true
-fi
-
-echo -e "\n${GREEN}==============================================================================${RESET}"
-echo -e "${GREEN}  ✓ Carbon Shell installation completed successfully!${RESET}"
-echo -e "${GREEN}==============================================================================${RESET}\n"
-
-echo -e "Useful Shortcuts:"
-echo -e "  - ${CYAN}Super + Tab${RESET}    : Workspaces & Windows Overview (Task View)"
-echo -e "  - ${CYAN}Super + C${RESET}      : Open Carbon Settings Editor"
-echo -e "  - ${CYAN}Super + Space${RESET}  : Open Application Launcher"
-echo -e "  - ${CYAN}Super + L${RESET}      : Lock Screen (Bohr Atomic Model)\n"
-
-echo -e "${YELLOW}Would you like to restart Quickshell and reload Hyprland now? [Y/n]${RESET} "
-read -r -p "> " reload_choice
-if [[ -z "$reload_choice" || "$reload_choice" =~ ^[Yy]$ ]]; then
-    echo -e "Reloading Hyprland..."
-    hyprctl reload >/dev/null 2>&1 || true
-    echo -e "Restarting Quickshell service..."
-    systemctl --user restart carbon-quickshell.service >/dev/null 2>&1 || (killall quickshell 2>/dev/null; nohup quickshell --config "${HOME}/.local/share/quickshell/carbon" >/dev/null 2>&1 &)
-    echo -e "${GREEN}Carbon Shell is live! Enjoy your desktop!${RESET}"
-fi
+printf "\n"

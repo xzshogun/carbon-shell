@@ -16,7 +16,11 @@ import urllib.request
 import urllib.parse
 import re
 
-CONFIG_PATH = os.path.expanduser("~/.config/hypr/carbon-weather.json")
+CARBON_CONFIG_DIR = os.environ.get("CARBON_CONFIG_DIR", os.path.expanduser("~/.config/carbon"))
+CONFIG_PATH = os.path.join(CARBON_CONFIG_DIR, "carbon-weather.json")
+if not os.path.exists(CONFIG_PATH) and os.path.exists(os.path.expanduser("~/.config/hypr/carbon-weather.json")):
+    CONFIG_PATH = os.path.expanduser("~/.config/hypr/carbon-weather.json")
+
 
 DEFAULT_CONFIG = {
     "apiUrl": "",

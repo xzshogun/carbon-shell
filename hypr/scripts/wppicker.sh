@@ -17,9 +17,13 @@ SELECTED_PATH="$WALLPAPER_DIR/$SELECTED_WALL"
 # === SET WALLPAPER ===
 matugen image "$SELECTED_PATH"
 
-# === CREATE SYMLINK & APPLY ===
-mkdir -p "$(dirname "$SYMLINK_PATH")"
-ln -sf "$SELECTED_PATH" "$SYMLINK_PATH"
-echo "$SELECTED_PATH" > "$HOME/.config/hypr/current_wallpaper_path"
-sh "$HOME/.config/hypr/scripts/wp-apply.sh" "$SELECTED_PATH"
+# === COPY WALLPAPER & APPLY ===
+CONFIG_DIR="${CARBON_CONFIG_DIR:-$HOME/.config/carbon}"
+mkdir -p "$CONFIG_DIR"
+cp -f "$SELECTED_PATH" "$CONFIG_DIR/current_wallpaper"
+echo "$SELECTED_PATH" > "$CONFIG_DIR/current_wallpaper_path"
+APPLY_SCRIPT="$CONFIG_DIR/scripts/wp-apply.sh"
+[ -f "$APPLY_SCRIPT" ] || APPLY_SCRIPT="$HOME/.config/carbon/scripts/wp-apply.sh"
+sh "$APPLY_SCRIPT" "$SELECTED_PATH"
+
 

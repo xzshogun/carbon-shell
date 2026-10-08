@@ -49,7 +49,18 @@ Item {
         }
     }
 
+    Component.onCompleted: {
+        root.randomizeOrbitalPositions()
+    }
+
+    onHubOpenChanged: {
+        if (root.hubOpen) {
+            root.randomizeOrbitalPositions()
+        }
+    }
+
     function open() {
+        root.randomizeOrbitalPositions()
         root.hubOpen = true
         root.activeMode = "hub"
         root.focusedLobe = ""
@@ -89,6 +100,43 @@ Item {
         appSearchInput.text = ""
         appSearchInput.forceActiveFocus()
         refreshAppList()
+    }
+
+    /* ── Randomize Orbital Positions & Distances on Each Open ── */
+    function randomizeOrbitalPositions() {
+        if (!lobeConnect || !lobeLaunch || !lobeSpaces || !lobeAlerts) return
+
+        // Base random orientation across the 360° field
+        var baseRot = Math.random() * 360.0
+
+        // 4 deliberate asymmetric sector angles (guarantees no two are ever directly 180° opposite)
+        var sectorBases = [0.0, 74.0, 162.0, 246.0]
+
+        // Shuffle quadrant assignments randomly so any orb can appear in any sector
+        var order = [0, 1, 2, 3]
+        for (var i = order.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1))
+            var temp = order[i]
+            order[i] = order[j]
+            order[j] = temp
+        }
+
+        var lobes = [lobeConnect, lobeLaunch, lobeSpaces, lobeAlerts]
+        for (var k = 0; k < 4; k++) {
+            var lobe = lobes[k]
+            if (!lobe) continue
+            var baseAngle = sectorBases[order[k]]
+            // Intra-sector organic jitter between -15° and +15°
+            var jitter = (Math.random() * 30.0) - 15.0
+            var angle = (baseRot + baseAngle + jitter) % 360.0
+            if (angle < 0) angle += 360.0
+
+            // Random orbital radius between 115px and 155px (never exceeds max distance 155px)
+            var dist = Math.round(115.0 + Math.random() * 40.0)
+
+            lobe.targetAngle = angle
+            lobe.orbitalRadius = dist
+        }
     }
 
     /* ── Colors / Theme Tokens ── */
@@ -224,85 +272,7 @@ Item {
         width: 1
         height: 1
 
-        // Resting Carbon Valence Orbit Rings & 6 Electrons (visible when resting or closing)
-        Item {
-            id: restingElectrons
-            anchors.centerIn: parent
-            visible: root.showRestingDot && root.hubProgress < 0.6
-            opacity: 1.0 - root.hubProgress
 
-            // Ring 1 (Inner, 2 electrons)
-            Rectangle {
-                anchors.centerIn: parent
-                width: 40
-                height: 40
-                radius: width / 2
-                color: "transparent"
-                border.color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.22)
-                border.width: 1
-
-                Item {
-                    anchors.centerIn: parent
-                    width: parent.width
-                    height: parent.height
-                    rotation: 0
-
-                    NumberAnimation on rotation {
-                        from: 0; to: 360; duration: 18000; loops: Animation.Infinite; running: !root.hubOpen
-                    }
-
-                    Rectangle {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        y: -3.5
-                        width: 6; height: 6; radius: 3
-                        color: root.colTeal
-                    }
-                    Rectangle {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        y: parent.height - 2.5
-                        width: 6; height: 6; radius: 3
-                        color: root.colTeal
-                    }
-                }
-            }
-
-            // Ring 2 (Outer, 4 electrons)
-            Rectangle {
-                anchors.centerIn: parent
-                width: 72
-                height: 72
-                radius: width / 2
-                color: "transparent"
-                border.color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.16)
-                border.width: 1
-
-                Item {
-                    anchors.centerIn: parent
-                    width: parent.width
-                    height: parent.height
-                    rotation: 45
-
-                    NumberAnimation on rotation {
-                        from: 45; to: -315; duration: 28000; loops: Animation.Infinite; running: !root.hubOpen
-                    }
-
-                    // 4 valence electrons at 90° intervals
-                    Repeater {
-                        model: 4
-                        delegate: Item {
-                            anchors.fill: parent
-                            rotation: index * 90
-                            Rectangle {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                y: -3
-                                width: 5; height: 5; radius: 2.5
-                                color: root.colTeal
-                            }
-                        }
-                    }
-                }
-            }
-        }
 
         /* ══════════════════════════════════════════════════════════════════════
            PHASE 2: The Four sp3 Hybrid Orbital Lobes
@@ -320,11 +290,15 @@ Item {
                 id: lobeItem
                 property string lobeId: ""
                 property real targetAngle: 0
+                property real orbitalRadius: 155
                 property real baseScale: 1.0
                 property color lobeColor: root.colTeal
                 property string iconGlyph: ""
                 property string lobeTitle: ""
                 property int staggerDelay: 0
+
+                Behavior on orbitalRadius { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+                Behavior on targetAngle { NumberAnimation { duration: 340; easing.type: Easing.OutCubic } }
 
                 // Gentle organic quantum idle float ("moving just a bit")
                 property int idleDuration: 5400
@@ -413,11 +387,10 @@ Item {
                 Behavior on scale { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
                 Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-
-                // ── 48px Round Icon Button centered at teardrop tip (x = 155, y = 0) ──
+                // ── 48px Standalone Round Icon Button at dynamic orbitalRadius ──
                 Item {
                     id: lobeTipButton
-                    x: 155 - 24
+                    x: lobeItem.orbitalRadius - 24
                     y: -24
                     width: 48
                     height: 48
@@ -458,13 +431,15 @@ Item {
 
                 /* ══════════════════════════════════════════════════════════════
                    PHASE 3: Satellites around tip when focused
-                   Angles relative to lobe: -72°, -24°, 24°, 72° at radius 66px
+                   Smooth blooming OutBack spring blossom animation
                    ══════════════════════════════════════════════════════════════ */
                 Item {
                     id: satellitesContainer
-                    x: 155
+                    x: lobeItem.orbitalRadius
                     y: 0
-                    visible: lobeItem.isThisFocused
+                    visible: opacity > 0.005
+                    opacity: lobeItem.isThisFocused ? 1.0 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
                     Repeater {
                         model: lobeItem.satelliteModel
@@ -473,7 +448,7 @@ Item {
                             required property int index
                             required property var modelData
 
-                            // Angles -72°, -24°, 24°, 72°
+                            // Angles -72°, -24°, 24°, 72° relative to lobe ray
                             readonly property var satAngles: [-72, -24, 24, 72]
                             readonly property real relDeg: satAngles[index]
                             readonly property real relRad: relDeg * (Math.PI / 180.0)
@@ -481,37 +456,50 @@ Item {
 
                             property real satPop: 0.0
 
+                            Connections {
+                                target: lobeItem
+                                function onIsThisFocusedChanged() {
+                                    if (!lobeItem.isThisFocused) {
+                                        satPop = 0.0
+                                    }
+                                }
+                            }
+
                             SequentialAnimation {
                                 running: lobeItem.isThisFocused
-                                PauseAnimation { duration: index * 60 }
+                                PauseAnimation { duration: index * 42 }
                                 NumberAnimation {
                                     target: satDelegateItem
                                     property: "satPop"
                                     from: 0.0
                                     to: 1.0
-                                    duration: 240
-                                    easing.type: Easing.OutCubic
+                                    duration: 380
+                                    easing.type: Easing.OutBack
+                                    easing.overshoot: 1.18
                                 }
                             }
 
-                            x: satRadius * Math.cos(relRad) * satPop - width / 2
-                            y: satRadius * Math.sin(relRad) * satPop - height / 2
+                            // Radial position smoothly blooms outward with fluid spring
+                            x: (satRadius * Math.cos(relRad) * satPop) - width / 2
+                            y: (satRadius * Math.sin(relRad) * satPop) - height / 2
                             width: 40
                             height: 40
-                            scale: satPop
-                            opacity: satPop
+                            scale: 0.35 + 0.65 * satPop
+                            opacity: Math.min(1.0, satPop * 1.5)
 
                             // Circular Satellite Button
                             Rectangle {
                                 anchors.fill: parent
                                 radius: width / 2
                                 color: modelData.isActive 
-                                       ? Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.32)
+                                       ? Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.36)
                                        : (satMouse.containsMouse 
-                                          ? Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.22)
+                                          ? Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.24)
                                           : Qt.rgba(root.colBgDark.r, root.colBgDark.g, root.colBgDark.b, 0.95))
                                 border.color: lobeItem.lobeColor
                                 border.width: 1.8
+                                scale: satMouse.containsMouse ? 1.14 : 1.0
+                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
 
                                 Text {
                                     anchors.centerIn: parent
@@ -520,7 +508,7 @@ Item {
                                     font.pixelSize: modelData.isFontIcon ? 18 : 14
                                     font.bold: true
                                     color: lobeItem.lobeColor
-                                    rotation: -lobeItem.targetAngle
+                                    rotation: -lobeItem.rotation
                                 }
 
                                 // Badge for notifications (Unread count)
@@ -562,6 +550,7 @@ Item {
 
             // ── 1. CONNECT (Angle: -65°, Scale: 1.0, Color: Teal) ──────────
             OrbitalLobe {
+                id: lobeConnect
                 lobeId: "connect"
                 targetAngle: -65
                 baseScale: 1.00
@@ -610,6 +599,7 @@ Item {
 
             // ── 2. LAUNCH (Angle: 25°, Scale: 0.88, Color: Coral/Purple) ────
             OrbitalLobe {
+                id: lobeLaunch
                 lobeId: "launch"
                 targetAngle: 25
                 baseScale: 0.88
@@ -658,6 +648,7 @@ Item {
 
             // ── 3. SPACES (Angle: 135°, Scale: 1.05, Color: Coral) ──────────
             OrbitalLobe {
+                id: lobeSpaces
                 lobeId: "spaces"
                 targetAngle: 135
                 baseScale: 1.05
@@ -698,6 +689,7 @@ Item {
 
             // ── 4. ALERTS (Angle: 205°, Scale: 0.90, Color: Amber) ──────────
             OrbitalLobe {
+                id: lobeAlerts
                 lobeId: "alerts"
                 targetAngle: 205
                 baseScale: 0.90
@@ -745,46 +737,11 @@ Item {
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           CALENDAR RING TICKS & CENTRAL NUCLEUS DISC (Enlarged)
-           Around the nucleus, one small tick per day of the current month.
-           Today's tick is longer and in the accent color.
+           CENTER NUCLEUS ORB (Lockscreen ValenceDot Bohr Atom Styling)
+           - Glowing outer neon halo matching lockscreen dots
+           - Vibrant crisp core disc (White with neon accent border)
+           - Inner bright dot when resting; clear bold time display when open
            ══════════════════════════════════════════════════════════════════════ */
-        Item {
-            id: calendarTicksRing
-            anchors.centerIn: parent
-            visible: root.hubProgress > 0.05
-            opacity: root.hubProgress
-
-            Repeater {
-                model: root.daysInMonth
-                delegate: Item {
-                    required property int index
-                    readonly property int dayNum: index + 1
-                    readonly property bool isToday: dayNum === root.currentDay
-                    readonly property real deg: (index / root.daysInMonth) * 360.0
-                    readonly property real rad: deg * (Math.PI / 180.0)
-
-                    // Tick length & radius
-                    readonly property real ringR: 42
-                    readonly property real tickLen: isToday ? 12.0 : 5.0
-
-                    rotation: deg
-                    x: 0
-                    y: 0
-
-                    Rectangle {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        y: -ringR - tickLen
-                        width: isToday ? 3.0 : 1.5
-                        height: tickLen
-                        radius: width / 2
-                        color: isToday ? root.colTeal : Qt.rgba(1, 1, 1, 0.35)
-                    }
-                }
-            }
-        }
-
-        // Center Nucleus Disc (Radius ~29px -> Width 58px)
         Item {
             id: nucleusCore
             anchors.centerIn: parent
@@ -792,15 +749,30 @@ Item {
             height: width
             Behavior on width { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
 
-            // Disc glow & body
+            // Glowing Outer Halo (matches lockscreen ValenceDot halo)
             Rectangle {
+                id: nucleusHalo
+                anchors.centerIn: parent
+                width: nucleusCore.width + (root.hubOpen ? 24 : 10)
+                height: width
+                radius: width / 2
+                color: Qt.rgba(root.colTeal.r, root.colTeal.g, root.colTeal.b, 0.42)
+                opacity: root.hubOpen ? 0.70 : 0.45
+                Behavior on opacity { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
+                Behavior on width { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            }
+
+            // Vibrant Core Disc (White with neon border, matching lockscreen ValenceDot)
+            Rectangle {
+                id: nucleusCoreDisc
                 anchors.fill: parent
                 radius: width / 2
-                color: root.colTeal
-                border.color: "#FFFFFF"
-                border.width: root.hubOpen ? 2.0 : 1.0
+                color: "#FFFFFF"
+                border.color: root.colTeal
+                border.width: root.hubOpen ? 2.4 : 1.5
 
-                // Time text inside disc
+
+                // Time readout inside disc when open
                 Text {
                     anchors.centerIn: parent
                     visible: root.hubOpen
@@ -817,7 +789,6 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (root.activeMode === "wallpapers") {
-                            // Shuffle random query in wallpaper mode
                             root.shuffleWallpaperQuery()
                         } else {
                             root.toggle()

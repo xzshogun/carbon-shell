@@ -837,11 +837,10 @@ ShellRoot {
                     }
                     else if (cmd === "launcher" || cmd === "toggle-launcher") {
                         if (root.barMode === "nucleus") {
-                            if (root.nucleusHubItem.hubOpen) {
-                                if (cmd === "toggle-launcher") root.nucleusHubItem.close()
-                                else root.nucleusHubItem.openLauncherMode()
+                            if (cmd === "toggle-launcher") {
+                                if (root.nucleusHubItem) root.nucleusHubItem.toggle()
                             } else {
-                                root.nucleusHubItem.openLauncherMode()
+                                if (root.nucleusHubItem) root.nucleusHubItem.toggleLauncher()
                             }
                         } else {
                             if (cmd === "launcher") root.openLauncher()
@@ -1001,10 +1000,7 @@ ShellRoot {
                     }
                     else if (cmd === "nucleus launcher") {
                         if (root.barMode !== "nucleus") root.switchBarMode("nucleus")
-                        if (root.nucleusHubItem) {
-                            if (root.nucleusHubItem.hubOpen) root.nucleusHubItem.close()
-                            else root.nucleusHubItem.openLauncherMode()
-                        }
+                        if (root.nucleusHubItem) root.nucleusHubItem.toggleLauncher()
                     }
                     else if (cmd === "nucleus lyrics" || cmd === "nucleus lyrics toggle" || cmd === "nucleus toggle-lyrics") {
                         if (root.barMode !== "nucleus") root.switchBarMode("nucleus")
@@ -1970,6 +1966,15 @@ ShellRoot {
         function openLauncherMode() { 
             hubOpen = true
             launcherModeRequested() 
+        }
+        function toggleLauncher() {
+            if (!hubOpen) {
+                hubOpen = true
+                launcherModeRequested()
+            } else {
+                hubOpen = false
+                closeRequested()
+            }
         }
         signal toggleLyricsRequested()
         function toggleLyrics() {

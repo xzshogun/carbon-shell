@@ -990,9 +990,9 @@ DEFAULT_VANISH_SHORTCUTS = {
         "title": "Toggle Vanish Hub",
         "desc": "Open or close central clock orb and radial satellites",
         "category": "Primary Triggers",
-        "mods": "$mainMod",
-        "key": "Alt_L",
-        "display_str": "SUPER + Alt",
+        "mods": "",
+        "key": "Super_L",
+        "display_str": "SUPER",
         "action": "toggle-hub",
         "icon": "view-reveal-symbolic"
     },
@@ -1001,8 +1001,8 @@ DEFAULT_VANISH_SHORTCUTS = {
         "desc": "Directly open App Launcher satellite with keyboard search focus",
         "category": "Primary Triggers",
         "mods": "$mainMod",
-        "key": "Return",
-        "display_str": "SUPER + Return",
+        "key": "Alt_L",
+        "display_str": "SUPER + Alt",
         "action": "launcher",
         "icon": "applications-system-symbolic"
     },

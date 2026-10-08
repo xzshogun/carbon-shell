@@ -1941,7 +1941,8 @@ ShellRoot {
                 hubOpen = true
                 openRequested()
             } else {
-                toggleRequested()
+                hubOpen = false
+                closeRequested()
             }
         }
         function open() { 
@@ -1949,6 +1950,7 @@ ShellRoot {
             openRequested() 
         }
         function close() { 
+            hubOpen = false
             closeRequested() 
         }
         function focusLobe(l) { 

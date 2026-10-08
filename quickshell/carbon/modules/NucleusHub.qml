@@ -413,42 +413,6 @@ Item {
                 Behavior on scale { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
                 Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                // ── Outer & Inner Teardrop Shapes (Enlarged) ──
-                Shape {
-                    x: 0
-                    y: 0
-                    width: 180
-                    height: 120
-                    asynchronous: true
-
-                    // Outer shape: length 155px, half-width 56px
-                    ShapePath {
-                        strokeColor: Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.82)
-                        strokeWidth: 1.8
-                        fillColor: Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.18)
-                        capStyle: ShapePath.RoundCap
-                        joinStyle: ShapePath.RoundJoin
-
-                        startX: 0
-                        startY: 0
-                        PathCubic { x: 155; y: 0; control1X: 34; control1Y: -56; control2X: 124; control2Y: -58 }
-                        PathCubic { x: 0; y: 0; control1X: 124; control1Y: 58; control2X: 34; control2Y: 56 }
-                    }
-
-                    // Inner shape at ~0.6 scale (length 95px, half-width 34px)
-                    ShapePath {
-                        strokeColor: Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.50)
-                        strokeWidth: 1.2
-                        fillColor: Qt.rgba(lobeItem.lobeColor.r, lobeItem.lobeColor.g, lobeItem.lobeColor.b, 0.30)
-                        capStyle: ShapePath.RoundCap
-                        joinStyle: ShapePath.RoundJoin
-
-                        startX: 0
-                        startY: 0
-                        PathCubic { x: 95; y: 0; control1X: 21; control1Y: -34; control2X: 76; control2Y: -36 }
-                        PathCubic { x: 0; y: 0; control1X: 76; control1Y: 36; control2X: 21; control2Y: 34 }
-                    }
-                }
 
                 // ── 48px Round Icon Button centered at teardrop tip (x = 155, y = 0) ──
                 Item {
@@ -476,9 +440,8 @@ Item {
                             text: lobeItem.iconGlyph
                             font.family: Theme.fontIcon
                             font.pixelSize: 22
-                            font.bold: true
                             color: lobeItem.lobeColor
-                            rotation: -lobeItem.targetAngle
+                            rotation: -lobeItem.rotation
                         }
                     }
 

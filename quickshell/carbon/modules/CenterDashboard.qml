@@ -327,7 +327,7 @@ Item {
         }
 
         opacity: root.open ? 1.0 : 0.0
-        y: root.open ? 0 : (root.attachedBottom ? height : -height)
+        y: root.showBackground ? (root.open ? 0 : (root.attachedBottom ? height : -height)) : 0
 
         Behavior on opacity {
             NumberAnimation {

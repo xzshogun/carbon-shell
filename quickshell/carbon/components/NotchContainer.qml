@@ -29,15 +29,15 @@ Item {
 
     Behavior on width {
         NumberAnimation {
-            duration: 320
-            easing.bezierCurve: Theme.animCurves.expressiveDefaultSpatial
+            duration: 240
+            easing.type: Easing.OutCubic
         }
     }
     height: implicitHeight
     Behavior on height {
         NumberAnimation {
-            duration: 320
-            easing.bezierCurve: Theme.animCurves.expressiveDefaultSpatial
+            duration: 240
+            easing.type: Easing.OutCubic
         }
     }
 
@@ -220,8 +220,7 @@ Item {
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
         asynchronous: false
-        layer.enabled: true
-        layer.smooth: true
+        layer.enabled: false
 
         // Filled background body
         ShapePath {

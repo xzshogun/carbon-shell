@@ -11,7 +11,9 @@ WALL_IN="$1"
 WALL="$(readlink -f -- "$WALL_IN")"
 [ -f "$WALL" ] || exit 1
 
-SYMLINK="$HOME/.config/hypr/current_wallpaper"
+CONFIG_DIR="${CARBON_CONFIG_DIR:-$HOME/.config/carbon}"
+mkdir -p "$CONFIG_DIR"
+TARGET_WALL="$CONFIG_DIR/current_wallpaper"
 CACHE_DIR="$HOME/.cache/carbon"
 mkdir -p "$CACHE_DIR"
 
@@ -22,7 +24,7 @@ SCALED="$CACHE_DIR/wpscale/$(basename "$WALL" | tr '.' '_').jpg"
 mkdir -p "$CACHE_DIR/wpscale"
 
 if [ -s "$SCALED" ] && [ "$SCALED" -nt "$WALL" ]; then
-    ln -sfn "$SCALED" "$CACHE_DIR/wallpaper_scaled.jpg"
+    cp -f "$SCALED" "$CACHE_DIR/wallpaper_scaled.jpg"
 else
     read -r LW LH < <(hyprctl monitors -j | python3 -c \
         'import json,sys; m=json.load(sys.stdin)[0]; print(round(m["width"]/m["scale"]), round(m["height"]/m["scale"]))' 2>/dev/null)
@@ -38,13 +40,19 @@ else
 
     magick "$FRAME_SRC" -auto-orient -resize "${LW}x${LH}^" -gravity south -extent "${LW}x${LH}" \
         -quality 90 "$SCALED" 2>/dev/null || exit 1
-    ln -sfn "$SCALED" "$CACHE_DIR/wallpaper_scaled.jpg"
+    cp -f "$SCALED" "$CACHE_DIR/wallpaper_scaled.jpg"
 fi
 
-ln -sfn "$WALL" "$SYMLINK"
-echo "$WALL" > "$HOME/.config/hypr/current_wallpaper_path"
+cp -f "$WALL" "$TARGET_WALL"
+echo "$WALL" > "$CONFIG_DIR/current_wallpaper_path"
 
 # Rebuild the shell theme from the new palette (updates theme.json, GTK, Fuzzel, and Hyprland dynamically).
-python3 "$HOME/.config/hypr/scripts/theme-mk.py" "$WALL" 2>/dev/null
+THEME_SCRIPT="$CONFIG_DIR/scripts/theme-mk.py"
+if [ ! -f "$THEME_SCRIPT" ]; then
+    THEME_SCRIPT="$HOME/.config/carbon/scripts/theme-mk.py"
+fi
+if [ -f "$THEME_SCRIPT" ]; then
+    python3 "$THEME_SCRIPT" "$WALL" 2>/dev/null
+fi
 
 echo "applied: $WALL"

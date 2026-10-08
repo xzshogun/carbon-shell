@@ -38,15 +38,9 @@ NotchContainer {
     Keys.enabled: root.isExpanded
     Keys.onEscapePressed: root.closeCenterDashboard()
 
-    mouseArea.hoverEnabled: !root.isExpanded
+    mouseArea.hoverEnabled: false
     mouseArea.cursorShape: Qt.PointingHandCursor
     mouseArea.acceptedButtons: Qt.LeftButton | Qt.RightButton
-    mouseArea.onEntered: {
-        if (!root.hudActive && !root.isExpanded) root.openCenterDashboard()
-    }
-    mouseArea.onExited: {
-        if (!root.isExpanded) root.closeCenterDashboard()
-    }
     mouseArea.onClicked: (mouse) => {
         if (root.hudActive) {
             HudService.dismiss()
@@ -330,19 +324,14 @@ NotchContainer {
         open: root.isExpanded
         visible: opacity > 0.01
         opacity: root.isExpanded ? 1.0 : 0.0
-        scale: root.isExpanded ? 1.0 : 0.94
+        scale: root.isExpanded ? 1.0 : 0.96
         Behavior on opacity {
-            NumberAnimation { duration: 220; easing.type: Easing.OutQuad }
+            NumberAnimation { duration: 180; easing.type: Easing.OutQuad }
         }
         Behavior on scale {
-            NumberAnimation { duration: 280; easing.bezierCurve: Theme.animCurves.expressiveDefaultSpatial }
+            NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
         }
         onCloseRequested: root.closeCenterDashboard()
-        onHoveredChanged: {
-            if (dashContent.hovered) {
-                root.openCenterDashboard()
-            }
-        }
     }
 }
 

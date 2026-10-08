@@ -47,8 +47,12 @@ def set_border(color_str):
     send_hypr(f'eval hl.config({{ general = {{ col = {{ active_border = "{color_str}" }} }} }})')
 
 # 2. Theme Color Management
+CARBON_CONFIG_DIR = os.environ.get("CARBON_CONFIG_DIR", os.path.expanduser("~/.config/carbon"))
 scheme_path = os.path.expanduser("~/.local/state/caelestia/scheme.json")
-fallback_path = os.path.expanduser("~/.config/hypr/theme.json")
+fallback_path = os.path.join(CARBON_CONFIG_DIR, "theme.json")
+if not os.path.exists(fallback_path):
+    fallback_path = os.path.expanduser("~/.config/hypr/theme.json")
+
 last_scheme_mtime = 0
 last_fallback_mtime = 0
 primary_hex = "c6c6c6"
@@ -108,9 +112,14 @@ def compute_border_color(energy):
     return f"rgba({primary_hex}{alpha:02x})"
 
 # 5. Cava Setup
-cava_conf = os.path.expanduser("~/.config/hypr/cava-island.conf")
+cava_conf = os.path.join(CARBON_CONFIG_DIR, "cava-island.conf")
+if not os.path.exists(cava_conf):
+    cava_conf = os.path.join(CARBON_CONFIG_DIR, "cava-edge-glow.conf")
+if not os.path.exists(cava_conf):
+    cava_conf = os.path.expanduser("~/.config/hypr/cava-island.conf")
 if not os.path.exists(cava_conf):
     cava_conf = os.path.expanduser("~/.config/hypr/cava-edge-glow.conf")
+
 
 def run_loop():
     global sock_path

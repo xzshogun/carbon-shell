@@ -7,7 +7,8 @@ IFS=$'\n\t'
 # Define directories
 waybar_layouts="$HOME/.config/waybar/configs"
 waybar_config="$HOME/.config/waybar/config"
-SCRIPTSDIR="$HOME/.config/hypr/scripts"
+CARBON_DIR="${CARBON_CONFIG_DIR:-$HOME/.config/carbon}"
+SCRIPTSDIR="${CARBON_DIR}/scripts"
 rofi_config="$HOME/.config/rofi/config.rasi"
 msg=' Choose Waybar Layout '
 
@@ -23,8 +24,10 @@ menu() {
 
 # Apply selected configuration
 apply_config() {
-    ln -sf "$waybar_layouts/$1" "$waybar_config"
-    "${SCRIPTSDIR}/wbrestart.sh" &
+    cp -f "$waybar_layouts/$1" "$waybar_config"
+    if [ -x "${SCRIPTSDIR}/wbrestart.sh" ]; then
+        "${SCRIPTSDIR}/wbrestart.sh" &
+    fi
 }
 
 # Main function

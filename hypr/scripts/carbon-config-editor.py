@@ -33,7 +33,8 @@ BAR_MODE_PATH = os.path.expanduser("~/.config/hypr/carbon-bar-mode.json")
 BAR_POS_PATH = os.path.expanduser("~/.config/hypr/carbon-bar-position.json")
 CLOCK_STYLE_PATH = os.path.expanduser("~/.config/hypr/carbon-clock-style.json")
 LOCKSCREEN_CONFIG_PATH = os.path.expanduser("~/.config/hypr/carbon-lockscreen.json")
-KEYBINDS_CONF_PATH = os.path.expanduser("~/.config/hypr/configs/keybinds.conf")
+CARBON_KEYBINDS_PATH = os.path.expanduser("~/.config/hypr/carbon/keybinds.conf")
+KEYBINDS_CONF_PATH = CARBON_KEYBINDS_PATH if os.path.isfile(CARBON_KEYBINDS_PATH) else os.path.expanduser("~/.config/hypr/configs/keybinds.conf")
 GESTURES_LUA_PATH = os.path.expanduser("~/.config/hypr/hyprland/gestures.lua")
 INPUT_CONF_PATH = os.path.expanduser("~/.config/hypr/configs/input.conf")
 CUSTOM_GESTURES_PATH = os.path.expanduser("~/.config/hypr/carbon-custom-gestures.json")
@@ -165,7 +166,20 @@ def read_bar_position():
         "mainBarEdge": "top",
         "musicBarEdge": "top",
         "musicBarContent": "both",
-        "scale": read_shell_scale()
+        "scale": read_shell_scale(),
+        "pillHeight": 36,
+        "notchHeight": 32,
+        "appGap": 1,
+        "pillAppGap": 1,
+        "notchAppGap": 1,
+        "shellOpacity": 0.85,
+        "shellBlur": True,
+        "pillOpacity": 0.85,
+        "pillBlur": True,
+        "notchOpacity": 0.90,
+        "notchBlur": True,
+        "minimalOpacity": 0.90,
+        "minimalBlur": True
     }
     if os.path.isfile(BAR_POS_PATH):
         try:
@@ -182,6 +196,11 @@ def read_bar_position():
                 default_pos["centerEdge"] = chosen
                 default_pos["rightEdge"] = chosen
                 default_pos["scale"] = read_shell_scale()
+                default_pos["pillHeight"] = int(d.get("pillHeight", 36))
+                default_pos["notchHeight"] = int(d.get("notchHeight", 32))
+                default_pos["appGap"] = int(d.get("appGap", 1))
+                default_pos["pillAppGap"] = int(d.get("pillAppGap", d.get("appGap", 1)))
+                default_pos["notchAppGap"] = int(d.get("notchAppGap", d.get("appGap", 1)))
         except Exception:
             pass
     return default_pos
@@ -225,8 +244,10 @@ def save_bar_mode(mode_id):
             except Exception:
                 pass
         data["mode"] = mode_id
-        with open(BAR_MODE_PATH, "w", encoding="utf-8") as f:
+        temp_path = BAR_MODE_PATH + ".tmp"
+        with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
+        os.replace(temp_path, BAR_MODE_PATH)
         subprocess.run(
             ["sh", os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh"), f"bar-mode {mode_id}"],
             capture_output=True,
@@ -257,8 +278,10 @@ def save_island_persistent(val):
             except Exception:
                 pass
         data["islandPersistent"] = bool(val)
-        with open(BAR_MODE_PATH, "w", encoding="utf-8") as f:
+        temp_path = BAR_MODE_PATH + ".tmp"
+        with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
+        os.replace(temp_path, BAR_MODE_PATH)
         subprocess.run(
             ["sh", os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh"), f"island-persistent {'true' if val else 'false'}"],
             capture_output=True,
@@ -933,6 +956,11 @@ def update_keybind_in_conf(line_idx, new_mods, new_key, original_rest=None, var_
         
     with open(KEYBINDS_CONF_PATH, "w", encoding="utf-8") as f:
         f.writelines(lines)
+
+    # Sync carbon/keybinds.conf to carbon/keybinds.lua and reload Hyprland
+    sync_script = os.path.expanduser("~/.config/hypr/scripts/sync-carbon-keybinds.py")
+    if os.path.isfile(sync_script):
+        subprocess.run(["python3", sync_script, "--reload"], check=False)
         
     # Sync variables.lua if mapped
     if var_key and display_str and os.path.isfile(VARIABLES_PATH):
@@ -1373,6 +1401,26 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         self.bar_pos = read_bar_position()
         self.ui_scale_scales = []
         self.ui_scale_labels = []
+        self.pill_height_scales = []
+        self.pill_height_labels = []
+        self.notch_height_scales = []
+        self.notch_height_labels = []
+        self.pill_app_gap_scales = []
+        self.pill_app_gap_labels = []
+        self.notch_app_gap_scales = []
+        self.notch_app_gap_labels = []
+        self.shell_opacity_scales = []
+        self.shell_opacity_labels = []
+        self.shell_blur_switches = []
+        self.pill_opacity_scales = []
+        self.pill_opacity_labels = []
+        self.pill_blur_switches = []
+        self.notch_opacity_scales = []
+        self.notch_opacity_labels = []
+        self.notch_blur_switches = []
+        self.minimal_opacity_scales = []
+        self.minimal_opacity_labels = []
+        self.minimal_blur_switches = []
         self.scale_apply_timer = None
         self.pill_edge_buttons = {}
         self.pill_content_buttons = {}
@@ -1838,6 +1886,334 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
         return Gdk.EVENT_STOP
 
+    def make_pill_height_row(self):
+        row = Adw.ActionRow()
+        row.set_title("Pill Bar Height")
+        row.set_subtitle("Adjust the thickness of the continuous floating pill bar (28px – 50px)")
+        icon = Gtk.Image.new_from_icon_name("view-grid-symbolic")
+        icon.set_pixel_size(20)
+        row.add_prefix(icon)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box.set_valign(Gtk.Align.CENTER)
+
+        curr_h = int(self.bar_pos.get("pillHeight", 36))
+        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 28, 50, 1)
+        scale.set_value(curr_h)
+        scale.set_size_request(130, -1)
+        scale.set_draw_value(False)
+
+        lbl = Gtk.Label(label=f"{curr_h}px")
+        lbl.add_css_class("accent")
+        lbl.set_width_chars(6)
+
+        def on_changed(sc):
+            v = int(round(sc.get_value()))
+            self.set_pill_height(v)
+
+        scale.connect("value-changed", on_changed)
+        box.append(scale)
+        box.append(lbl)
+        row.add_suffix(box)
+        self.pill_height_scales.append(scale)
+        self.pill_height_labels.append(lbl)
+        return row
+
+    def make_notch_height_row(self):
+        row = Adw.ActionRow()
+        row.set_title("Notch Bar Height")
+        row.set_subtitle("Adjust the vertical depth of the curved screen notch (24px – 46px)")
+        icon = Gtk.Image.new_from_icon_name("user-desktop-symbolic")
+        icon.set_pixel_size(20)
+        row.add_prefix(icon)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box.set_valign(Gtk.Align.CENTER)
+
+        curr_h = int(self.bar_pos.get("notchHeight", 32))
+        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 24, 46, 1)
+        scale.set_value(curr_h)
+        scale.set_size_request(130, -1)
+        scale.set_draw_value(False)
+
+        lbl = Gtk.Label(label=f"{curr_h}px")
+        lbl.add_css_class("accent")
+        lbl.set_width_chars(6)
+
+        def on_changed(sc):
+            v = int(round(sc.get_value()))
+            self.set_notch_height(v)
+
+        scale.connect("value-changed", on_changed)
+        box.append(scale)
+        box.append(lbl)
+        row.add_suffix(box)
+        self.notch_height_scales.append(scale)
+        self.notch_height_labels.append(lbl)
+        return row
+
+    def make_pill_app_gap_row(self):
+        row = Adw.ActionRow()
+        row.set_title("Window Spacing (App Gap)")
+        row.set_subtitle("Empty space between tiled application windows and the pill bar (-8px – 16px)")
+        icon = Gtk.Image.new_from_icon_name("view-paged-symbolic")
+        icon.set_pixel_size(20)
+        row.add_prefix(icon)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box.set_valign(Gtk.Align.CENTER)
+
+        curr_g = int(self.bar_pos.get("pillAppGap", self.bar_pos.get("appGap", 1)))
+        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, -8, 16, 1)
+        scale.set_value(curr_g)
+        scale.set_size_request(130, -1)
+        scale.set_draw_value(False)
+
+        lbl = Gtk.Label(label=f"{curr_g:+d}px" if curr_g != 0 else "0px")
+        lbl.add_css_class("accent")
+        lbl.set_width_chars(6)
+
+        def on_changed(sc):
+            v = int(round(sc.get_value()))
+            self.set_pill_app_gap(v)
+
+        scale.connect("value-changed", on_changed)
+        box.append(scale)
+        box.append(lbl)
+        row.add_suffix(box)
+        self.pill_app_gap_scales.append(scale)
+        self.pill_app_gap_labels.append(lbl)
+        return row
+
+    def make_notch_app_gap_row(self):
+        row = Adw.ActionRow()
+        row.set_title("Window Spacing (App Gap)")
+        row.set_subtitle("Empty space between tiled application windows and the curved notch (-8px – 16px)")
+        icon = Gtk.Image.new_from_icon_name("view-paged-symbolic")
+        icon.set_pixel_size(20)
+        row.add_prefix(icon)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box.set_valign(Gtk.Align.CENTER)
+
+        curr_g = int(self.bar_pos.get("notchAppGap", self.bar_pos.get("appGap", 1)))
+        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, -8, 16, 1)
+        scale.set_value(curr_g)
+        scale.set_size_request(130, -1)
+        scale.set_draw_value(False)
+
+        lbl = Gtk.Label(label=f"{curr_g:+d}px" if curr_g != 0 else "0px")
+        lbl.add_css_class("accent")
+        lbl.set_width_chars(6)
+
+        def on_changed(sc):
+            v = int(round(sc.get_value()))
+            self.set_notch_app_gap(v)
+
+        scale.connect("value-changed", on_changed)
+        box.append(scale)
+        box.append(lbl)
+        row.add_suffix(box)
+        self.notch_app_gap_scales.append(scale)
+        self.notch_app_gap_labels.append(lbl)
+        return row
+
+    def make_shell_opacity_row(self):
+        row = Adw.ActionRow()
+        row.set_title("Shell Background Opacity")
+        row.set_subtitle("Transparency level of all desktop shell components (10% – 100%)")
+        icon = Gtk.Image.new_from_icon_name("color-select-symbolic")
+        icon.set_pixel_size(20)
+        row.add_prefix(icon)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box.set_valign(Gtk.Align.CENTER)
+
+        curr_o = float(self.bar_pos.get("shellOpacity", self.bar_pos.get("pillOpacity", 0.85)))
+        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.10, 1.00, 0.05)
+        scale.set_value(curr_o)
+        scale.set_size_request(130, -1)
+        scale.set_draw_value(False)
+
+        lbl = Gtk.Label(label=f"{int(round(curr_o * 100))}%")
+        lbl.add_css_class("accent")
+        lbl.set_width_chars(5)
+
+        def on_changed(sc):
+            v = round(sc.get_value(), 2)
+            self.set_shell_opacity(v)
+
+        scale.connect("value-changed", on_changed)
+        box.append(scale)
+        box.append(lbl)
+        row.add_suffix(box)
+        self.shell_opacity_scales.append(scale)
+        self.shell_opacity_labels.append(lbl)
+        return row
+
+    def make_shell_blur_row(self):
+        row = Adw.ActionRow()
+        row.set_title("Shell Backdrop Blur")
+        row.set_subtitle("Enable frosted-glass blur behind all shell components")
+        icon = Gtk.Image.new_from_icon_name("preferences-desktop-display-symbolic")
+        icon.set_pixel_size(20)
+        row.add_prefix(icon)
+
+        sw = Gtk.Switch()
+        sw.set_valign(Gtk.Align.CENTER)
+        sw.set_active(bool(self.bar_pos.get("shellBlur", self.bar_pos.get("pillBlur", True))))
+        sw.connect("notify::active", lambda s, p: self.set_shell_blur(s.get_active()))
+        row.add_suffix(sw)
+        self.shell_blur_switches.append(sw)
+        return row
+
+    def make_pill_opacity_row(self):
+        row = Adw.ActionRow()
+        row.set_title("Bar Background Opacity")
+        row.set_subtitle("Transparency level of the floating pill bar (20% – 100%)")
+        icon = Gtk.Image.new_from_icon_name("color-select-symbolic")
+        icon.set_pixel_size(20)
+        row.add_prefix(icon)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box.set_valign(Gtk.Align.CENTER)
+
+        curr_o = float(self.bar_pos.get("pillOpacity", 0.85))
+        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.20, 1.00, 0.05)
+        scale.set_value(curr_o)
+        scale.set_size_request(130, -1)
+        scale.set_draw_value(False)
+
+        lbl = Gtk.Label(label=f"{int(round(curr_o * 100))}%")
+        lbl.add_css_class("accent")
+        lbl.set_width_chars(5)
+
+        def on_changed(sc):
+            v = round(sc.get_value(), 2)
+            self.set_pill_opacity(v)
+
+        scale.connect("value-changed", on_changed)
+        box.append(scale)
+        box.append(lbl)
+        row.add_suffix(box)
+        self.pill_opacity_scales.append(scale)
+        self.pill_opacity_labels.append(lbl)
+        return row
+
+    def make_pill_blur_row(self):
+        row = Adw.ActionRow()
+        row.set_title("Background Blur")
+        row.set_subtitle("Enable frosted-glass backdrop blur behind the pill bar")
+        icon = Gtk.Image.new_from_icon_name("preferences-desktop-display-symbolic")
+        icon.set_pixel_size(20)
+        row.add_prefix(icon)
+
+        sw = Gtk.Switch()
+        sw.set_valign(Gtk.Align.CENTER)
+        sw.set_active(bool(self.bar_pos.get("pillBlur", True)))
+        sw.connect("notify::active", lambda s, p: self.set_pill_blur(s.get_active()))
+        row.add_suffix(sw)
+        self.pill_blur_switches.append(sw)
+        return row
+
+    def make_notch_opacity_row(self):
+        row = Adw.ActionRow()
+        row.set_title("Notch Background Opacity")
+        row.set_subtitle("Transparency level of the curved notch bar (20% – 100%)")
+        icon = Gtk.Image.new_from_icon_name("color-select-symbolic")
+        icon.set_pixel_size(20)
+        row.add_prefix(icon)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box.set_valign(Gtk.Align.CENTER)
+
+        curr_o = float(self.bar_pos.get("notchOpacity", 0.90))
+        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.20, 1.00, 0.05)
+        scale.set_value(curr_o)
+        scale.set_size_request(130, -1)
+        scale.set_draw_value(False)
+
+        lbl = Gtk.Label(label=f"{int(round(curr_o * 100))}%")
+        lbl.add_css_class("accent")
+        lbl.set_width_chars(5)
+
+        def on_changed(sc):
+            v = round(sc.get_value(), 2)
+            self.set_notch_opacity(v)
+
+        scale.connect("value-changed", on_changed)
+        box.append(scale)
+        box.append(lbl)
+        row.add_suffix(box)
+        self.notch_opacity_scales.append(scale)
+        self.notch_opacity_labels.append(lbl)
+        return row
+
+    def make_notch_blur_row(self):
+        row = Adw.ActionRow()
+        row.set_title("Background Blur")
+        row.set_subtitle("Enable frosted-glass backdrop blur behind the curved notch")
+        icon = Gtk.Image.new_from_icon_name("preferences-desktop-display-symbolic")
+        icon.set_pixel_size(20)
+        row.add_prefix(icon)
+
+        sw = Gtk.Switch()
+        sw.set_valign(Gtk.Align.CENTER)
+        sw.set_active(bool(self.bar_pos.get("notchBlur", True)))
+        sw.connect("notify::active", lambda s, p: self.set_notch_blur(s.get_active()))
+        row.add_suffix(sw)
+        self.notch_blur_switches.append(sw)
+        return row
+
+    def make_minimal_opacity_row(self):
+        row = Adw.ActionRow()
+        row.set_title("Island Background Opacity")
+        row.set_subtitle("Transparency level of the minimal dynamic island (20% – 100%)")
+        icon = Gtk.Image.new_from_icon_name("color-select-symbolic")
+        icon.set_pixel_size(20)
+        row.add_prefix(icon)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box.set_valign(Gtk.Align.CENTER)
+
+        curr_o = float(self.bar_pos.get("minimalOpacity", 0.90))
+        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.20, 1.00, 0.05)
+        scale.set_value(curr_o)
+        scale.set_size_request(130, -1)
+        scale.set_draw_value(False)
+
+        lbl = Gtk.Label(label=f"{int(round(curr_o * 100))}%")
+        lbl.add_css_class("accent")
+        lbl.set_width_chars(5)
+
+        def on_changed(sc):
+            v = round(sc.get_value(), 2)
+            self.set_minimal_opacity(v)
+
+        scale.connect("value-changed", on_changed)
+        box.append(scale)
+        box.append(lbl)
+        row.add_suffix(box)
+        self.minimal_opacity_scales.append(scale)
+        self.minimal_opacity_labels.append(lbl)
+        return row
+
+    def make_minimal_blur_row(self):
+        row = Adw.ActionRow()
+        row.set_title("Background Blur")
+        row.set_subtitle("Enable frosted-glass backdrop blur behind the minimal island")
+        icon = Gtk.Image.new_from_icon_name("preferences-desktop-display-symbolic")
+        icon.set_pixel_size(20)
+        row.add_prefix(icon)
+
+        sw = Gtk.Switch()
+        sw.set_valign(Gtk.Align.CENTER)
+        sw.set_active(bool(self.bar_pos.get("minimalBlur", True)))
+        sw.connect("notify::active", lambda s, p: self.set_minimal_blur(s.get_active()))
+        row.add_suffix(sw)
+        self.minimal_blur_switches.append(sw)
+        return row
+
     def make_ui_scale_row(self):
         row_scale = Adw.ActionRow()
         row_scale.set_title("Shell UI Scale")
@@ -1914,6 +2290,17 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             grp_modes.add(row)
             self.bar_mode_rows[mid] = (row, check_img)
 
+        # ── Group: Unified Shell Appearance (Opacity & Blur) ───────────────
+        grp_shell_appearance = Adw.PreferencesGroup(
+            title="Shell Opacity & Blur",
+            description="Global transparency and frosted-glass blur for all shell components"
+        )
+        page.add(grp_shell_appearance)
+        self.grp_shell_appearance = grp_shell_appearance
+
+        grp_shell_appearance.add(self.make_shell_opacity_row())
+        grp_shell_appearance.add(self.make_shell_blur_row())
+
         # ── Section 1: Pill Mode Configuration ──────────────────────────────
         grp_pill = Adw.PreferencesGroup(
             title="Pill Mode",
@@ -1945,6 +2332,12 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
         row_pill_edge.add_suffix(box_pill_edge)
         grp_pill.add(row_pill_edge)
+
+        # Pill Bar Height slider
+        grp_pill.add(self.make_pill_height_row())
+
+        # Window Spacing / App Gap slider
+        grp_pill.add(self.make_pill_app_gap_row())
 
         # Shell UI Scale slider
         grp_pill.add(self.make_ui_scale_row())
@@ -2018,6 +2411,12 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
         row_notch_edge.add_suffix(box_notch_edge)
         grp_notch.add(row_notch_edge)
+
+        # Notch Bar Height slider
+        grp_notch.add(self.make_notch_height_row())
+
+        # Window Spacing / App Gap slider
+        grp_notch.add(self.make_notch_app_gap_row())
 
         # Shell UI Scale slider
         grp_notch.add(self.make_ui_scale_row())
@@ -2197,6 +2596,8 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
         row_edge.add_suffix(box_edge)
         grp_edge.add(row_edge)
+        # Window Spacing / App Gap slider
+        grp_edge.add(self.make_notch_app_gap_row())
         # Shell UI Scale slider
         grp_edge.add(self.make_ui_scale_row())
 
@@ -3728,6 +4129,148 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
                 btn.add_css_class("suggested-action")
             else:
                 btn.remove_css_class("suggested-action")
+
+        curr_ph = int(self.bar_pos.get("pillHeight", 36))
+        for sc in self.pill_height_scales:
+            if abs(sc.get_value() - curr_ph) > 0.5:
+                sc.set_value(curr_ph)
+        for lbl in self.pill_height_labels:
+            lbl.set_label(f"{curr_ph}px")
+
+        curr_nh = int(self.bar_pos.get("notchHeight", 32))
+        for sc in self.notch_height_scales:
+            if abs(sc.get_value() - curr_nh) > 0.5:
+                sc.set_value(curr_nh)
+        for lbl in self.notch_height_labels:
+            lbl.set_label(f"{curr_nh}px")
+
+        curr_pag = int(self.bar_pos.get("pillAppGap", self.bar_pos.get("appGap", 1)))
+        for sc in self.pill_app_gap_scales:
+            if abs(sc.get_value() - curr_pag) > 0.5:
+                sc.set_value(curr_pag)
+        for lbl in self.pill_app_gap_labels:
+            lbl.set_label(f"{curr_pag:+d}px" if curr_pag != 0 else "0px")
+
+        curr_nag = int(self.bar_pos.get("notchAppGap", self.bar_pos.get("appGap", 1)))
+        for sc in self.notch_app_gap_scales:
+            if abs(sc.get_value() - curr_nag) > 0.5:
+                sc.set_value(curr_nag)
+        for lbl in self.notch_app_gap_labels:
+            lbl.set_label(f"{curr_nag:+d}px" if curr_nag != 0 else "0px")
+
+        curr_so = float(self.bar_pos.get("shellOpacity", self.bar_pos.get("pillOpacity", 0.85)))
+        for sc in self.shell_opacity_scales + self.pill_opacity_scales + self.notch_opacity_scales + self.minimal_opacity_scales:
+            if abs(sc.get_value() - curr_so) > 0.02:
+                sc.set_value(curr_so)
+        for lbl in self.shell_opacity_labels + self.pill_opacity_labels + self.notch_opacity_labels + self.minimal_opacity_labels:
+            lbl.set_label(f"{int(round(curr_so * 100))}%")
+        for sw in self.shell_blur_switches + self.pill_blur_switches + self.notch_blur_switches + self.minimal_blur_switches:
+            sw.set_active(bool(self.bar_pos.get("shellBlur", True)))
+
+    def set_pill_height(self, height_val):
+        h = max(28, min(50, int(round(height_val))))
+        self.bar_pos["pillHeight"] = h
+        save_bar_position(self.bar_pos)
+        for sc in self.pill_height_scales:
+            if abs(sc.get_value() - h) > 0.5:
+                sc.set_value(h)
+        for lbl in self.pill_height_labels:
+            lbl.set_label(f"{h}px")
+
+    def set_notch_height(self, height_val):
+        h = max(24, min(46, int(round(height_val))))
+        self.bar_pos["notchHeight"] = h
+        save_bar_position(self.bar_pos)
+        for sc in self.notch_height_scales:
+            if abs(sc.get_value() - h) > 0.5:
+                sc.set_value(h)
+        for lbl in self.notch_height_labels:
+            lbl.set_label(f"{h}px")
+
+    def set_pill_app_gap(self, gap_val):
+        g = max(-8, min(16, int(round(gap_val))))
+        self.bar_pos["pillAppGap"] = g
+        save_bar_position(self.bar_pos)
+        for sc in self.pill_app_gap_scales:
+            if abs(sc.get_value() - g) > 0.5:
+                sc.set_value(g)
+        for lbl in self.pill_app_gap_labels:
+            lbl.set_label(f"{g:+d}px" if g != 0 else "0px")
+
+    def set_notch_app_gap(self, gap_val):
+        g = max(-8, min(16, int(round(gap_val))))
+        self.bar_pos["notchAppGap"] = g
+        save_bar_position(self.bar_pos)
+        for sc in self.notch_app_gap_scales:
+            if abs(sc.get_value() - g) > 0.5:
+                sc.set_value(g)
+        for lbl in self.notch_app_gap_labels:
+            lbl.set_label(f"{g:+d}px" if g != 0 else "0px")
+
+    def apply_hyprland_layer_blur(self, enable):
+        blur_conf_path = os.path.expanduser("~/.config/hypr/configs/carbon-layer-blur.conf")
+        try:
+            with open(blur_conf_path, "w", encoding="utf-8") as f:
+                if enable:
+                    f.write("layerrule = blur, tide-island\nlayerrule = ignorezero, tide-island\nlayerrule = blur, quickshell\nlayerrule = ignorezero, quickshell\nlayerrule = blur, carbon-.*\nlayerrule = ignorezero, carbon-.*\n")
+                else:
+                    f.write("# blur disabled\n")
+            subprocess.run(["hyprctl", "reload"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            print("Error updating layer blur:", e)
+
+    def set_shell_opacity(self, opacity_val):
+        o = max(0.10, min(1.00, round(float(opacity_val), 2)))
+        self.bar_pos["shellOpacity"] = o
+        self.bar_pos["pillOpacity"] = o
+        self.bar_pos["notchOpacity"] = o
+        self.bar_pos["minimalOpacity"] = o
+        save_bar_position(self.bar_pos)
+        try:
+            subprocess.run(["sh", "/home/reduct/.config/hypr/scripts/carbon-ipc.sh", f"set-opacity {o}"],
+                           check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+        for sc in self.shell_opacity_scales + self.pill_opacity_scales + self.notch_opacity_scales + self.minimal_opacity_scales:
+            if abs(sc.get_value() - o) > 0.02:
+                sc.set_value(o)
+        for lbl in self.shell_opacity_labels + self.pill_opacity_labels + self.notch_opacity_labels + self.minimal_opacity_labels:
+            lbl.set_label(f"{int(round(o * 100))}%")
+
+    def set_shell_blur(self, active):
+        b = bool(active)
+        self.bar_pos["shellBlur"] = b
+        self.bar_pos["pillBlur"] = b
+        self.bar_pos["notchBlur"] = b
+        self.bar_pos["minimalBlur"] = b
+        save_bar_position(self.bar_pos)
+        self.apply_hyprland_layer_blur(b)
+        try:
+            subprocess.run(["sh", "/home/reduct/.config/hypr/scripts/carbon-ipc.sh", f"set-blur {1 if b else 0}"],
+                           check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+        for sw in self.shell_blur_switches + self.pill_blur_switches + self.notch_blur_switches + self.minimal_blur_switches:
+            if sw.get_active() != b:
+                sw.set_active(b)
+
+    def set_pill_opacity(self, opacity_val):
+        self.set_shell_opacity(opacity_val)
+
+    def set_pill_blur(self, active):
+        self.set_shell_blur(active)
+
+    def set_notch_opacity(self, opacity_val):
+        self.set_shell_opacity(opacity_val)
+
+    def set_notch_blur(self, active):
+        self.set_shell_blur(active)
+
+    def set_minimal_opacity(self, opacity_val):
+        self.set_shell_opacity(opacity_val)
+
+    def set_minimal_blur(self, active):
+        self.set_shell_blur(active)
 
     def set_ui_scale(self, scale_val):
         s = max(0.75, min(1.50, round(float(scale_val), 2)))

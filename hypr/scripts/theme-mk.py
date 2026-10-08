@@ -16,7 +16,8 @@ import subprocess
 import sys
 from PIL import Image
 
-JSON_PATH = os.path.expanduser("~/.config/hypr/theme.json")
+CARBON_CONFIG_DIR = os.environ.get("CARBON_CONFIG_DIR", os.path.expanduser("~/.config/carbon"))
+JSON_PATH = os.path.join(CARBON_CONFIG_DIR, "theme.json")
 CACHE_DIR = os.path.expanduser("~/.cache/carbon")
 
 OK = "#a6e3a1"
@@ -52,22 +53,22 @@ def resolve_source_wallpaper():
         return os.path.abspath(sys.argv[1])
 
     # 2. current_wallpaper_path file
-    path_file = os.path.expanduser("~/.config/hypr/current_wallpaper_path")
-    if os.path.isfile(path_file):
-        try:
-            with open(path_file, "r", encoding="utf-8") as f:
-                p = f.read().strip()
-            if os.path.isfile(p):
-                return p
-        except Exception:
-            pass
+    for p_dir in [CARBON_CONFIG_DIR, os.path.expanduser("~/.config/carbon"), os.path.expanduser("~/.config/hypr")]:
+        path_file = os.path.join(p_dir, "current_wallpaper_path")
+        if os.path.isfile(path_file):
+            try:
+                with open(path_file, "r", encoding="utf-8") as f:
+                    p = f.read().strip()
+                if os.path.isfile(p):
+                    return p
+            except Exception:
+                pass
 
-    # 3. current_wallpaper symlink
-    sym = os.path.expanduser("~/.config/hypr/current_wallpaper")
-    if os.path.exists(sym):
-        real = os.path.realpath(sym)
-        if os.path.isfile(real):
-            return real
+    # 3. current_wallpaper file/copy
+    for p_dir in [CARBON_CONFIG_DIR, os.path.expanduser("~/.config/carbon"), os.path.expanduser("~/.config/hypr")]:
+        c_wall = os.path.join(p_dir, "current_wallpaper")
+        if os.path.isfile(c_wall):
+            return c_wall
 
     # 4. Cached scaled wallpaper
     scaled = os.path.expanduser("~/.cache/carbon/wallpaper_scaled.jpg")
@@ -75,6 +76,7 @@ def resolve_source_wallpaper():
         return scaled
 
     return None
+
 
 
 def get_image_frame_for_analysis(src_path):
@@ -411,11 +413,16 @@ def main():
 
     # Notify Carbon Quickshell to reload Theme singleton immediately
     try:
-        ipc_path = os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh")
+        ipc_path = os.path.join(CARBON_CONFIG_DIR, "scripts", "carbon-ipc.sh")
+        if not os.path.isfile(ipc_path):
+            ipc_path = os.path.expanduser("~/.config/carbon/scripts/carbon-ipc.sh")
+        if not os.path.isfile(ipc_path):
+            ipc_path = os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh")
         if os.path.isfile(ipc_path):
             subprocess.run(["sh", ipc_path, "theme-reload"], capture_output=True, timeout=1.0)
     except Exception:
         pass
+
 
     print(f"theme-mk: updated theme (accent={accent_hex}, fg={fg_hex}, src={os.path.basename(src_wp)})")
 

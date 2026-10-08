@@ -67,7 +67,11 @@ def get_theme_colors():
     fg_dim = (177, 204, 200)
     fg_faint = (80, 100, 96)
 
-    colors_conf = os.path.expanduser("~/.config/hypr/colors.conf")
+    CARBON_CONFIG_DIR = os.environ.get("CARBON_CONFIG_DIR", os.path.expanduser("~/.config/carbon"))
+    colors_conf = os.path.join(CARBON_CONFIG_DIR, "colors.conf")
+    if not os.path.exists(colors_conf):
+        colors_conf = os.path.expanduser("~/.config/hypr/colors.conf")
+
     if os.path.exists(colors_conf):
         try:
             with open(colors_conf) as f:

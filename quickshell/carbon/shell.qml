@@ -1809,7 +1809,7 @@ ShellRoot {
                 bottom: 0
             }
 
-            implicitHeight: Math.max(root.notchHeight, notchCenterItem.height)
+            implicitHeight: 280
             WlrLayershell.keyboardFocus: root.centerDashboardOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             visible: root.barMode === "notch"
 
@@ -1863,13 +1863,9 @@ ShellRoot {
                 anchors.horizontalCenter: parent.horizontalCenter
                 leftFillet: true
                 rightFillet: true
-                onOpenMusicHover: root.openCenterDashboard()
-                onCloseMusicHover: centerDashboardLeaveTimer.restart()
-                onOpenCenterDashboard: root.openCenterDashboard()
-                onCloseCenterDashboard: centerDashboardLeaveTimer.restart()
                 onToggleCenterDashboard: root.toggleCenterDashboard()
                 onToggleMusic: root.toggleCenterDashboard()
-                onOpenMusic: root.openCenterDashboard()
+                onOpenMusic: root.toggleCenterDashboard()
                 onToggleControls: root.toggleCenterDashboard()
             }
 

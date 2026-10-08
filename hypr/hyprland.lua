@@ -17,6 +17,7 @@ package.loaded["hyprland.execs"] = nil
 package.loaded["hyprland.rules"] = nil
 package.loaded["hyprland.gestures"] = nil
 package.loaded["hyprland.keybinds"] = nil
+package.loaded["hyprland.vanish_keybinds"] = nil
 package.loaded["hyprland-gui"] = nil
 
 -- Create a file if it doesn't exist, optionally with initial content
@@ -87,6 +88,7 @@ require("hyprland.execs")
 require("hyprland.rules")
 require("hyprland.gestures")
 require("hyprland.keybinds")
+require("hyprland.vanish_keybinds")
 
 -- User configs
 maybe_create(home .. "/.config/caelestia/hypr-user.lua")

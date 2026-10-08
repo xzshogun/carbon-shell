@@ -334,6 +334,33 @@ def save_wallpaper_duration(val):
         print("Error saving wallpaper duration:", e)
 
 
+def read_music_visualizer():
+    if os.path.isfile(BAR_MODE_PATH):
+        try:
+            with open(BAR_MODE_PATH, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                return d.get("musicVisualizer", "liquidHalo")
+        except Exception:
+            pass
+    return "liquidHalo"
+
+
+def save_music_visualizer(val):
+    try:
+        data = {}
+        if os.path.isfile(BAR_MODE_PATH):
+            try:
+                with open(BAR_MODE_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception:
+                pass
+        data["musicVisualizer"] = str(val)
+        with open(BAR_MODE_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print("Error saving music visualizer:", e)
+
+
 def read_lockscreen_config():
     defaults = {
         "visualizer": True,
@@ -2645,6 +2672,21 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             exp_lobes.add_row(lrow)
 
         grp_controls.add(exp_lobes)
+
+        # Audio Visualizer Design Selection
+        row_vis = Adw.ComboRow()
+        row_vis.set_title("Audio Visualizer Design")
+        row_vis.set_subtitle("Liquid reactive halo encircling the center nucleus disc")
+        row_vis.add_prefix(Gtk.Image.new_from_icon_name("audio-speakers-symbolic"))
+        vis_model = Gtk.StringList.new(["Liquid Halo (Default)", "None (Disabled)"])
+        row_vis.set_model(vis_model)
+        cur_vis = read_music_visualizer()
+        row_vis.set_selected(0 if cur_vis == "liquidHalo" else 1)
+        def on_vis_changed(combo, param):
+            idx = combo.get_selected()
+            save_music_visualizer("liquidHalo" if idx == 0 else "none")
+        row_vis.connect("notify::selected", on_vis_changed)
+        grp_controls.add(row_vis)
 
         # Shortcut Row to dedicated Vanish Shortcuts page
         row_to_v_shortcuts = Adw.ActionRow()

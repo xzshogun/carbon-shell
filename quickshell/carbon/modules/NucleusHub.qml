@@ -9,6 +9,7 @@ import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 import Quickshell.Services.Notifications
 import "../Singletons"
+import "visualizers"
 
 /**
  * NucleusHub — Barless sp3 Radial Desktop Environment
@@ -795,6 +796,7 @@ Item {
             // Glowing Outer Halo (matches lockscreen ValenceDot halo)
             Rectangle {
                 id: nucleusHalo
+                z: 0
                 anchors.centerIn: parent
                 width: nucleusCore.width + (root.hubOpen ? 24 : 10)
                 height: width
@@ -805,9 +807,24 @@ Item {
                 Behavior on width { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
             }
 
+            // Siri-style Audio Visualizer (Liquid Halo & Selectable Designs)
+            VisualizerHost {
+                id: nucleusVisualizerHost
+                z: 1
+                anchors.centerIn: parent
+                width: 140
+                height: 140
+                hostVisible: root.hubOpen && (root.activeMode === "hub")
+                opacity: (root.hubProgress > 0.35 && root.activeMode === "hub") ? 1.0 : 0.0
+                scale: 0.7 + (0.3 * root.hubProgress)
+                Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+                Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            }
+
             // Vibrant Core Disc (White with neon border, matching lockscreen ValenceDot)
             Rectangle {
                 id: nucleusCoreDisc
+                z: 2
                 anchors.fill: parent
                 radius: width / 2
                 color: "#FFFFFF"

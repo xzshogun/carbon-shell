@@ -234,10 +234,49 @@ Item {
     // 1. Audio Sink
     readonly property var audioSink: Pipewire.defaultAudioSink
     readonly property int audioVol: (audioSink && audioSink.audio) ? Math.round(audioSink.audio.volume * 100) : 50
+    property bool osdOpenedHub: false
+
     function stepVolume(delta) {
-        if (audioSink && audioSink.audio) {
+        if (controlRing) {
+            if (!controlRing.isOpen) {
+                controlRing.openOsd("volume")
+            }
+            controlRing.stepLevel(delta)
+        } else if (audioSink && audioSink.audio) {
             audioSink.audio.volume = Math.max(0.0, Math.min(1.0, audioSink.audio.volume + delta))
         }
+    }
+
+    function stepBrightness(delta) {
+        if (controlRing) {
+            if (!controlRing.isOpen) {
+                controlRing.openOsd("brightness")
+            }
+            controlRing.stepLevel(delta)
+        }
+    }
+
+    function toggleVolumeMute() {
+        if (controlRing) {
+            if (!controlRing.isOpen) {
+                controlRing.openOsd("volume")
+            }
+            controlRing.toggleMute()
+        } else if (audioSink && audioSink.audio) {
+            audioSink.audio.muted = !audioSink.audio.muted
+        }
+    }
+
+    function openVolumeMode() {
+        if (controlRing) controlRing.openSticky("volume")
+    }
+
+    function openBrightnessMode() {
+        if (controlRing) controlRing.openSticky("brightness")
+    }
+
+    function toggleControlRing(kind) {
+        if (controlRing) controlRing.openSticky(kind)
     }
 
     // 2. Battery
@@ -306,7 +345,9 @@ Item {
         id: globalKeyHandler
         focus: root.hubOpen && root.activeMode !== "appsearch"
         Keys.onEscapePressed: {
-            if (root.activeMode === "wifi" || root.activeMode === "bluetooth") {
+            if (controlRing && controlRing.isOpen) {
+                controlRing.closeRing()
+            } else if (root.activeMode === "wifi" || root.activeMode === "bluetooth") {
                 if (connectivityPicker) connectivityPicker.goBack()
             } else if (root.activeMode === "wallpapers" || root.activeMode === "appsearch") {
                 root.activeMode = "hub"
@@ -620,6 +661,7 @@ Item {
                             y: (satRadius * Math.sin(relRad) * satPop) - height / 2
                             width: 40
                             height: 40
+                            visible: (modelData.visible !== undefined) ? modelData.visible : true
                             scale: 0.35 + 0.65 * satPop
                             opacity: Math.min(1.0, satPop * 1.5)
 
@@ -727,17 +769,18 @@ Item {
                     {
                         icon: "volume_up",
                         isFontIcon: true,
-                        isActive: false,
+                        isActive: controlRing && controlRing.isOpen && controlRing.kind === "volume",
                         action: function() {
-                            Quickshell.execDetached(["pavucontrol"])
+                            root.toggleControlRing("volume")
                         }
                     },
                     {
                         icon: "light_mode",
                         isFontIcon: true,
-                        isActive: false,
+                        isActive: controlRing && controlRing.isOpen && controlRing.kind === "brightness",
+                        visible: controlRing ? controlRing.hasBacklight : true,
                         action: function() {
-                            Quickshell.execDetached(["brightnessctl", "set", "+10%"])
+                            root.toggleControlRing("brightness")
                         }
                     }
                 ]
@@ -1001,14 +1044,14 @@ Item {
                 border.width: root.hubOpen ? 2.4 : 1.5
                 Behavior on border.width { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
 
-                // Time readout inside disc when open
+                // Time readout inside disc when open (or volume/brightness readout when control ring is open)
                 Text {
                     anchors.centerIn: parent
                     visible: opacity > 0.01
                     opacity: root.hubProgress
-                    text: root.timeStr
+                    text: (controlRing && controlRing.isOpen) ? controlRing.centerReadoutText : root.timeStr
                     font.family: "Valley Sans"
-                    font.pixelSize: 13
+                    font.pixelSize: (controlRing && controlRing.isOpen) ? 15 : 13
                     font.bold: true
                     color: "#0b0e14"
                 }
@@ -1016,14 +1059,25 @@ Item {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
+                    acceptedButtons: Qt.LeftButton
                     onClicked: {
-                        if (root.activeMode === "wifi" || root.activeMode === "bluetooth") {
+                        if (controlRing && controlRing.isOpen) {
+                            if (controlRing.kind === "volume") {
+                                controlRing.toggleMute()
+                            } else {
+                                controlRing.closeRing()
+                            }
+                        } else if (root.activeMode === "wifi" || root.activeMode === "bluetooth") {
                             if (connectivityPicker) connectivityPicker.goBack()
                         } else if (root.activeMode === "wallpapers") {
                             root.shuffleWallpaperQuery()
                         } else {
                             root.toggle()
                         }
+                    }
+                    onWheel: wheel => {
+                        var delta = (wheel.angleDelta.y > 0) ? 0.03 : -0.03
+                        root.stepVolume(delta)
                     }
                 }
             }
@@ -1370,8 +1424,8 @@ Item {
             anchors.top: parent.bottom
             anchors.topMargin: (root.activeMode === "wifi" || root.activeMode === "bluetooth") ? 134 : ((LyricsService.hasTrack && root.activeMode === "hub") ? 148 : 82)
             Behavior on anchors.topMargin { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
-            visible: root.hubProgress > 0.1 && (root.activeMode === "hub" || root.activeMode === "wifi" || root.activeMode === "bluetooth")
-            opacity: (root.activeMode === "hub" || root.activeMode === "wifi" || root.activeMode === "bluetooth") ? root.hubProgress : 0.0
+            visible: root.hubProgress > 0.1 && (root.activeMode === "hub" || root.activeMode === "wifi" || root.activeMode === "bluetooth") && !(controlRing && controlRing.isOpen)
+            opacity: ((root.activeMode === "hub" || root.activeMode === "wifi" || root.activeMode === "bluetooth") && !(controlRing && controlRing.isOpen)) ? root.hubProgress : 0.0
             Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
             width: 360
             height: 24
@@ -2076,6 +2130,25 @@ Item {
 
             onBackRequested: {
                 root.activeMode = "hub"
+            }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           PHASE 6: Monochrome Volume & Brightness Control Ring
+           ══════════════════════════════════════════════════════════════════════ */
+        ControlRing {
+            id: controlRing
+            anchors.centerIn: parent
+            z: 1
+        }
+
+        Connections {
+            target: controlRing
+            function onIsOpenChanged() {
+                if (!controlRing.isOpen && root.osdOpenedHub) {
+                    root.osdOpenedHub = false
+                    root.close()
+                }
             }
         }
     }

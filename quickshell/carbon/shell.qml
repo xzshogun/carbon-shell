@@ -1025,6 +1025,27 @@ ShellRoot {
                         root.toggleSmallMusic()
                     else if (cmd === "controls")
                         root.toggleControls()
+                    else if (cmd === "controls volume up") {
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.volumeAction("up")
+                    }
+                    else if (cmd === "controls volume down") {
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.volumeAction("down")
+                    }
+                    else if (cmd === "controls volume toggle-mute") {
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.volumeAction("toggle-mute")
+                    }
+                    else if (cmd === "controls volume open") {
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.volumeAction("open")
+                    }
+                    else if (cmd === "controls brightness up") {
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.brightnessAction("up")
+                    }
+                    else if (cmd === "controls brightness down") {
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.brightnessAction("down")
+                    }
+                    else if (cmd === "controls brightness open") {
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.brightnessAction("open")
+                    }
                     else if (cmd.startsWith("set-bar-mode ")) {
                         const m = cmd.substring(13).trim()
                         if (m) root.switchBarMode(m)
@@ -2194,6 +2215,26 @@ ShellRoot {
             hubOpen = true
             bluetoothModeRequested()
         }
+        signal volumeActionRequested(string action, bool wasClosed)
+        signal brightnessActionRequested(string action, bool wasClosed)
+        function volumeAction(action) {
+            var wasClosed = (!hubOpen || isClosing)
+            if (wasClosed) {
+                isClosing = false
+                hubOpen = true
+                openRequested()
+            }
+            volumeActionRequested(action, wasClosed)
+        }
+        function brightnessAction(action) {
+            var wasClosed = (!hubOpen || isClosing)
+            if (wasClosed) {
+                isClosing = false
+                hubOpen = true
+                openRequested()
+            }
+            brightnessActionRequested(action, wasClosed)
+        }
     }
 
     Variants {
@@ -2348,6 +2389,23 @@ ShellRoot {
                     function onToggleLyricsRequested() { nucleusHubItemInstance.toggleLyrics() }
                     function onWifiModeRequested() { nucleusHubItemInstance.openWifiMode() }
                     function onBluetoothModeRequested() { nucleusHubItemInstance.openBluetoothMode() }
+                    function onVolumeActionRequested(action, wasClosed) {
+                        if (wasClosed && action !== "open") {
+                            nucleusHubItemInstance.osdOpenedHub = true
+                        }
+                        if (action === "up") nucleusHubItemInstance.stepVolume(0.05)
+                        else if (action === "down") nucleusHubItemInstance.stepVolume(-0.05)
+                        else if (action === "toggle-mute") nucleusHubItemInstance.toggleVolumeMute()
+                        else if (action === "open") nucleusHubItemInstance.openVolumeMode()
+                    }
+                    function onBrightnessActionRequested(action, wasClosed) {
+                        if (wasClosed && action !== "open") {
+                            nucleusHubItemInstance.osdOpenedHub = true
+                        }
+                        if (action === "up") nucleusHubItemInstance.stepBrightness(0.05)
+                        else if (action === "down") nucleusHubItemInstance.stepBrightness(-0.05)
+                        else if (action === "open") nucleusHubItemInstance.openBrightnessMode()
+                    }
                 }
             }
         }

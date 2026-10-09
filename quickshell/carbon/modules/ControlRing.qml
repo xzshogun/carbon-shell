@@ -148,15 +148,9 @@ Item {
         }
     }
 
-    // Brightness process execution
-    Process {
-        id: brightExec
-    }
-
     function setBrightnessProcess(val) {
         var pct = Math.max(1, Math.min(100, Math.round(val * 100)))
-        brightExec.command = ["brightnessctl", "set", pct + "%", "-q"]
-        brightExec.running = true
+        Quickshell.execDetached(["brightnessctl", "set", pct + "%", "-q"])
     }
 
     // Brightness hardware poller & udev monitor

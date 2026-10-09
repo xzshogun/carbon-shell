@@ -26,10 +26,10 @@ hl.bind(vars.kbRestoreLock, function()
 end)
 
 -- Brightness
-hl.bind(vars.kbBrightnessUp or "F12", hl.dsp.global("caelestia:brightnessUp"), { locked = true })
-hl.bind(vars.kbBrightnessDown or "F11", hl.dsp.global("caelestia:brightnessDown"), { locked = true })
-hl.bind("XF86MonBrightnessUp", hl.dsp.global("caelestia:brightnessUp"), { locked = true })
-hl.bind("XF86MonBrightnessDown", hl.dsp.global("caelestia:brightnessDown"), { locked = true })
+hl.bind(vars.kbBrightnessUp or "F12", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh 'controls brightness up'"), { locked = true, repeating = true })
+hl.bind(vars.kbBrightnessDown or "F11", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh 'controls brightness down'"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh 'controls brightness up'"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh 'controls brightness down'"), { locked = true, repeating = true })
 
 -- Media
 hl.bind("CTRL + SUPER + Space", hl.dsp.global("caelestia:mediaToggle"), { locked = true })
@@ -166,21 +166,16 @@ hl.bind("SUPER + SHIFT + C", hl.dsp.exec_cmd("hyprpicker -a"))
 
 -- Volume
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true })
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true })
-hl.bind("SUPER + SHIFT + M", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true })
+hl.bind("XF86AudioMute", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh 'controls volume toggle-mute'"), { locked = true })
+hl.bind("SUPER + SHIFT + M", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh 'controls volume toggle-mute'"), { locked = true })
 hl.bind(
     "XF86AudioRaiseVolume",
-    hl.dsp.exec_cmd(
-        "wpctl set-mute @DEFAULT_AUDIO_SINK@ 0; wpctl set-volume -l " ..
-        (vars.volumeMax / 100) .. " @DEFAULT_AUDIO_SINK@ " .. vars.volumeStep .. "%+"
-    ),
+    hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh 'controls volume up'"),
     { locked = true, repeating = true }
 )
 hl.bind(
     "XF86AudioLowerVolume",
-    hl.dsp.exec_cmd(
-        "wpctl set-mute @DEFAULT_AUDIO_SINK@ 0; wpctl set-volume @DEFAULT_AUDIO_SINK@ " .. vars.volumeStep .. "%-"
-    ),
+    hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh 'controls volume down'"),
     { locked = true, repeating = true }
 )
 

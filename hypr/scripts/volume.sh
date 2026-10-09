@@ -41,7 +41,9 @@ notify_user() {
 
 # Increase Volume
 inc_volume() {
-    if [ "$(pamixer --get-mute)" == "true" ]; then
+    if [ -S /tmp/carbon-shell.sock ]; then
+        ~/.config/carbon/scripts/carbon-ipc.sh "controls volume up"
+    elif [ "$(pamixer --get-mute)" == "true" ]; then
         toggle_mute
     else
         pamixer -i 5 --allow-boost --set-limit 150 && notify_user
@@ -50,7 +52,9 @@ inc_volume() {
 
 # Decrease Volume
 dec_volume() {
-    if [ "$(pamixer --get-mute)" == "true" ]; then
+    if [ -S /tmp/carbon-shell.sock ]; then
+        ~/.config/carbon/scripts/carbon-ipc.sh "controls volume down"
+    elif [ "$(pamixer --get-mute)" == "true" ]; then
         toggle_mute
     else
         pamixer -d 5 && notify_user
@@ -59,11 +63,13 @@ dec_volume() {
 
 # Toggle Mute
 toggle_mute() {
-	if [ "$(pamixer --get-mute)" == "false" ]; then
-		pamixer -m && notify-send -e -u low -i "$iDIR/volume-mute.png" " Mute"
-	elif [ "$(pamixer --get-mute)" == "true" ]; then
-		pamixer -u && notify-send -e -u low -i "$(get_icon)" " Volume:" " Switched ON"
-	fi
+    if [ -S /tmp/carbon-shell.sock ]; then
+        ~/.config/carbon/scripts/carbon-ipc.sh "controls volume toggle-mute"
+    elif [ "$(pamixer --get-mute)" == "false" ]; then
+        pamixer -m && notify-send -e -u low -i "$iDIR/volume-mute.png" " Mute"
+    elif [ "$(pamixer --get-mute)" == "true" ]; then
+        pamixer -u && notify-send -e -u low -i "$(get_icon)" " Volume:" " Switched ON"
+    fi
 }
 
 # Toggle Mic

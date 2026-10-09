@@ -387,8 +387,8 @@ Item {
         Item {
             id: lobesLayer
             anchors.centerIn: parent
-            visible: root.hubProgress > 0.05 && root.activeMode === "hub"
-            opacity: (root.activeMode === "hub") ? root.hubProgress : 0.0
+            visible: root.hubProgress > 0.05 && root.activeMode === "hub" && !(controlRing && controlRing.isOpen)
+            opacity: (root.activeMode === "hub" && !(controlRing && controlRing.isOpen)) ? root.hubProgress : 0.0
             Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
             // Lobe template component
@@ -1091,8 +1091,8 @@ Item {
             anchors.centerIn: parent
             width: 116
             height: 116
-            visible: (opacity > 0.01) && LyricsService.hasTrack && root.activeMode === "hub"
-            opacity: (root.hubProgress > 0.35 && LyricsService.hasTrack && root.activeMode === "hub") ? 1.0 : 0.0
+            visible: (opacity > 0.01) && LyricsService.hasTrack && root.activeMode === "hub" && !(controlRing && controlRing.isOpen)
+            opacity: (root.hubProgress > 0.35 && LyricsService.hasTrack && root.activeMode === "hub" && !(controlRing && controlRing.isOpen)) ? 1.0 : 0.0
             scale: 0.7 + (0.3 * root.hubProgress)
             Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
             Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
@@ -1203,8 +1203,8 @@ Item {
             anchors.topMargin: 56
             width: 320
             height: 84
-            visible: (opacity > 0.01) && LyricsService.hasTrack && root.activeMode === "hub"
-            opacity: (root.hubProgress > 0.25 && LyricsService.hasTrack && root.activeMode === "hub") ? 1.0 : 0.0
+            visible: (opacity > 0.01) && LyricsService.hasTrack && root.activeMode === "hub" && !(controlRing && controlRing.isOpen)
+            opacity: (root.hubProgress > 0.25 && LyricsService.hasTrack && root.activeMode === "hub" && !(controlRing && controlRing.isOpen)) ? 1.0 : 0.0
             Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
             property bool forceMetadata: false
@@ -2145,8 +2145,7 @@ Item {
         Connections {
             target: controlRing
             function onIsOpenChanged() {
-                if (!controlRing.isOpen && root.osdOpenedHub) {
-                    root.osdOpenedHub = false
+                if (!controlRing.isOpen) {
                     root.close()
                 }
             }

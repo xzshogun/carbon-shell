@@ -10,8 +10,9 @@ import "../Singletons"
  * Minimalist monochrome radial volume & brightness control centered around the Nucleus.
  * 
  * - 270° circular arc from 135° (bottom-left) to 45° (bottom-right) at radius 76px.
- * - Liquid Halo harmonic 3-layer fluid effect behind arc.
- * - Sticky mode (via Connect lobe satellites) & OSD mode (media keys / wheel / IPC, 1.5s auto-hide).
+ * - Liquid Halo harmonic 3-layer fluid effect behind arc with continuous, unpausing flow.
+ * - Borderless 420x420 canvas so fluid layers are never clipped or boxed.
+ * - Auto-closes smoothly when user is done increasing or decreasing.
  * - Matugen warm-shifted color pipeline with saturation fallback.
  * - Zero timers and zero CPU usage when closed (0% CPU at rest).
  */
@@ -20,22 +21,22 @@ Item {
 
     // Configuration / Modes
     property string kind: "volume"        // "volume" | "brightness"
-    property string ringMode: "closed"    // "closed" | "sticky" | "osd"
+    property string ringMode: "closed"    // "closed" | "active"
     readonly property bool isOpen: ringMode !== "closed"
 
-    // Nucleus size & positioning
-    implicitWidth: 260
-    implicitHeight: 260
+    // Large canvas footprint to guarantee fluid layers are completely borderless and unclipped
+    implicitWidth: 420
+    implicitHeight: 420
 
     readonly property real cx: width / 2
     readonly property real cy: height / 2
     readonly property real arcRadius: 76
 
-    // Smooth opening / closing animation (easeOutCubic over ~400ms)
+    // Smooth unroll / roll-up animation
     property real openProgress: 0.0
     Behavior on openProgress {
         NumberAnimation {
-            duration: 400
+            duration: 340
             easing.type: Easing.OutCubic
         }
     }
@@ -43,7 +44,7 @@ Item {
     onIsOpenChanged: {
         openProgress = isOpen ? 1.0 : 0.0
         if (isOpen) {
-            speedFactor = 1.0
+            speedFactor = 0.5
             resetOsdTimer()
         } else {
             osdHideTimer.stop()
@@ -68,19 +69,19 @@ Item {
         ? (isMuted ? 0.0 : Math.max(0.0, Math.min(1.0, rawVolume)))
         : Math.max(0.01, Math.min(1.0, brightnessLevel))
 
-    // Display level with smooth mute drain (0.1/frame) or smooth easing
+    // Display level with smooth mute drain or gentle easing
     property real displayLevel: currentLevel
     onCurrentLevelChanged: {
         trailAdd(displayAngleRad)
-        speedFactor = 1.0
-        if (isOpen && ringMode === "osd" && !isDragging) {
+        speedFactor = 0.6
+        if (isOpen && !isDragging) {
             resetOsdTimer()
         }
     }
 
     Behavior on displayLevel {
         NumberAnimation {
-            duration: root.isMuted ? 280 : 120
+            duration: root.isMuted ? 260 : 120
             easing.type: Easing.OutCubic
         }
     }
@@ -118,7 +119,6 @@ Item {
                 audioSink.audio.volume = val
             }
         } else {
-            // Brightness clamped to minimum 1% (0.01)
             val = Math.max(0.01, val)
             brightnessLevel = val
             setBrightnessProcess(val)
@@ -144,6 +144,7 @@ Item {
             if (!audioSink.audio.muted && audioSink.audio.volume <= 0.01) {
                 audioSink.audio.volume = 0.25
             }
+            resetOsdTimer()
         }
     }
 
@@ -185,40 +186,34 @@ Item {
         }
     }
 
-    /* ── 2. OSD Mode & Timers ─────────────────────────────────────────── */
+    /* ── 2. Unified Auto-Close Timer ──────────────────────────────────── */
     Timer {
         id: osdHideTimer
-        interval: 1500
+        interval: 1800
         repeat: false
         onTriggered: {
-            if (root.ringMode === "osd") {
-                root.closeRing()
-            }
+            root.closeRing()
         }
     }
 
     function resetOsdTimer() {
-        if (ringMode === "osd") {
+        if (root.isOpen && !root.isDragging) {
             osdHideTimer.restart()
         }
     }
 
-    function openSticky(k) {
-        if (isOpen && kind === k && ringMode === "sticky") {
-            closeRing()
-            return
-        }
+    function openControl(k) {
         kind = k
-        ringMode = "sticky"
-        osdHideTimer.stop()
+        ringMode = "active"
+        resetOsdTimer()
+    }
+
+    function openSticky(k) {
+        openControl(k)
     }
 
     function openOsd(k) {
-        kind = k
-        if (ringMode !== "sticky") {
-            ringMode = "osd"
-            resetOsdTimer()
-        }
+        openControl(k)
     }
 
     function closeRing() {
@@ -226,7 +221,6 @@ Item {
     }
 
     /* ── 3. Matugen & Color Pipeline ──────────────────────────────────── */
-    // Helper to test primary color saturation
     function getSaturation(c) {
         var r = c.r, g = c.g, b = c.b
         var max = Math.max(r, Math.max(g, b))
@@ -237,9 +231,7 @@ Item {
         return delta / (1.0 - Math.abs(2.0 * l - 1.0))
     }
 
-    // HSL warm shifted color helper (shifts hue toward 35° warm amber)
     function getWarmShift(c, targetLightness) {
-        // High-clarity warm amber spectrum
         if (targetLightness < 0.6) return Qt.rgba(232/255, 120/255, 70/255, 1.0)
         if (targetLightness < 0.8) return Qt.rgba(239/255, 159/255, 39/255, 1.0)
         return Qt.rgba(255/255, 236/255, 190/255, 1.0)
@@ -271,16 +263,14 @@ Item {
         return getWarmShift(Theme.m3primary, 0.90)
     }
 
-    // Mid color for Brightness Fill & Knob
     readonly property color brightnessMidColor: colBrightLayer1
 
-    // Fill Color
     readonly property color arcFillColor: (kind === "volume")
         ? Qt.rgba(1.0, 1.0, 1.0, isMuted ? 0.30 : 0.95)
         : Qt.rgba(brightnessMidColor.r, brightnessMidColor.g, brightnessMidColor.b, 0.95)
 
-    /* ── 4. Liquid Halo Behind Arc ────────────────────────────────────── */
-    property real speedFactor: 0.08
+    /* ── 4. Liquid Halo Behind Arc (Continuous, Never Pauses/Restarts) ─── */
+    property real speedFactor: 0.0
     property real lagG0: 0.0
     property real lagG1: 0.0
     property real lagG2: 0.0
@@ -296,30 +286,27 @@ Item {
         id: frameTimer
         interval: 16
         repeat: true
-        running: root.isOpen || root.openProgress > 0.01
+        running: root.isOpen || root.openProgress > 0.005
         onTriggered: {
-            // Easing lag levels
             var targetL = root.displayLevel
-            root.lagG0 += (targetL - root.lagG0) * 0.30
-            root.lagG1 += (targetL - root.lagG1) * 0.16
-            root.lagG2 += (targetL - root.lagG2) * 0.08
+            root.lagG0 += (targetL - root.lagG0) * 0.22
+            root.lagG1 += (targetL - root.lagG1) * 0.14
+            root.lagG2 += (targetL - root.lagG2) * 0.07
 
-            // Speed decay
-            root.speedFactor += (0.08 - root.speedFactor) * 0.05
+            // Soft decay of speed factor
+            root.speedFactor += (0.0 - root.speedFactor) * 0.05
 
-            // Phase drift
+            // Continuous calm phase drift: never stops, never jerks
             var twoPi = 2.0 * Math.PI
-            var dt = 16.0
-            var drift = 0.00045 * dt + 0.09 * root.speedFactor
+            var drift = 0.016 + 0.006 * root.speedFactor
 
             root.phase0_1 = (root.phase0_1 + drift) % twoPi
-            root.phase0_2 = (root.phase0_2 - drift * 0.7) % twoPi
-            root.phase1_1 = (root.phase1_1 - drift * 1.1) % twoPi
-            root.phase1_2 = (root.phase1_2 + drift * 0.8) % twoPi
-            root.phase2_1 = (root.phase2_1 + drift * 1.2) % twoPi
-            root.phase2_2 = (root.phase2_2 - drift * 0.9) % twoPi
+            root.phase0_2 = (root.phase0_2 - drift * 0.72) % twoPi
+            root.phase1_1 = (root.phase1_1 - drift * 1.15) % twoPi
+            root.phase1_2 = (root.phase1_2 + drift * 0.84) % twoPi
+            root.phase2_1 = (root.phase2_1 + drift * 1.28) % twoPi
+            root.phase2_2 = (root.phase2_2 - drift * 0.91) % twoPi
 
-            // Trail decay
             trailPrune()
 
             haloCanvas.requestPaint()
@@ -327,7 +314,7 @@ Item {
         }
     }
 
-    // Liquid Halo Canvas
+    // Liquid Halo Canvas (Full & Borderless, 420x420 bounds)
     Canvas {
         id: haloCanvas
         anchors.fill: parent
@@ -384,7 +371,7 @@ Item {
                     ? ((3 + 8 * spd + 3 * lvl) * (1 + 0.25 * i))
                     : ((2 + 8 * root.brightnessLevel + 8 * spd + 3 * lvl) * (1 + 0.25 * i))
 
-                // Scale r0 during open unroll
+                // Smooth radius scale during unroll
                 r0 = (30 + (r0 - 30) * root.openProgress)
 
                 var alpha = isVol ? 0.20 : (0.10 + 0.18 * root.brightnessLevel)
@@ -470,7 +457,6 @@ Item {
                 var tAngleDeg = 135 + tp * 270
                 var tAngleRad = tAngleDeg * Math.PI / 180
 
-                // Pop-in stagger: e * 1.3 - 0.18 * i
                 var tPop = Math.max(0.0, Math.min(1.0, root.openProgress * 1.3 - 0.18 * ti))
                 if (tPop <= 0.01) continue
 
@@ -497,7 +483,7 @@ Item {
                 ctx.restore()
             }
 
-            // 3. Fill Arc (sweep from 135° to fillAngle)
+            // 3. Fill Arc
             var currentFillSweepDeg = 270 * root.displayLevel * root.openProgress
             var fillEndAngleRad = (135 + currentFillSweepDeg) * Math.PI / 180
 
@@ -548,24 +534,22 @@ Item {
                 ctx.restore()
             }
 
-            // Knob disc or hollow mute ring
+            // Knob disc or hollow ring
             ctx.save()
             ctx.beginPath()
             if (root.isMuted && root.kind === "volume") {
-                // Hollow 8px knob ring
                 ctx.arc(kx, ky, 4.0, 0, 2 * Math.PI)
                 ctx.lineWidth = 1.8
                 ctx.strokeStyle = Qt.rgba(1.0, 1.0, 1.0, 0.85 * root.openProgress)
                 ctx.stroke()
             } else {
-                // 9px solid circle at fill end
                 ctx.arc(kx, ky, 4.5, 0, 2 * Math.PI)
                 ctx.fillStyle = root.arcFillColor
                 ctx.fill()
             }
             ctx.restore()
 
-            // 6. End Pings (radius 9 -> 29px, 650ms, alpha 0.7 -> 0)
+            // 6. End Pings
             if (root.pingActive && root.pingProgress < 1.0) {
                 var pAngleRad = root.pingAngle * Math.PI / 180
                 var px = cx + rad * Math.cos(pAngleRad)
@@ -585,7 +569,6 @@ Item {
     }
 
     /* ── 7. End Icons (45° below horizontal at radius +24 = 100px) ───── */
-    // Start Icon at 135° (bottom-left)
     readonly property real startIconRad: (135 * Math.PI / 180)
     readonly property real startIconX: cx + (arcRadius + 24) * Math.cos(startIconRad)
     readonly property real startIconY: cy + (arcRadius + 24) * Math.sin(startIconRad)
@@ -601,7 +584,6 @@ Item {
         color: "#FFFFFF"
     }
 
-    // End Icon at 45° (bottom-right)
     readonly property real endIconRad: (45 * Math.PI / 180)
     readonly property real endIconX: cx + (arcRadius + 24) * Math.cos(endIconRad)
     readonly property real endIconY: cy + (arcRadius + 24) * Math.sin(endIconRad)
@@ -618,13 +600,11 @@ Item {
     }
 
     /* ── 8. Center Readout & Bottom Gap Caption ───────────────────────── */
-    // Center Readout: percentage in bold ~15px or "mute"
     readonly property string centerReadoutText: {
         if (root.kind === "volume" && root.isMuted) return "mute"
         return Math.round(root.currentLevel * 100) + "%"
     }
 
-    // Bottom Gap Caption (Line 1: "volume" / "brightness" + muted, Line 2: device)
     readonly property string captionLine1: {
         var base = (root.kind === "volume") ? "volume" : "brightness"
         if (root.kind === "volume" && root.isMuted) base += " · muted"
@@ -640,7 +620,7 @@ Item {
         id: bottomGapCaption
         x: root.cx - width / 2
         y: root.cy + root.arcRadius + 14
-        width: 140
+        width: 160
         height: 28
         visible: root.openProgress > 0.1
         opacity: root.openProgress
@@ -665,7 +645,7 @@ Item {
                 font.pixelSize: 9
                 color: Qt.rgba(1.0, 1.0, 1.0, 0.60)
                 elide: Text.ElideMiddle
-                width: 130
+                width: 150
                 horizontalAlignment: Text.AlignHCenter
             }
         }
@@ -685,21 +665,17 @@ Item {
             var dy = mouseY - root.cy
             var dist = Math.sqrt(dx * dx + dy * dy)
 
-            // Hit band: radius 76px +/- 26px = [50px, 102px]
-            if (dist < 46 || dist > 108) return
+            if (dist < 46 || dist > 112) return
 
             var angleRad = Math.atan2(dy, dx)
             var angleDeg = (angleRad * 180 / Math.PI + 360) % 360
 
-            // Arc starts at 135° (bottom-left) and sweeps clockwise 270° to 45°
             var sweep = (angleDeg - 135 + 360) % 360
             var val = 0.0
 
             if (sweep <= 270) {
                 val = sweep / 270.0
             } else {
-                // Gap is 270° to 360° (midpoint 315° = 90° straight down)
-                // Snap to nearest end: 0% or 100%
                 if (sweep <= 315) {
                     val = 1.0
                 } else {
@@ -708,13 +684,14 @@ Item {
             }
 
             root.setLevel(val, true)
+            root.resetOsdTimer()
         }
 
         onPressed: mouse => {
             var dx = mouse.x - root.cx
             var dy = mouse.y - root.cy
             var dist = Math.sqrt(dx * dx + dy * dy)
-            if (dist >= 46 && dist <= 108) {
+            if (dist >= 46 && dist <= 112) {
                 root.isDragging = true
                 osdHideTimer.stop()
                 handlePointer(mouse.x, mouse.y)
@@ -730,17 +707,13 @@ Item {
         onReleased: {
             if (root.isDragging) {
                 root.isDragging = false
-                if (root.ringMode === "osd") {
-                    root.resetOsdTimer()
-                }
+                root.resetOsdTimer()
             }
         }
 
         onCanceled: {
             root.isDragging = false
-            if (root.ringMode === "osd") {
-                root.resetOsdTimer()
-            }
+            root.resetOsdTimer()
         }
     }
 }

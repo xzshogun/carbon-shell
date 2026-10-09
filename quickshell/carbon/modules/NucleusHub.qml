@@ -36,7 +36,7 @@ Item {
 
     /* ── Properties & State ── */
     property bool hubOpen: false
-    property string activeMode: "hub" // "hub" | "wallpapers" | "appsearch"
+    property string activeMode: "hub" // "hub" | "wallpapers" | "appsearch" | "wifi" | "bluetooth"
     property string focusedLobe: ""    // "" | "connect" | "launch" | "spaces" | "alerts"
 
     /* External IPC Triggers */
@@ -79,12 +79,14 @@ Item {
         interval: 380
         onTriggered: {
             root.activeMode = "hub"
+            if (connectivityPicker) connectivityPicker.closePicker()
             root.closeRequested()
         }
     }
 
     function close() {
         if (!root.hubOpen) return
+        if (connectivityPicker) connectivityPicker.closePicker()
         root.hubOpen = false
         root.focusedLobe = ""
         root.closingStarted()
@@ -95,6 +97,20 @@ Item {
         if (!root.hubOpen) root.open()
         root.activeMode = "hub"
         root.focusedLobe = (root.focusedLobe === name) ? "" : name
+    }
+
+    function openWifiMode() {
+        if (!root.hubOpen) root.open()
+        root.activeMode = "wifi"
+        root.focusedLobe = ""
+        if (connectivityPicker) connectivityPicker.openWifi()
+    }
+
+    function openBluetoothMode() {
+        if (!root.hubOpen) root.open()
+        root.activeMode = "bluetooth"
+        root.focusedLobe = ""
+        if (connectivityPicker) connectivityPicker.openBluetooth()
     }
 
     function openWallpaperMode() {
@@ -290,7 +306,9 @@ Item {
         id: globalKeyHandler
         focus: root.hubOpen && root.activeMode !== "appsearch"
         Keys.onEscapePressed: {
-            if (root.activeMode === "wallpapers" || root.activeMode === "appsearch") {
+            if (root.activeMode === "wifi" || root.activeMode === "bluetooth") {
+                if (connectivityPicker) connectivityPicker.goBack()
+            } else if (root.activeMode === "wallpapers" || root.activeMode === "appsearch") {
                 root.activeMode = "hub"
             } else if (root.focusedLobe !== "") {
                 root.focusedLobe = ""
@@ -417,7 +435,16 @@ Item {
                 Connections {
                     target: root
                     function onHubOpenChanged() {
-                        if (root.hubOpen && root.activeMode !== "wallpapers") {
+                        if (root.hubOpen && root.activeMode === "hub") {
+                            lobeRetractAnim.stop()
+                            lobeBloomSeq.restart()
+                        } else {
+                            lobeBloomSeq.stop()
+                            lobeRetractAnim.restart()
+                        }
+                    }
+                    function onActiveModeChanged() {
+                        if (root.hubOpen && root.activeMode === "hub") {
                             lobeRetractAnim.stop()
                             lobeBloomSeq.restart()
                         } else {
@@ -438,7 +465,7 @@ Item {
 
                 SequentialAnimation {
                     id: lobeBloomSeq
-                    running: root.hubOpen && root.activeMode !== "wallpapers"
+                    running: root.hubOpen && root.activeMode === "hub"
                     PauseAnimation { duration: lobeItem.staggerDelay }
                     NumberAnimation {
                         target: lobeItem
@@ -455,6 +482,36 @@ Item {
                 opacity: targetAlpha * bloomAnim
                 Behavior on scale { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
                 Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+
+                property int hoveredSatellitesCount: 0
+                readonly property bool isClusterHovered: lobeMouse.containsMouse || (hoveredSatellitesCount > 0)
+
+                Timer {
+                    id: unfocusDebounceTimer
+                    interval: 200
+                    repeat: false
+                    onTriggered: {
+                        if (!lobeItem.isClusterHovered && root.focusedLobe === lobeItem.lobeId && (root.activeMode === "hub" || root.activeMode === "")) {
+                            root.focusedLobe = ""
+                        }
+                    }
+                }
+
+                Connections {
+                    target: root
+                    function onFocusedLobeChanged() {
+                        if (root.focusedLobe !== lobeItem.lobeId) {
+                            lobeItem.hoveredSatellitesCount = 0
+                            unfocusDebounceTimer.stop()
+                        }
+                    }
+                    function onHubOpenChanged() {
+                        if (!root.hubOpen) {
+                            lobeItem.hoveredSatellitesCount = 0
+                            unfocusDebounceTimer.stop()
+                        }
+                    }
+                }
 
                 // ── 48px Standalone Round Icon Button at dynamic orbitalRadius ──
                 Item {
@@ -492,6 +549,17 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
+                        onEntered: {
+                            unfocusDebounceTimer.stop()
+                            if (root.hubOpen && (root.activeMode === "hub" || root.activeMode === "")) {
+                                root.focusedLobe = lobeItem.lobeId
+                            }
+                        }
+                        onExited: {
+                            if (lobeItem.hoveredSatellitesCount === 0) {
+                                unfocusDebounceTimer.restart()
+                            }
+                        }
                         onClicked: {
                             root.focusLobe(lobeItem.lobeId)
                         }
@@ -542,9 +610,8 @@ Item {
                                     property: "satPop"
                                     from: 0.0
                                     to: 1.0
-                                    duration: 380
-                                    easing.type: Easing.OutBack
-                                    easing.overshoot: 1.18
+                                    duration: 320
+                                    easing.type: Easing.OutCubic
                                 }
                             }
 
@@ -604,6 +671,16 @@ Item {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
+                                    onEntered: {
+                                        lobeItem.hoveredSatellitesCount++
+                                        unfocusDebounceTimer.stop()
+                                    }
+                                    onExited: {
+                                        lobeItem.hoveredSatellitesCount = Math.max(0, lobeItem.hoveredSatellitesCount - 1)
+                                        if (lobeItem.hoveredSatellitesCount === 0 && !lobeMouse.containsMouse) {
+                                            unfocusDebounceTimer.restart()
+                                        }
+                                    }
                                     onClicked: {
                                         modelData.action()
                                     }
@@ -634,17 +711,17 @@ Item {
                     {
                         icon: "wifi",
                         isFontIcon: true,
-                        isActive: true,
+                        isActive: root.activeMode === "wifi",
                         action: function() {
-                            Quickshell.execDetached(["sh", "-c", "nm-connection-editor || true"])
+                            root.openWifiMode()
                         }
                     },
                     {
                         icon: "bluetooth",
                         isFontIcon: true,
-                        isActive: true,
+                        isActive: root.activeMode === "bluetooth",
                         action: function() {
-                            Quickshell.execDetached(["sh", "-c", "blueman-manager || true"])
+                            root.openBluetoothMode()
                         }
                     },
                     {
@@ -940,7 +1017,9 @@ Item {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        if (root.activeMode === "wallpapers") {
+                        if (root.activeMode === "wifi" || root.activeMode === "bluetooth") {
+                            if (connectivityPicker) connectivityPicker.goBack()
+                        } else if (root.activeMode === "wallpapers") {
                             root.shuffleWallpaperQuery()
                         } else {
                             root.toggle()
@@ -1291,8 +1370,8 @@ Item {
             anchors.top: parent.bottom
             anchors.topMargin: (LyricsService.hasTrack && root.activeMode === "hub") ? 148 : 82
             Behavior on anchors.topMargin { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
-            visible: root.hubProgress > 0.1 && root.activeMode === "hub"
-            opacity: (root.activeMode === "hub") ? root.hubProgress : 0.0
+            visible: root.hubProgress > 0.1 && (root.activeMode === "hub" || root.activeMode === "wifi" || root.activeMode === "bluetooth")
+            opacity: (root.activeMode === "hub" || root.activeMode === "wifi" || root.activeMode === "bluetooth") ? root.hubProgress : 0.0
             Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
             width: 360
             height: 24
@@ -1311,7 +1390,7 @@ Item {
             Item {
                 id: dateView
                 anchors.fill: parent
-                opacity: !dateLyricsCaption.showLyrics ? 1.0 : 0.0
+                opacity: (!dateLyricsCaption.showLyrics && root.activeMode === "hub") ? 1.0 : 0.0
                 y: !dateLyricsCaption.showLyrics ? 0 : -14
                 Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
                 Behavior on y { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
@@ -1344,7 +1423,7 @@ Item {
             Item {
                 id: lyricsView
                 anchors.fill: parent
-                opacity: dateLyricsCaption.showLyrics ? 1.0 : 0.0
+                opacity: (dateLyricsCaption.showLyrics && root.activeMode === "hub") ? 1.0 : 0.0
                 y: dateLyricsCaption.showLyrics ? 0 : 14
                 Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
                 Behavior on y { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
@@ -1407,6 +1486,27 @@ Item {
                 }
             }
 
+            // 3. Connectivity Caption View (Shows Wi-Fi / Bluetooth status, SSID, security, signal, etc.)
+            Item {
+                id: connectivityCaptionView
+                anchors.fill: parent
+                visible: root.activeMode === "wifi" || root.activeMode === "bluetooth"
+                opacity: (root.activeMode === "wifi" || root.activeMode === "bluetooth") ? 1.0 : 0.0
+                Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: connectivityPicker ? connectivityPicker.captionText : ""
+                    font.family: "Valley Sans"
+                    font.pixelSize: 12
+                    font.bold: true
+                    color: root.colFgDim
+                    elide: Text.ElideMiddle
+                    width: parent.width - 24
+                    horizontalAlignment: Text.AlignHCenter
+                }
+            }
+
             // Interactive MouseArea: Scroll Down -> Lyrics, Scroll Up -> Date, Click -> Toggle
             MouseArea {
                 id: dateCaptionMouse
@@ -1415,6 +1515,7 @@ Item {
                 cursorShape: Qt.PointingHandCursor
 
                 onWheel: (wheel) => {
+                    if (root.activeMode !== "hub") return
                     if (wheel.angleDelta.y < 0) {
                         // Scroll down: morph to lyrics
                         dateLyricsCaption.showLyrics = true
@@ -1425,7 +1526,9 @@ Item {
                 }
 
                 onClicked: {
-                    dateLyricsCaption.showLyrics = !dateLyricsCaption.showLyrics
+                    if (root.activeMode === "hub") {
+                        dateLyricsCaption.showLyrics = !dateLyricsCaption.showLyrics
+                    }
                 }
             }
         }
@@ -1958,6 +2061,21 @@ Item {
                         Keys.onReturnPressed: root.fetchWallpapers(text)
                     }
                 }
+            }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           PHASE 5: Monochrome Orbit-Orb Connectivity Picker (Wi-Fi & Bluetooth)
+           ══════════════════════════════════════════════════════════════════════ */
+        ConnectivityOrbitPicker {
+            id: connectivityPicker
+            anchors.centerIn: parent
+            visible: root.activeMode === "wifi" || root.activeMode === "bluetooth"
+            opacity: (root.activeMode === "wifi" || root.activeMode === "bluetooth") ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+
+            onBackRequested: {
+                root.activeMode = "hub"
             }
         }
     }

@@ -22,6 +22,16 @@ Singleton {
 
     property real shellOpacity: 0.85
 
+    /* ── Connectivity Orbit Picker Tokens ── */
+    readonly property int wifiOrbitBase: 118
+    readonly property int wifiOrbitFactor: 52
+    readonly property int guideRingInner: 70
+    readonly property int guideRingOuter: 105
+    readonly property int btInnerRadius: 75
+    readonly property int btOuterRadius: 115
+    readonly property int connectivityScanInterval: 8000
+    readonly property bool reducedMotion: false
+
     /* ── Caelestia Material 3 Expressive Animation Tokens ── */
     readonly property var animCurves: ({
         expressiveFastSpatial: [0.42, 1.67, 0.21, 0.9, 1.0, 1.0],

@@ -1160,6 +1160,14 @@ ShellRoot {
                         if (root.barMode !== "nucleus") root.switchBarMode("nucleus")
                         if (root.nucleusHubItem) root.nucleusHubItem.toggleLyrics()
                     }
+                    else if (cmd === "nucleus wifi" || cmd === "nucleus wifi toggle") {
+                        if (root.barMode !== "nucleus") root.switchBarMode("nucleus")
+                        if (root.nucleusHubItem) root.nucleusHubItem.openWifiMode()
+                    }
+                    else if (cmd === "nucleus bluetooth" || cmd === "nucleus bt" || cmd === "nucleus bluetooth toggle") {
+                        if (root.barMode !== "nucleus") root.switchBarMode("nucleus")
+                        if (root.nucleusHubItem) root.nucleusHubItem.openBluetoothMode()
+                    }
                     else if (cmd === "calendar" || cmd === "center-dashboard" || cmd === "center" || cmd === "time-weather" || cmd === "toggle-dashboard" || cmd === "dashboard")
                         root.toggleCenterDashboard()
                     else if (cmd === "calendar-events") {
@@ -2115,6 +2123,8 @@ ShellRoot {
         signal focusLobeRequested(string lobe)
         signal wallpaperModeRequested()
         signal launcherModeRequested()
+        signal wifiModeRequested()
+        signal bluetoothModeRequested()
 
         function toggle() { 
             if (!hubOpen || isClosing) {
@@ -2163,6 +2173,16 @@ ShellRoot {
         signal toggleLyricsRequested()
         function toggleLyrics() {
             toggleLyricsRequested()
+        }
+        function openWifiMode() {
+            isClosing = false
+            hubOpen = true
+            wifiModeRequested()
+        }
+        function openBluetoothMode() {
+            isClosing = false
+            hubOpen = true
+            bluetoothModeRequested()
         }
     }
 
@@ -2316,6 +2336,8 @@ ShellRoot {
                     function onWallpaperModeRequested() { nucleusHubItemInstance.openWallpaperMode() }
                     function onLauncherModeRequested() { nucleusHubItemInstance.openLauncherMode() }
                     function onToggleLyricsRequested() { nucleusHubItemInstance.toggleLyrics() }
+                    function onWifiModeRequested() { nucleusHubItemInstance.openWifiMode() }
+                    function onBluetoothModeRequested() { nucleusHubItemInstance.openBluetoothMode() }
                 }
             }
         }

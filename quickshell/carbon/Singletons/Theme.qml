@@ -27,10 +27,11 @@ Singleton {
     readonly property int wifiOrbitFactor: 52
     readonly property int guideRingInner: 70
     readonly property int guideRingOuter: 105
-    readonly property int btInnerRadius: 75
-    readonly property int btOuterRadius: 115
+    readonly property int btInnerRadius: 66
+    readonly property int btOuterRadius: 112
     readonly property int connectivityScanInterval: 8000
     readonly property bool reducedMotion: false
+    readonly property bool bluetoothHeadsetDefaultAudio: false
 
     /* ── Caelestia Material 3 Expressive Animation Tokens ── */
     readonly property var animCurves: ({

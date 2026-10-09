@@ -1001,10 +1001,20 @@ ShellRoot {
                         root.toggleBrightness()
                     else if (cmd === "battery")
                         root.toggleBattery()
-                    else if (cmd === "wifi")
-                        root.toggleWifi()
-                    else if (cmd === "bt" || cmd === "bluetooth")
-                        root.toggleBt()
+                    else if (cmd === "wifi") {
+                        if (root.barMode === "nucleus") {
+                            if (root.nucleusHubItem) root.nucleusHubItem.openWifiMode()
+                        } else {
+                            root.toggleWifi()
+                        }
+                    }
+                    else if (cmd === "bt" || cmd === "bluetooth") {
+                        if (root.barMode === "nucleus") {
+                            if (root.nucleusHubItem) root.nucleusHubItem.openBluetoothMode()
+                        } else {
+                            root.toggleBt()
+                        }
+                    }
                     else if (cmd === "tray")
                         root.toggleTray()
                     else if (cmd === "calendar")

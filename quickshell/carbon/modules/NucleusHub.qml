@@ -1368,7 +1368,7 @@ Item {
             id: dateLyricsCaption
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.bottom
-            anchors.topMargin: (LyricsService.hasTrack && root.activeMode === "hub") ? 148 : 82
+            anchors.topMargin: (root.activeMode === "wifi" || root.activeMode === "bluetooth") ? 134 : ((LyricsService.hasTrack && root.activeMode === "hub") ? 148 : 82)
             Behavior on anchors.topMargin { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
             visible: root.hubProgress > 0.1 && (root.activeMode === "hub" || root.activeMode === "wifi" || root.activeMode === "bluetooth")
             opacity: (root.activeMode === "hub" || root.activeMode === "wifi" || root.activeMode === "bluetooth") ? root.hubProgress : 0.0

@@ -53,6 +53,7 @@ Item {
         if (root.pickerMode === "bluetooth") {
             if (!root.btAdapterAvailable) return "no bluetooth adapter"
             if (!root.btPowered) return "bluetooth off / tap nucleus to power on"
+            if (root.isLoading) return "searching for devices…"
             if (root.state === "confirm_passkey") {
                 return "confirm passkey: " + root.pendingPasskey + " / tap orb to confirm, tap nucleus to cancel"
             }
@@ -114,8 +115,10 @@ Item {
 
     /* ── Internal Models ── */
     property var wifiList: []
+    property var wifiStagedList: []
     property bool wifiScanning: false
     property var btList: []
+    property var btRawList: []
     property bool btScanning: false
     property bool btAdapterAvailable: true
     property bool btPowered: true
@@ -129,9 +132,20 @@ Item {
 
     Timer {
         id: wifiLoadTimer
-        interval: 1600
+        interval: 1800
         repeat: false
         onTriggered: {
+            root.wifiList = root.wifiStagedList
+            root.isLoading = false
+        }
+    }
+
+    Timer {
+        id: btLoadTimer
+        interval: 2200
+        repeat: false
+        onTriggered: {
+            root.btList = root.btRawList
             root.isLoading = false
         }
     }
@@ -217,7 +231,10 @@ Item {
         root.passwordBuffer = ""
         root.wrongPasswordActive = false
         root.showSuccessEffects = false
+        root.wifiList = []
+        root.wifiStagedList = []
         root.isLoading = true
+        btLoadTimer.stop()
         wifiLoadTimer.restart()
         root.rescanWifi()
     }
@@ -233,7 +250,11 @@ Item {
         root.failedMac = ""
         root.failureFlashOpacity = 0.0
         root.showSuccessEffects = false
+        root.btList = []
+        root.btRawList = []
         root.isLoading = true
+        wifiLoadTimer.stop()
+        btLoadTimer.restart()
         root.startBluetoothBackend()
     }
 
@@ -241,6 +262,7 @@ Item {
         root.stopBluetoothBackend()
         root.isLoading = false
         wifiLoadTimer.stop()
+        btLoadTimer.stop()
         delayClearStatusTimer.stop()
         failureFlashAnim.stop()
         root.pickerMode = "none"
@@ -253,6 +275,10 @@ Item {
         root.pendingPasskey = ""
         root.pendingMac = ""
         root.showSuccessEffects = false
+        root.wifiList = []
+        root.wifiStagedList = []
+        root.btList = []
+        root.btRawList = []
     }
 
     function goBack() {
@@ -296,8 +322,11 @@ Item {
         }
         onExited: {
             root.wifiScanning = false
-            root.isLoading = false
             root.parseWifiOutput(String(wifiScanOut.text))
+            if (!wifiLoadTimer.running) {
+                root.wifiList = root.wifiStagedList
+                root.isLoading = false
+            }
         }
     }
 
@@ -373,7 +402,11 @@ Item {
             it.angleDeg = idx * (360.0 / Math.max(1, total))
         }
 
-        root.wifiList = list
+        if (root.isLoading) {
+            root.wifiStagedList = list
+        } else {
+            root.wifiList = list
+        }
     }
 
     Process {
@@ -485,9 +518,9 @@ Item {
             for (var i = 0; i < rawList.length; i++) {
                 rawList[i].isWifi = false
             }
-            root.btList = rawList
-            if (root.isLoading) {
-                root.isLoading = false
+            root.btRawList = rawList
+            if (!root.isLoading) {
+                root.btList = rawList
             }
         } else if (data.type === "passkey_request") {
             root.state = "confirm_passkey"
@@ -584,36 +617,36 @@ Item {
         anchors.centerIn: parent
         visible: root.pickerMode !== "none"
 
-        /* ── Thin Spinner Arc Around Nucleus While Scanning Bluetooth ── */
+        /* ── Faint Concentric Orbit Guide Rings (Celestial / Bohr Model Abstractness) ── */
         Item {
-            id: nucleusScanSpinner
+            id: guideRingsLayer
             anchors.centerIn: parent
-            width: 84
-            height: 84
-            visible: root.pickerMode === "bluetooth" && root.btScanning && !root.showSuccessEffects
+            visible: !root.isLoading && !root.showSuccessEffects && (root.pickerMode === "wifi" || root.pickerMode === "bluetooth")
             opacity: visible ? 1.0 : 0.0
-            Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+            Behavior on opacity { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
 
-            RotationAnimation on rotation {
-                from: 0
-                to: 360
-                duration: 1400
-                loops: Animation.Infinite
-                running: nucleusScanSpinner.visible
-                easing.type: Easing.Linear
+            // Inner Orbit Guide Ring
+            Rectangle {
+                anchors.centerIn: parent
+                width: ((root.pickerMode === "bluetooth") ? root.btInnerRadius : root.guideRingInner) * 2
+                height: width
+                radius: width / 2
+                color: "transparent"
+                border.color: Qt.rgba(1, 1, 1, 0.09)
+                border.width: 1.0
+                Behavior on width { NumberAnimation { duration: 340; easing.type: Easing.OutCubic } }
             }
 
-            Canvas {
-                anchors.fill: parent
-                onPaint: {
-                    var ctx = getContext("2d")
-                    ctx.reset()
-                    ctx.lineWidth = 1.6
-                    ctx.strokeStyle = root.colAccent
-                    ctx.beginPath()
-                    ctx.arc(42, 42, 40, 0, Math.PI * 0.75, false)
-                    ctx.stroke()
-                }
+            // Outer Orbit Guide Ring
+            Rectangle {
+                anchors.centerIn: parent
+                width: ((root.pickerMode === "bluetooth") ? root.btOuterRadius : root.guideRingOuter) * 2
+                height: width
+                radius: width / 2
+                color: "transparent"
+                border.color: Qt.rgba(1, 1, 1, 0.06)
+                border.width: 1.0
+                Behavior on width { NumberAnimation { duration: 340; easing.type: Easing.OutCubic } }
             }
         }
 
@@ -827,10 +860,67 @@ Item {
                 readonly property bool inPassMode: (root.pickerMode === "wifi") && (root.state === "pass" || root.state === "connecting" || root.state === "done")
 
                 // Target Coordinates:
-                readonly property real baseRad: (modelData.angleDeg || 0.0) * (Math.PI / 180.0)
-                readonly property real targetX: (inPassMode && isThisSelected) ? 0.0 : (modelData.orbitRadius * Math.cos(baseRad))
-                readonly property real targetY: (inPassMode && isThisSelected) ? -96.0 : (modelData.orbitRadius * Math.sin(baseRad))
+                property real idleAngleOffset: 0.0
+                property real idleDistOffset: 0.0
+
+                SequentialAnimation {
+                    running: !root.reducedMotion && !orbDelegate.inPassMode && !orbDelegate.isThisSelected && !orbMouse.containsMouse && (orbDelegate.spawnProgress >= 0.99)
+                    loops: Animation.Infinite
+                    PauseAnimation { duration: (index * 620) % 2400 }
+                    ParallelAnimation {
+                        NumberAnimation {
+                            target: orbDelegate
+                            property: "idleAngleOffset"
+                            from: -1.2
+                            to: 1.2
+                            duration: 2800
+                            easing.type: Easing.InOutSine
+                        }
+                        NumberAnimation {
+                            target: orbDelegate
+                            property: "idleDistOffset"
+                            from: -2.2
+                            to: 2.2
+                            duration: 2800
+                            easing.type: Easing.InOutSine
+                        }
+                    }
+                    ParallelAnimation {
+                        NumberAnimation {
+                            target: orbDelegate
+                            property: "idleAngleOffset"
+                            from: 1.2
+                            to: -1.2
+                            duration: 2800
+                            easing.type: Easing.InOutSine
+                        }
+                        NumberAnimation {
+                            target: orbDelegate
+                            property: "idleDistOffset"
+                            from: 2.2
+                            to: -2.2
+                            duration: 2800
+                            easing.type: Easing.InOutSine
+                        }
+                    }
+                }
+
+                readonly property real finalAngleDeg: (modelData.angleDeg || 0.0) + (isThisSelected ? 0.0 : idleAngleOffset)
+                readonly property real baseRad: finalAngleDeg * (Math.PI / 180.0)
+                readonly property real finalRadius: (modelData.orbitRadius || 80) + (isThisSelected ? 0.0 : idleDistOffset)
+                readonly property real targetX: (inPassMode && isThisSelected) ? 0.0 : (finalRadius * Math.cos(baseRad))
+                readonly property real targetY: (inPassMode && isThisSelected) ? -96.0 : (finalRadius * Math.sin(baseRad))
                 readonly property real targetD: (inPassMode && isThisSelected) ? 52.0 : ((modelData.orbRadius || 17) * 2)
+
+                // Dynamic Scale & Opacity per specifications (hover expands to 1.15, others shrink to 0.88 and dim to 0.65):
+                readonly property bool isThisHovered: orbMouse.containsMouse || (root.hoveredItem === modelData)
+                readonly property bool isAnyHovered: root.hoveredItem !== null
+                readonly property real targetScale: (inPassMode && !isThisSelected) 
+                    ? 0.4 
+                    : (isThisHovered ? 1.15 : (isAnyHovered && !isThisSelected ? 0.88 : 1.0))
+                readonly property real targetAlpha: (inPassMode && !isThisSelected) 
+                    ? 0.0 
+                    : (isAnyHovered && !isThisHovered && !isThisSelected ? 0.65 : 1.0)
 
                 // Staggered Spawning Animation (55ms stagger)
                 property real spawnProgress: 0.0
@@ -897,8 +987,8 @@ Item {
                 y: targetY - height / 2
                 width: targetD
                 height: targetD
-                scale: (inPassMode && !isThisSelected) ? 0.4 : (0.3 + 0.7 * spawnProgress)
-                opacity: (inPassMode && !isThisSelected) ? 0.0 : Math.min(1.0, spawnProgress * 1.5)
+                scale: targetScale * (0.3 + 0.7 * spawnProgress)
+                opacity: targetAlpha * Math.min(1.0, spawnProgress * 1.5)
 
                 Behavior on x { NumberAnimation { duration: 340; easing.type: Easing.OutCubic } }
                 Behavior on y { NumberAnimation { duration: 340; easing.type: Easing.OutCubic } }

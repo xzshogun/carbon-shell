@@ -70,7 +70,9 @@ Item {
         } catch (e) {}
     }
 
-    /* ── State Watcher (current_wallpaper_path) ────────────────────── */
+    readonly property string hyprStateFile: root.home + "/.config/hypr/current_wallpaper_path"
+
+    /* ── State Watcher (current_wallpaper_path in carbon and hypr) ─── */
     FileView {
         id: stateWatcher
         path: root.stateFile
@@ -94,10 +96,33 @@ Item {
         }
     }
 
+    FileView {
+        id: hyprStateWatcher
+        path: root.hyprStateFile
+        watchChanges: true
+        blockLoading: true
+        printErrors: false
+        onFileChanged: {
+            reload()
+            const p = hyprStateWatcher.text().trim()
+            if (p && p !== root.currentWpPath && p !== root.pendingNewPath) {
+                root.applyNewWallpaper(p)
+            }
+        }
+        onLoaded: {
+            const p = hyprStateWatcher.text().trim()
+            if (p && !root.currentWpPath) {
+                root.initWallpaper(p)
+            } else if (p && p !== root.currentWpPath && p !== root.pendingNewPath) {
+                root.applyNewWallpaper(p)
+            }
+        }
+    }
+
     /* Fallback polling in case external tools change symlink directly */
     Process {
         id: wpReader
-        command: ["sh", "-c", "readlink -f \"" + root.configDir + "/current_wallpaper\" 2>/dev/null || readlink -f \"$HOME/.config/hypr/current_wallpaper\" 2>/dev/null || echo \"\""]
+        command: ["sh", "-c", "readlink -f \"" + root.configDir + "/current_wallpaper\" 2>/dev/null || readlink -f \"$HOME/.config/hypr/current_wallpaper\" 2>/dev/null || cat \"" + root.configDir + "/current_wallpaper_path\" 2>/dev/null || cat \"$HOME/.config/hypr/current_wallpaper_path\" 2>/dev/null || echo \"\""]
         stdout: StdioCollector {
             onStreamFinished: {
                 const p = wpReader.stdout.text.toString().trim()
@@ -110,7 +135,7 @@ Item {
     }
 
     Timer {
-        interval: 10000
+        interval: 1500
         running: true
         repeat: true
         onTriggered: {
@@ -408,10 +433,13 @@ Item {
 
             onStatusChanged: {
                 console.log("[WallpaperMod] bufA statusChanged:", status, "source:", source)
-                if (status === Image.Error && source.toString().indexOf("/wpscale/") !== -1 && root.pendingNewPath) {
-                    console.log("[WallpaperMod] bufA fallback to raw file:", root.pendingNewPath)
-                    source = "file://" + root.pendingNewPath
-                    return
+                if (status === Image.Error && source.toString().indexOf("/wpscale/") !== -1) {
+                    const rawA = root.pendingNewPath || root.currentWpPath
+                    if (rawA) {
+                        console.log("[WallpaperMod] bufA fallback to raw file:", rawA)
+                        source = (rawA.startsWith("file://") ? rawA : ("file://" + rawA))
+                        return
+                    }
                 }
                 if (status === Image.Ready && root.pendingNewPath && root.pendingNewPath !== root.currentWpPath && root.activeBuffer === "B") {
                     root.startImageTransition()
@@ -435,10 +463,13 @@ Item {
 
             onStatusChanged: {
                 console.log("[WallpaperMod] bufB statusChanged:", status, "source:", source)
-                if (status === Image.Error && source.toString().indexOf("/wpscale/") !== -1 && root.pendingNewPath) {
-                    console.log("[WallpaperMod] bufB fallback to raw file:", root.pendingNewPath)
-                    source = "file://" + root.pendingNewPath
-                    return
+                if (status === Image.Error && source.toString().indexOf("/wpscale/") !== -1) {
+                    const rawB = root.pendingNewPath || root.currentWpPath
+                    if (rawB) {
+                        console.log("[WallpaperMod] bufB fallback to raw file:", rawB)
+                        source = (rawB.startsWith("file://") ? rawB : ("file://" + rawB))
+                        return
+                    }
                 }
                 if (status === Image.Ready && root.pendingNewPath && root.pendingNewPath !== root.currentWpPath && root.activeBuffer === "A") {
                     root.startImageTransition()

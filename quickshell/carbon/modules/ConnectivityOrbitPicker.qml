@@ -455,7 +455,7 @@ Item {
        ══════════════════════════════════════════════════════════════════════ */
     Process {
         id: btDaemonProc
-        command: ["python3", "/home/shogun/.config/carbon/scripts/carbon-bluetooth.py"]
+        command: ["python3", (Quickshell.env("CARBON_CONFIG_DIR") || ((Quickshell.env("HOME") || "") + "/.config/carbon")) + "/scripts/carbon-bluetooth.py"]
         stdinEnabled: true
         running: false
 

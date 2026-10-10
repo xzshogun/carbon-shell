@@ -36,20 +36,53 @@ else
         FRAME_SRC="${WALL}[0]"
     fi
 
-    magick "$FRAME_SRC" -auto-orient -resize "${LW}x${LH}^" -gravity south -extent "${LW}x${LH}" \
-        -quality 90 "$SCALED" 2>/dev/null || exit 1
+    MAGICK_BIN="magick"
+    if ! command -v magick &>/dev/null; then
+        if command -v convert &>/dev/null; then
+            MAGICK_BIN="convert"
+        else
+            MAGICK_BIN=""
+        fi
+    fi
+
+    if [ -n "$MAGICK_BIN" ]; then
+        "$MAGICK_BIN" "$FRAME_SRC" -auto-orient -resize "${LW}x${LH}^" -gravity south -extent "${LW}x${LH}" \
+            -quality 90 "$SCALED" 2>/dev/null || cp -f "$FRAME_SRC" "$SCALED" 2>/dev/null || true
+    else
+        cp -f "$FRAME_SRC" "$SCALED" 2>/dev/null || true
+    fi
     ln -sfn "$SCALED" "$CACHE_DIR/wallpaper_scaled.jpg"
 fi
 
+# Update hypr config
+mkdir -p "$HOME/.config/hypr"
 ln -sfn "$WALL" "$SYMLINK"
 echo "$WALL" > "$HOME/.config/hypr/current_wallpaper_path"
 
 # Keep carbon configuration synchronized
-mkdir -p "$HOME/.config/carbon"
-cp -f "$WALL" "$HOME/.config/carbon/current_wallpaper" 2>/dev/null
-echo "$WALL" > "$HOME/.config/carbon/current_wallpaper_path"
+CONFIG_DIR="${CARBON_CONFIG_DIR:-$HOME/.config/carbon}"
+mkdir -p "$CONFIG_DIR"
+ln -sfn "$WALL" "$CONFIG_DIR/current_wallpaper"
+echo "$WALL" > "$CONFIG_DIR/current_wallpaper_path"
 
 # Rebuild the shell theme from the new palette (updates theme.json, GTK, Fuzzel, and Hyprland dynamically).
-python3 "$HOME/.config/hypr/scripts/theme-mk.py" "$WALL" 2>/dev/null
+THEME_SCRIPT="$CONFIG_DIR/scripts/theme-mk.py"
+if [ ! -f "$THEME_SCRIPT" ]; then
+    THEME_SCRIPT="$HOME/.config/hypr/scripts/theme-mk.py"
+fi
+if [ ! -f "$THEME_SCRIPT" ]; then
+    THEME_SCRIPT="$(dirname "$(readlink -f "$0")")/theme-mk.py"
+fi
+if [ -f "$THEME_SCRIPT" ]; then
+    python3 "$THEME_SCRIPT" "$WALL" 2>/dev/null || true
+fi
+
+# Direct IPC notify to Quickshell
+IPC_SCRIPT="$CONFIG_DIR/scripts/carbon-ipc.sh"
+[ -f "$IPC_SCRIPT" ] || IPC_SCRIPT="$HOME/.config/hypr/scripts/carbon-ipc.sh"
+[ -f "$IPC_SCRIPT" ] || IPC_SCRIPT="$(dirname "$(readlink -f "$0")")/carbon-ipc.sh"
+if [ -f "$IPC_SCRIPT" ] && [ -S "/tmp/carbon-shell.sock" ]; then
+    sh "$IPC_SCRIPT" "apply-wallpaper $WALL" 2>/dev/null || true
+fi
 
 echo "applied: $WALL"

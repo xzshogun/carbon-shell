@@ -39,8 +39,13 @@ Item {
     property string noticeMessage: ""
 
     readonly property string wallpaperDir: (Quickshell.env("HOME") || "") + "/Pictures/Wallpapers"
-    readonly property string stateFile: (Quickshell.env("HOME") || "") + "/.config/hypr/current_wallpaper_path"
-    readonly property string wallhavenScript: (Quickshell.env("HOME") || "") + "/.config/hypr/scripts/wallhaven.py"
+    readonly property string stateFile: (Quickshell.env("CARBON_CONFIG_DIR") || ((Quickshell.env("HOME") || "") + "/.config/carbon")) + "/current_wallpaper_path"
+    readonly property string hyprStateFile: (Quickshell.env("HOME") || "") + "/.config/hypr/current_wallpaper_path"
+    readonly property string wallhavenScript: {
+        const home = Quickshell.env("HOME") || ""
+        const carbonDir = Quickshell.env("CARBON_CONFIG_DIR") || (home + "/.config/carbon")
+        return carbonDir + "/scripts/wallhaven.py"
+    }
 
     FileView {
         id: wpLinkFile
@@ -48,9 +53,32 @@ Item {
         blockLoading: true
         watchChanges: true
         printErrors: false
-        onLoaded: root.currentWallpaperPath = wpLinkFile.text().trim()
-        onFileChanged: reload()
-        onLoadFailed: root.currentWallpaperPath = ""
+        onLoaded: {
+            var t = wpLinkFile.text().trim()
+            if (t) root.currentWallpaperPath = t
+        }
+        onFileChanged: {
+            reload()
+            var t = wpLinkFile.text().trim()
+            if (t) root.currentWallpaperPath = t
+        }
+    }
+
+    FileView {
+        id: hyprWpLinkFile
+        path: root.hyprStateFile
+        blockLoading: true
+        watchChanges: true
+        printErrors: false
+        onLoaded: {
+            var t = hyprWpLinkFile.text().trim()
+            if (t && !root.currentWallpaperPath) root.currentWallpaperPath = t
+        }
+        onFileChanged: {
+            reload()
+            var t = hyprWpLinkFile.text().trim()
+            if (t) root.currentWallpaperPath = t
+        }
     }
 
     /* Track current wallpaper basename */
@@ -113,17 +141,17 @@ Item {
 
         var args = []
         if (root.activeSource === "local") {
-            args = [root.wallhavenScript, "list-local"]
+            args = ["python3", root.wallhavenScript, "list-local"]
             if (root.searchQuery && root.searchQuery.trim().length > 0) {
                 args.push("--query", root.searchQuery.trim())
             }
         } else if (root.activeSource === "live") {
-            args = [root.wallhavenScript, "list-live"]
+            args = ["python3", root.wallhavenScript, "list-live"]
             if (root.searchQuery && root.searchQuery.trim().length > 0) {
                 args.push("--query", root.searchQuery.trim())
             }
         } else {
-            args = [root.wallhavenScript, "search", "--sort", root.currentSort, "--page", "1"]
+            args = ["python3", root.wallhavenScript, "search", "--sort", root.currentSort, "--page", "1"]
             if (root.searchQuery && root.searchQuery.trim().length > 0) {
                 args.push("--query", root.searchQuery.trim())
             }
@@ -138,7 +166,7 @@ Item {
         root.isLoadingMore = true
         var nextPage = root.currentPage + 1
 
-        var args = [root.wallhavenScript, "search", "--sort", root.currentSort, "--page", String(nextPage)]
+        var args = ["python3", root.wallhavenScript, "search", "--sort", root.currentSort, "--page", String(nextPage)]
         if (root.searchQuery && root.searchQuery.trim().length > 0) {
             args.push("--query", root.searchQuery.trim())
         }
@@ -248,12 +276,12 @@ Item {
 
         if (item.is_local) {
             // Directly apply local wallpaper
-            applyProc.command = [root.wallhavenScript, "apply", item.path]
+            applyProc.command = ["python3", root.wallhavenScript, "apply", item.path]
             applyProc.running = true
         } else {
             // Download from Wallhaven then apply
             downloadProc.buffer = ""
-            downloadProc.command = [root.wallhavenScript, "download", item.url, item.filename]
+            downloadProc.command = ["python3", root.wallhavenScript, "download", item.url, item.filename]
             downloadProc.running = true
         }
     }

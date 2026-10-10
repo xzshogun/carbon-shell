@@ -821,7 +821,7 @@ Item {
                         isFontIcon: true,
                         isActive: false,
                         action: function() {
-                            Quickshell.execDetached(["xdg-open", Quickshell.env("HOME") || "/home/shogun"])
+                            Quickshell.execDetached(["xdg-open", Quickshell.env("HOME") || "."])
                         }
                     },
                     {
@@ -2154,7 +2154,11 @@ Item {
 
     /* ── Wallpaper Backend Processes (Reusing Wallhaven.py) ── */
     property var wallpapersList: []
-    readonly property string wallhavenScript: (Quickshell.env("HOME") || "") + "/.config/hypr/scripts/wallhaven.py"
+    readonly property string wallhavenScript: {
+        const home = Quickshell.env("HOME") || ""
+        const carbonDir = Quickshell.env("CARBON_CONFIG_DIR") || (home + "/.config/carbon")
+        return carbonDir + "/scripts/wallhaven.py"
+    }
 
     Timer {
         id: wpDebounce
@@ -2163,7 +2167,7 @@ Item {
     }
 
     function fetchWallpapers(query) {
-        var args = [root.wallhavenScript, "search", "--sort", "toplist", "--page", "1"]
+        var args = ["python3", root.wallhavenScript, "search", "--sort", "toplist", "--page", "1"]
         if (query && query.trim().length > 0) {
             args.push("--query", query.trim())
         }
@@ -2201,10 +2205,10 @@ Item {
     function applyWallpaper(item) {
         if (!item) return
         if (item.is_local) {
-            wpApplyProc.command = [root.wallhavenScript, "apply", item.path]
+            wpApplyProc.command = ["python3", root.wallhavenScript, "apply", item.path]
             wpApplyProc.running = true
         } else {
-            wpDownloadProc.command = [root.wallhavenScript, "download", item.url, item.filename]
+            wpDownloadProc.command = ["python3", root.wallhavenScript, "download", item.url, item.filename]
             wpDownloadProc.running = true
         }
         root.close()

@@ -267,7 +267,10 @@ msg "Synchronizing runtime scripts..."
 mkdir -p "$CONFIG_DIR/scripts"
 cp -rf "$REPO_DIR/hypr/scripts/"* "$CONFIG_DIR/scripts/"
 chmod +x "$CONFIG_DIR/scripts/"* 2>/dev/null || true
-ok "Scripts updated in $CONFIG_DIR/scripts"
+mkdir -p "$HOME/.config/hypr/scripts"
+cp -rf "$REPO_DIR/hypr/scripts/"* "$HOME/.config/hypr/scripts/"
+chmod +x "$HOME/.config/hypr/scripts/"* 2>/dev/null || true
+ok "Scripts updated in $CONFIG_DIR/scripts and $HOME/.config/hypr/scripts"
 
 # ------------------------------------------------------------------------------
 # 6. Synchronize Configuration Non-Destructively

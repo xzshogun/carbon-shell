@@ -851,17 +851,22 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             self.bar_mode["mode"] = mode_id
             self.bar_mode["islandStyle"] = mode_id
             write_json(BAR_MODE_PATH, self.bar_mode)
+            hypr_bar_mode = os.path.expanduser("~/.config/hypr/carbon-bar-mode.json")
+            if hypr_bar_mode != BAR_MODE_PATH:
+                write_json(hypr_bar_mode, self.bar_mode)
             ipc_script = os.path.join(CONFIG_DIR, "scripts/carbon-ipc.sh")
             if not os.path.exists(ipc_script):
                 ipc_script = os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh")
+            if not os.path.exists(ipc_script):
+                ipc_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "carbon-ipc.sh")
             if mode_id == "nucleus":
                 # Check if transition is enabled
                 if self.bar_mode.get("nucleus", {}).get("transition", True):
                     subprocess.run(["sh", ipc_script, "nucleus transition"], check=False)
                 else:
-                    subprocess.run(["sh", ipc_script, "mode nucleus"], check=False)
+                    subprocess.run(["sh", ipc_script, "set-bar-mode nucleus"], check=False)
             else:
-                subprocess.run(["sh", ipc_script, f"mode {mode_id}"], check=False)
+                subprocess.run(["sh", ipc_script, f"set-bar-mode {mode_id}"], check=False)
 
         self.add_combo_row(card, "Bar Style", "Choose screen notch, floating pill, or single dynamic island", modes, cur_idx, on_mode_selected)
 
@@ -950,13 +955,18 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             self.bar_mode["mode"] = "nucleus"
             self.bar_mode["islandStyle"] = "nucleus"
             write_json(BAR_MODE_PATH, self.bar_mode)
+            hypr_bar_mode = os.path.expanduser("~/.config/hypr/carbon-bar-mode.json")
+            if hypr_bar_mode != BAR_MODE_PATH:
+                write_json(hypr_bar_mode, self.bar_mode)
             ipc = os.path.join(CONFIG_DIR, "scripts/carbon-ipc.sh")
             if not os.path.exists(ipc):
                 ipc = os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh")
+            if not os.path.exists(ipc):
+                ipc = os.path.join(os.path.dirname(os.path.abspath(__file__)), "carbon-ipc.sh")
             if self.bar_mode.get("nucleus", {}).get("transition", True):
                 subprocess.run(["sh", ipc, "nucleus transition"], check=False)
             else:
-                subprocess.run(["sh", ipc, "mode nucleus"], check=False)
+                subprocess.run(["sh", ipc, "set-bar-mode nucleus"], check=False)
         btn_act.connect("clicked", on_switch_vanish)
         row_mode.append(btn_act)
         card1.append(row_mode)

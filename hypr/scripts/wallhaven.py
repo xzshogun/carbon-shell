@@ -20,6 +20,8 @@ CARBON_CONFIG_DIR = os.environ.get("CARBON_CONFIG_DIR", os.path.expanduser("~/.c
 WP_APPLY_SCRIPT = os.path.join(CARBON_CONFIG_DIR, "scripts", "wp-apply.sh")
 if not os.path.isfile(WP_APPLY_SCRIPT):
     WP_APPLY_SCRIPT = os.path.expanduser("~/.config/hypr/scripts/wp-apply.sh")
+if not os.path.isfile(WP_APPLY_SCRIPT):
+    WP_APPLY_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wp-apply.sh")
 
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
 

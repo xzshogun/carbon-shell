@@ -424,7 +424,29 @@ echo "$REPO_DIR" > "$CONFIG_DIR/repo_path"
 # Copy runtime scripts (Direct copy, NO symlinks)
 cp -rf "$REPO_DIR/hypr/scripts/"* "$CONFIG_DIR/scripts/"
 chmod +x "$CONFIG_DIR/scripts/"* 2>/dev/null || true
-ok "Copied runtime scripts to $CONFIG_DIR/scripts"
+mkdir -p "$HYPR_CONFIG_DIR/scripts"
+cp -rf "$REPO_DIR/hypr/scripts/"* "$HYPR_CONFIG_DIR/scripts/"
+chmod +x "$HYPR_CONFIG_DIR/scripts/"* 2>/dev/null || true
+ok "Copied runtime scripts to $CONFIG_DIR/scripts and $HYPR_CONFIG_DIR/scripts"
+
+# Deploy default bar mode configuration if not present
+if [[ ! -f "$CONFIG_DIR/carbon-bar-mode.json" ]]; then
+    cat << 'EOF' > "$CONFIG_DIR/carbon-bar-mode.json"
+{
+  "mode": "notch",
+  "islandStyle": "notch",
+  "islandPersistent": true,
+  "wallpaperAnimation": "cinematic",
+  "wallpaperDuration": 800,
+  "nucleus": {
+    "transition": true,
+    "transitionWord": "Wooshh!!"
+  }
+}
+EOF
+    ok "Created default $CONFIG_DIR/carbon-bar-mode.json"
+fi
+cp -f "$CONFIG_DIR/carbon-bar-mode.json" "$HYPR_CONFIG_DIR/carbon-bar-mode.json" 2>/dev/null || true
 
 # Deploy windowrules and looknfeel
 cp -f "$REPO_DIR/hypr/windowrules.conf" "$CONFIG_DIR/windowrules.conf"
@@ -536,12 +558,16 @@ if [[ "$SET_DEFAULT_WP" -eq 1 ]]; then
     fi
 
     if [[ -f "$DEFAULT_WP_DEST" ]]; then
-        cp -f "$DEFAULT_WP_DEST" "$CONFIG_DIR/current_wallpaper"
+        ln -sfn "$DEFAULT_WP_DEST" "$CONFIG_DIR/current_wallpaper"
         echo "$DEFAULT_WP_DEST" > "$CONFIG_DIR/current_wallpaper_path"
+        ln -sfn "$DEFAULT_WP_DEST" "$HYPR_CONFIG_DIR/current_wallpaper"
+        echo "$DEFAULT_WP_DEST" > "$HYPR_CONFIG_DIR/current_wallpaper_path"
         ok "Configured default wallpaper: $DEFAULT_WP_DEST"
     elif [[ -f "$DEFAULT_WP_SRC" ]]; then
-        cp -f "$DEFAULT_WP_SRC" "$CONFIG_DIR/current_wallpaper"
+        ln -sfn "$DEFAULT_WP_SRC" "$CONFIG_DIR/current_wallpaper"
         echo "$DEFAULT_WP_SRC" > "$CONFIG_DIR/current_wallpaper_path"
+        ln -sfn "$DEFAULT_WP_SRC" "$HYPR_CONFIG_DIR/current_wallpaper"
+        echo "$DEFAULT_WP_SRC" > "$HYPR_CONFIG_DIR/current_wallpaper_path"
         ok "Configured default wallpaper from repository assets"
     fi
 

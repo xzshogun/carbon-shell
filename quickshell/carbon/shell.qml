@@ -608,6 +608,28 @@ ShellRoot {
         onFileChanged: root.reloadBarMode()
     }
 
+    FileView {
+        id: hyprBarModeFile
+        path: root.home + "/.config/hypr/carbon-bar-mode.json"
+        watchChanges: true
+        blockLoading: true
+        printErrors: false
+        onLoaded: root.reloadBarMode()
+        onFileChanged: root.reloadBarMode()
+    }
+
+    Timer {
+        id: barModePoller
+        interval: 1500
+        running: true
+        repeat: true
+        onTriggered: {
+            if (!root._switchingBarMode) {
+                root.reloadBarMode()
+            }
+        }
+    }
+
     property string islandStyle: "pill"
     property int islandPage: 0
     property bool islandPersistent: true
@@ -624,16 +646,18 @@ ShellRoot {
 
     function reloadBarMode() {
         if (root._switchingBarMode) {
-            console.log("[BAR-MODE] reloadBarMode skipped because _switchingBarMode is active")
             return
         }
         try {
             barModeFile.reload()
-            const txt = barModeFile.text().trim()
-            console.log("[BAR-MODE] reloadBarMode raw text after reload: '" + txt + "'")
+            var txt = barModeFile.text().trim()
+            if (!txt || txt.length === 0) {
+                hyprBarModeFile.reload()
+                txt = hyprBarModeFile.text().trim()
+            }
+
             if (txt.length > 0) {
                 const d = JSON.parse(txt)
-                console.log("[BAR-MODE] parsed mode: " + d.mode + " islandStyle: " + d.islandStyle)
                 if (d.nucleus) {
                     if (d.nucleus.transition !== undefined) {
                         root.nucleusTransitionEnabled = Boolean(d.nucleus.transition)
@@ -643,8 +667,12 @@ ShellRoot {
                     }
                 }
                 if (d.mode) {
-                    var target = (d.mode === "three_islands") ? "pill" : d.mode
+                    var target = String(d.mode).toLowerCase()
+                    if (target === "three_islands") target = "pill"
+                    if (target === "vanish") target = "nucleus"
+                    if (target === "island") target = "notch"
                     if (root.barMode !== target) {
+                        console.log("[BAR-MODE] Switching mode from", root.barMode, "to", target)
                         root.barMode = target
                     }
                 }
@@ -661,7 +689,6 @@ ShellRoot {
                         root.musicBarEdge = "top"
                     }
                 }
-                console.log("[BAR-MODE] final root.barMode=" + root.barMode)
             }
         } catch (e) {
             console.log("Error loading bar mode: " + e)
@@ -671,6 +698,10 @@ ShellRoot {
     function switchBarMode(m) {
         console.log("[BAR-MODE] switchBarMode called with: " + m)
         if (!m) return
+        m = String(m).toLowerCase()
+        if (m === "three_islands") m = "pill"
+        if (m === "vanish") m = "nucleus"
+        if (m === "island") m = "notch"
         if (m === "nucleus" && root.barMode !== "nucleus" && root.nucleusTransitionEnabled) {
             root.startNucleusTransition(false)
             return
@@ -680,7 +711,21 @@ ShellRoot {
         root.barMode = m
         console.log("[BAR-MODE] switchBarMode set root.barMode to: " + root.barMode)
         Quickshell.execDetached(["python3", "-c",
-            "import json, os; dir=os.environ.get('CARBON_CONFIG_DIR', os.path.expanduser('~/.config/carbon')); os.makedirs(dir, exist_ok=True); p=os.path.join(dir, 'carbon-bar-mode.json'); d=json.load(open(p)) if os.path.exists(p) else {};\nif d.get('mode') != '" + m + "':\n  d['mode']='" + m + "'\n  t=p+'.tmp'\n  with open(t,'w') as f: json.dump(d, f, indent=2)\n  os.replace(t, p)"])
+            "import json, os\n" +
+            "dirs = [os.environ.get('CARBON_CONFIG_DIR', os.path.expanduser('~/.config/carbon')), os.path.expanduser('~/.config/hypr')]\n" +
+            "for dir in dirs:\n" +
+            "  try:\n" +
+            "    os.makedirs(dir, exist_ok=True)\n" +
+            "    p = os.path.join(dir, 'carbon-bar-mode.json')\n" +
+            "    d = json.load(open(p)) if os.path.exists(p) else {}\n" +
+            "    if d.get('mode') != '" + m + "':\n" +
+            "      d['mode'] = '" + m + "'\n" +
+            "      d['islandStyle'] = '" + m + "'\n" +
+            "      t = p + '.tmp'\n" +
+            "      with open(t, 'w') as f: json.dump(d, f, indent=2)\n" +
+            "      os.replace(t, p)\n" +
+            "  except Exception: pass\n"
+        ])
     }
 
     function switchIslandStyle(s) {
@@ -943,6 +988,12 @@ ShellRoot {
                             if (root.nucleusHubItem) root.nucleusHubItem.close()
                         } else {
                             root.closeWallpaperPicker()
+                        }
+                    }
+                    else if (cmd.startsWith("apply-wallpaper ") || cmd.startsWith("set-wallpaper ") || (cmd.startsWith("wallpaper ") && cmd !== "wallpaper live" && cmd !== "wallpaper local" && cmd !== "wallpaper online")) {
+                        var wpPath = cmd.replace(/^(apply-wallpaper|set-wallpaper|wallpaper)\s+/, "").trim()
+                        if (wpPath.length > 0) {
+                            if (root.wallpaperModItem) root.wallpaperModItem.applyNewWallpaper(wpPath)
                         }
                     }
                     else if (cmd === "launcher" || cmd === "toggle-launcher") {
@@ -1244,9 +1295,12 @@ ShellRoot {
                     else if (cmd === "close-small-music") {
                         root.smallMusicOpen = false
                     }
-                    else if (cmd.startsWith("bar-mode ")) {
-                        var m = cmd.substring(9).trim()
-                        if (m === "three_islands") m = "pill"
+                    else if (cmd.startsWith("bar-mode ") || cmd.startsWith("set-bar-mode ") || cmd.startsWith("mode ") || cmd.startsWith("switch-mode ") || cmd.startsWith("bar_mode ") || cmd.startsWith("set_bar_mode ")) {
+                        var m = cmd.replace(/^(bar-mode|set-bar-mode|mode|switch-mode|bar_mode|set_bar_mode)\s+/, "").trim().toLowerCase()
+                        root.switchBarMode(m)
+                    }
+                    else if (cmd === "notch" || cmd === "pill" || cmd === "minimal" || cmd === "vanish" || cmd === "mode-notch" || cmd === "mode-pill" || cmd === "mode-minimal") {
+                        var m = cmd.replace(/^mode-/, "")
                         root.switchBarMode(m)
                     }
                     else if (cmd.startsWith("island-style ")) {

@@ -124,39 +124,85 @@ Item {
         return result;
     }
 
+    readonly property var leadGlueWords: new Set([
+        // English Pronouns, Prepositions, Auxiliaries & Contractions
+        "i", "im", "i'm", "ive", "i've", "id", "i'd", "ill", "i'll",
+        "you", "youre", "you're", "youve", "you've", "youd", "you'd", "your",
+        "he", "hes", "he's", "his", "she", "shes", "she's", "her",
+        "we", "were", "we're", "weve", "we've", "we'll", "our",
+        "they", "theyre", "they're", "their", "them", "it", "its", "it's",
+        "my", "me", "mine", "us", "who", "what", "whats", "what's", "that", "thats", "that's", "this", "these", "those",
+        "in", "on", "at", "to", "for", "with", "from", "by", "of", "out", "up", "down", "into", "over", "under", "through",
+        "a", "an", "the", "some", "all", "no", "not", "noo", "nah", "oh", "ooh", "ah", "yeah", "yea", "yo", "hey", "ay", "ayy",
+        "is", "are", "was", "were", "be", "been", "am", "do", "dont", "don't", "does", "did", "didnt", "didn't",
+        "can", "cant", "can't", "could", "will", "wont", "won't", "would", "should", "may", "might", "must",
+        "got", "get", "gonna", "gon", "wanna", "wana", "gotta", "lemme", "gimme", "outta", "kinda", "sorta", "tryna",
+        "so", "if", "or", "and", "but", "cuz", "cause", "'cause", "cos", "just", "only", "even", "still", "too", "very", "real",
+        "when", "where", "why", "how", "now", "then", "here", "there", "every", "each", "another",
+
+        // Hinglish & Punjabi Pronouns, Connectors & Starters
+        "tu", "tera", "tere", "teri", "tujhe", "tujhko", "tuhada", "tuhadi", "tenu", "tainu", "tusi",
+        "mai", "main", "mera", "mere", "meri", "mujhe", "mujhko", "menu", "mainu", "asi", "assi", "sada", "sade", "sadi", "apna", "apne", "apni",
+        "wo", "woh", "o", "oh", "ohda", "ohde", "ohdi", "ohnu", "us", "uska", "uske", "uski", "un", "unka", "unke",
+        "ye", "yeh", "eh", "is", "iska", "iske", "iski", "in", "inka",
+        "kaun", "kon", "kya", "ki", "kyu", "kyun", "kive", "kiven", "kithe", "kado", "kadon", "koi", "kuch", "kuj", "kujh", "sab", "saare", "sare",
+        "ek", "ik", "ikk", "do", "har", "ikalla", "kalla", "kalli",
+        "jo", "jiska", "jiske", "jehda", "jehdi", "jehde", "jido", "jadon", "jad", "je", "agar", "par", "lekin", "magar", "phir", "fir", "fer",
+        "na", "nahi", "nhi", "nai", "naa", "mat", "bina", "bin", "baaj", "baajo",
+        "bhi", "vi", "ve", "ni", "oe", "oye", "haan", "han", "ji", "bas", "hun", "ab", "abhi", "ajj", "aaj", "kal", "roz",
+        "थोड़ा", "मेरा", "तेरा", "मैं", "तू", "हम", "वो", "ये", "क्या", "क्यों", "ना", "नहीं", "एक", "हर", "जो", "अब"
+    ])
+
+    readonly property var trailGlueWords: new Set([
+        // Short trailing auxiliaries, postpositions & particles that sound natural glued to the word before them
+        "is", "it", "in", "on", "up", "out", "off", "me", "you", "us", "em", "'em", "now", "too", "so", "no",
+        "hai", "hain", "ho", "hoon", "hu", "tha", "the", "thi", "ga", "ge", "gi",
+        "si", "siga", "sigi", "ne", "nu", "te", "to", "ton", "ch", "vich", "ich", "de", "da", "di", "ke", "ka", "ki", "ko", "se", "me", "mein", "pe", "par",
+        "na", "ni", "vi", "bhi", "hi", "toh", "ta", "tan", "ja", "jaa", "le", "la", "de", "kar", "kr", "reh", "raha", "rahi", "rahe", "gaya", "gayi", "gaye",
+        "है", "हैं", "हो", "था", "थी", "थे", "से", "को", "में", "पर", "के", "का", "की", "भी", "ही", "ना", "तो", "जा", "ले"
+    ])
+
     function mixSingleAndDoubleWords(wordTokens) {
+        var LEAD_GLUE_WORDS = root.leadGlueWords;
+        var TRAIL_GLUE_WORDS = root.trailGlueWords;
         var mixed = [];
         var i = 0;
         while (i < wordTokens.length) {
             var curr = wordTokens[i];
             var next = (i + 1 < wordTokens.length) ? wordTokens[i + 1] : null;
 
-            var cleanCurr = (curr.word || "").replace(/[^a-zA-Z0-9\u0900-\u097F]/g, "");
-            var cleanNext = next ? (next.word || "").replace(/[^a-zA-Z0-9\u0900-\u097F]/g, "") : "";
+            if (!next) {
+                mixed.push(curr);
+                break;
+            }
 
-            // Rules for merging 2 words into a single 2-word row:
-            // 1. Next word exists on the same line
-            // 2. Current word does NOT end with pause punctuation (, ; ? ! - ...)
-            // 3. Combined character length is <= 9 chars (so two long words never overflow the box)
-            // 4. Either the first word is a short helper (<= 3 chars like "in", "on", "my", "we", "tu", "te")
-            //    OR a deterministic 55% rhythm hash triggers on two medium-short words:
+            var cleanCurr = (curr.word || "").toLowerCase().replace(/[^a-z0-9'\u0900-\u097F]/g, "");
+            var cleanNext = (next.word || "").toLowerCase().replace(/[^a-z0-9'\u0900-\u097F]/g, "");
+
             var hasPausePunct = /[,;\-\u2014\?\!]$|\.\.$/.test((curr.word || "").trim());
-            var combinedLen = cleanCurr.length + cleanNext.length;
-            var firstChar = (curr.word && curr.word.length > 0) ? curr.word.charCodeAt(0) : 0;
-            var rhythmHash = ((firstChar * 31 + i * 17) % 100) < 55;
+            var timeGapBetweenWords = next.startMs - curr.endMs;
+            var combinedLen = cleanCurr.replace(/'/g, "").length + cleanNext.replace(/'/g, "").length;
 
-            var shouldPair = next && !hasPausePunct && combinedLen <= 9 && (cleanCurr.length <= 3 || rhythmHash);
+            var isLeadGlue = LEAD_GLUE_WORDS.has(cleanCurr);
+            var isTrailGlue = TRAIL_GLUE_WORDS.has(cleanNext);
+            // Rhythm variety hash so even two short 4-letter non-glue words occasionally pair up (~45% of the time):
+            var firstChar = (cleanCurr && cleanCurr.length > 0) ? cleanCurr.charCodeAt(0) : 0;
+            var rhythmMix = (combinedLen <= 8) && (((firstChar * 37 + i * 19) % 100) < 45);
+
+            // Pair them if there's no comma pause, no long vocal silence (>220ms) between them, and combined length fits cleanly:
+            var maxAllowedChars = (isLeadGlue || isTrailGlue) ? 11 : 8;
+            var shouldPair = !hasPausePunct && (timeGapBetweenWords <= 220) && (combinedLen <= maxAllowedChars) && (isLeadGlue || isTrailGlue || rhythmMix);
 
             if (shouldPair) {
                 mixed.push({
-                    word: curr.word.trim() + " " + next.word.trim(), // Combined into ONE string for the single highlight box!
+                    word: curr.word.trim() + " " + next.word.trim(),
                     startMs: curr.startMs,
                     endMs: next.endMs,
                     vocalEndMs: next.vocalEndMs || next.endMs
                 });
-                i += 2; // Skip both words since they are now paired
+                i += 2;
             } else {
-                mixed.push(curr); // Keep as a 1-word punch row
+                mixed.push(curr);
                 i += 1;
             }
         }

@@ -21,6 +21,32 @@ Item {
 
     visible: hasValidGlyph
 
+    property real glyphScale: 1.0
+    scale: glyphScale
+
+    Behavior on glyphScale {
+        SpringAnimation {
+            spring: 3.8
+            damping: 0.32
+            epsilon: 0.005
+            mass: 0.75
+        }
+    }
+
+    onMotifChanged: {
+        if (motif.length > 0) {
+            glyphScale = 0.4
+            Qt.callLater(function() { glyphScale = 1.0 })
+        }
+    }
+
+    onVisibleChanged: {
+        if (visible) {
+            glyphScale = 0.4
+            Qt.callLater(function() { glyphScale = 1.0 })
+        }
+    }
+
     Shape {
         id: vectorShape
         anchors.fill: parent

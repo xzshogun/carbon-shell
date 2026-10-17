@@ -317,7 +317,7 @@ Item {
         // 3rd-Beat Rhythm Fallback Pass:
         // Only trigger fallback on words with length >= 4 that are NOT in the stop-word list!
         var RHYTHM_FALLBACK_MOTIFS = [
-            "dhun_play", "jaan_sparkle", "bijli_bolt", "nasha_vortex", "sona_diamond"
+            "JAAN_SPARKLE", "NOOR_COMET", "NASHA_PORTAL"
         ]
         var rhythmBeatCount = 0
 
@@ -340,7 +340,7 @@ Item {
                 var normWord = GlyphMap.normalizeLyricToken(candidateWord)
                 if (normWord.length >= 4 && !GlyphMap.isStopWord(normWord)) {
                     var fallbackMotif = RHYTHM_FALLBACK_MOTIFS[b % RHYTHM_FALLBACK_MOTIFS.length]
-                    item.glyph = fallbackMotif
+                    item.glyph = GlyphMap.getGlyphObject(fallbackMotif) || fallbackMotif
                     rhythmBeatCount = 0
                 }
             }

@@ -309,20 +309,20 @@ Item {
                 }
             }
 
-            // Word Box: holds the 0.52 translucent glass tape highlight behind the single word text
+            // Word Box: holds the 0.45 translucent glass tape highlight behind the word text
             Item {
                 id: wordBox
                 anchors.verticalCenter: parent.verticalCenter
-                width: wordText.contentWidth
-                height: Math.max(80, wordText.contentHeight)
+                width: wordText.implicitWidth + 52
+                height: Math.max(80, wordText.implicitHeight)
 
                 // Translucent Glass Tape highlight block
                 Rectangle {
                     id: activeWordHighlight
                     z: -1
                     anchors.centerIn: parent
-                    width: wordText.contentWidth + 36
-                    height: wordText.contentHeight + 12
+                    width: wordText.implicitWidth + 52
+                    height: wordText.implicitHeight + 14
                     radius: 10
                     color: Qt.rgba(root.vibrantPrimary.r, root.vibrantPrimary.g, root.vibrantPrimary.b, 0.45)
                     border.width: 1.5

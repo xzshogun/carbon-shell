@@ -123,7 +123,7 @@ var RAW_BUCKETS = {
 
     // 14. SONA_DIAMOND
     "sona_diamond": [
-        "diamond", "diamonds", "gold", "golden", "money", "cash", "rich", "shine", "shining", "miracle", "priceless", "treasure",
+        "diamond", "diamonds", "gold", "golden", "money", "cash", "rich", "shine", "shining", "miracle", "priceless", "treasure", "finesse",
         "sona", "sone", "heera", "hira", "daulat", "paisa", "noor", "nur", "chamak", "taare", "tare", "sitara",
         "सितारा", "सोना", "हीरा", "नूर"
     ],
@@ -239,7 +239,7 @@ function isStopWord(word) {
  * Direct -> Stemmed -> Suffix-stripped
  * Blocked immediately if token matches STOP_WORDS.
  */
-function lookupGlyph(rawWord) {
+function lookupGlyphSingle(rawWord) {
     if (!rawWord) return "";
     var norm = normalizeLyricToken(rawWord);
     if (!norm || STOP_WORDS[norm]) return "";
@@ -259,4 +259,18 @@ function lookupGlyph(rawWord) {
     if (KEYWORD_MAP[directSuff]) return KEYWORD_MAP[directSuff];
 
     return "";
+}
+
+function lookupGlyph(rawWord) {
+    if (!rawWord) return "";
+    var trimmed = String(rawWord).trim();
+    if (/\s+/.test(trimmed)) {
+        var parts = trimmed.split(/\s+/);
+        for (var i = 0; i < parts.length; i++) {
+            var g = lookupGlyphSingle(parts[i]);
+            if (g) return g;
+        }
+        return "";
+    }
+    return lookupGlyphSingle(trimmed);
 }

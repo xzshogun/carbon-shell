@@ -128,16 +128,21 @@ Singleton {
         }
     }
 
-    function reload() {
-        try {
-            caelestiaFile.reload()
-            fallbackFile.reload()
-            hyprFallbackFile.reload()
+    property string _lastLoadedThemeText: ""
+    property bool _reloading: false
 
+    function reload() {
+        if (root._reloading) return
+        root._reloading = true
+        try {
             var txt = caelestiaFile.text().trim()
             var parsed = null
 
             if (txt.length > 0) {
+                if (txt === root._lastLoadedThemeText) {
+                    root._reloading = false
+                    return
+                }
                 try {
                     parsed = JSON.parse(txt)
                 } catch (pe) {
@@ -237,6 +242,8 @@ Singleton {
                 root.warn = root.m3tertiary
                 root.err = root.m3error
 
+                root._lastLoadedThemeText = txt
+                root._reloading = false
                 console.log("[Theme] Synchronized with Caelestia Scheme:", root.schemeName, "Mode:", parsed.mode || (root.isDark ? "dark" : "light"), "Primary:", root.accent)
                 return
             }
@@ -324,6 +331,8 @@ Singleton {
             }
         } catch (e) {
             console.log("[Theme] Reload error: " + e)
+        } finally {
+            root._reloading = false
         }
     }
 

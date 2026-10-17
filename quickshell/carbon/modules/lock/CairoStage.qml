@@ -74,7 +74,7 @@ Item {
     CairoAmbientBorder {
         id: ambientBorder
         anchors.fill: parent
-        z: 1
+        z: 999
     }
 
     // ── 2. Cairo Lyric Engine ─────────────────────────────────────────────

@@ -89,27 +89,21 @@ Item {
     signal clearRequested()
 
     function tokenizeLineToSingleWords(lineText, lineStartMs, nextLineStartMs) {
-        // 1. Clean parenthetical ad-libs like "(All night long)" or "(Forever)" if they duplicate, or split every single whitespace token:
         var rawTokens = lineText.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
         if (rawTokens.length === 0) return [];
 
-        // 2. Pure 1-word array: EVERY element in `rawTokens` is its own standalone row!
-        // DO NOT group short words, articles, or pronouns. 1 token = 1 single word string.
         var rawGapMs = Math.max(350, nextLineStartMs - lineStartMs);
+        var activeWindowMs = Math.min(rawGapMs * 0.72, rawTokens.length * 290);
 
-        // 3. Adaptive Tempo Window: scales naturally with fast rap/pop or slow ballads
-        // Takes 86% of the real timestamp gap (capped at 420ms * wordCount so long instrumental pauses don't stretch words)
-        var maxNaturalWindow = rawTokens.length * 420;
-        var activeWindowMs = Math.min(rawGapMs * 0.86, maxNaturalWindow);
-
-        // 4. Weight each single word slightly by character length so short words ("I", "a", "in") step fast
-        // and longer punch words ("confidence", "measurements", "together?") hold slightly longer:
         var weights = [];
         var totalWeight = 0;
         for (var i = 0; i < rawTokens.length; i++) {
-            var cleanLen = rawTokens[i].replace(/[^a-zA-Z0-9\u0900-\u097F]/g, "").length;
-            var w = Math.max(1.0, Math.pow(cleanLen, 0.55));
-            if (i === rawTokens.length - 1) w *= 1.25; // Slight hold on the last word of a line
+            var token = rawTokens[i];
+            var cleanLen = token.replace(/[^a-zA-Z0-9\u0900-\u097F]/g, "").length;
+            var w = Math.max(1.0, Math.pow(cleanLen, 0.5));
+            if (/[,;\-\u2014\?\!]$|\.\.$/.test(token)) {
+                w *= 2.2; // Hold 2.2x longer on comma/breath pauses
+            }
             weights.push(w);
             totalWeight += w;
         }
@@ -118,10 +112,11 @@ Item {
         var cursorMs = lineStartMs;
         for (var j = 0; j < rawTokens.length; j++) {
             var durMs = (weights[j] / totalWeight) * activeWindowMs;
+            var isLast = (j === rawTokens.length - 1);
             result.push({
-                word: rawTokens[j],          // STRICTLY 1 WORD STRING (never an array of 2 words!)
+                word: rawTokens[j],
                 startMs: Math.round(cursorMs),
-                endMs: Math.round(cursorMs + durMs)
+                endMs: isLast ? Math.round(nextLineStartMs) : Math.round(cursorMs + durMs)
             });
             cursorMs += durMs;
         }

@@ -10,15 +10,13 @@ import "CairoHinglishMap.js" as GlyphMap
  * CairoStage.qml:
  * Carbon // Cairo Kinetic Lyric Standby & Lock Screen Engine
  *
- * Visual Features:
- *   - 100% Pure Pitch-Black Stage (#000000) with zero shaders, zero horizon lines, zero UI chrome.
+ * Implements:
+ *   - 100% Pitch-Black Stage (#000000) with CairoBorderGlow steady perimeter spotlight.
  *   - 5 Persistent Word Delegates in a True Upward-Gliding 3D Barrel.
- *   - Stage 0: Active spoken row with angled sheared tape polygon rotated -1.4deg.
- *   - Tape wipes open horizontally (scaleX: 0.0 -> 1.0, 200ms Easing.OutQuart).
- *   - Tape fill = Qt.darker(Theme.m3primary, 1.2) blended 25% with #9e6b74.
- *   - Text inside active tape = bright pale cream/blush (#f7ebed), NEVER black (#000000).
- *   - Stage 1: Tape polygon fades out, text transitions to warm muted bronze (#9c6e54).
- *   - 18 Custom Angular SVG Vector Glyphs beside active words, scaled and fading through stages.
+ *   - Strictly Single-Word Highlighting: single shared Rectangle highlight block
+ *     that glides dynamically to whichever word in Stage 0 is currently active.
+ *   - Zero highlight on Stage 1 (middle) and Stage 2 (top).
+ *   - 60fps Interpolated Audio Clock with live [ and ] hotkeys for fine-tuning sync offset.
  *   - Instant single-Enter unlock with radial iris reveal.
  */
 Item {
@@ -31,32 +29,40 @@ Item {
     readonly property real cx: root.width / 2
     readonly property real cy: root.height / 2
 
-    // ── Tape & Text Palette Tokens ─────────────────────────────────────────
-    readonly property color tapeFillColor: {
-        var p = Theme.m3primary || Theme.accent || Qt.rgba(0.75, 0.77, 0.93, 1.0)
-        var darkP = Qt.darker(p, 1.2)
-        var blush = Qt.color("#9e6b74")
-        return Qt.rgba(
-            darkP.r * 0.75 + blush.r * 0.25,
-            darkP.g * 0.75 + blush.g * 0.25,
-            darkP.b * 0.75 + blush.b * 0.25,
-            1.0
-        )
+    // ── Palette Tokens ─────────────────────────────────────────────────────
+    function getVibrantThemeColor() {
+        var base = Theme.m3primary || Theme.accent || Qt.rgba(0.46, 0.82, 0.98, 1.0)
+        var h = base.hslHue
+        var s = base.hslSaturation
+        var v = base.hslLightness
+
+        if (h < 0) return Qt.rgba(0.46, 0.82, 0.98, 1.0)
+
+        var boostS = Math.max(0.65, Math.min(s * 1.30, 0.95))
+        var boostV = Math.max(0.75, Math.min(v, 0.95))
+        return Qt.hsva(h, boostS, boostV, 1.0)
     }
 
-    readonly property color activeTextColor: "#f7ebed"
+    readonly property color vibrantPrimary: getVibrantThemeColor()
+    readonly property color highlightColor: Qt.darker(root.vibrantPrimary, 1.18)
+
+    readonly property real highlightLuminance: 0.299 * highlightColor.r + 0.587 * highlightColor.g + 0.114 * highlightColor.b
+    readonly property color highlightedTextColor: "#f7ebed"
 
     readonly property color bronzeColor: {
         var sec = Theme.m3secondary || Qt.rgba(0.77, 0.77, 0.87, 1.0)
         var dSec = Qt.darker(sec, 1.15)
         var b = Qt.color("#9c6e54")
         return Qt.rgba(
-            dSec.r * 0.50 + b.r * 0.50,
-            dSec.g * 0.50 + b.g * 0.50,
-            dSec.b * 0.50 + b.b * 0.50,
+            dSec.r * 0.40 + b.r * 0.60,
+            dSec.g * 0.40 + b.g * 0.60,
+            dSec.b * 0.40 + b.b * 0.60,
             1.0
         )
     }
+
+    // High-precision effective audio position from 60fps clock
+    readonly property real effectivePositionMs: lyricEngine.effectivePositionMs
 
     // ── 1. Pure Pitch-Black Stage (0% Shaders / 0% Chrome) ────────────────
     Rectangle {
@@ -64,6 +70,13 @@ Item {
         anchors.fill: parent
         color: "#000000"
         z: 0
+    }
+
+    // ── 1b. Music-Sensitive Ambient Perimeter Border ──────────────────────
+    CairoAmbientBorder {
+        id: ambientBorder
+        anchors.fill: parent
+        z: 1
     }
 
     // ── 2. Cairo Lyric Engine ─────────────────────────────────────────────
@@ -105,9 +118,30 @@ Item {
         onTriggered: root.readyToUnlock = true
     }
 
+    // Sync Offset Toast
+    property string offsetToastText: ""
+    property bool offsetToastVisible: false
+    Timer {
+        id: toastTimer
+        interval: 1400
+        onTriggered: root.offsetToastVisible = false
+    }
+    function showOffsetToast(val) {
+        root.offsetToastText = "SYNC: " + (val > 0 ? "+" : "") + val + " ms"
+        root.offsetToastVisible = true
+        toastTimer.restart()
+    }
+
     Keys.onPressed: (event) => {
-        if (!root.readyToUnlock) return
-        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+        if (event.key === Qt.Key_BracketLeft) {
+            event.accepted = true
+            lyricEngine.syncOffsetMs -= 50
+            root.showOffsetToast(lyricEngine.syncOffsetMs)
+        } else if (event.key === Qt.Key_BracketRight) {
+            event.accepted = true
+            lyricEngine.syncOffsetMs += 50
+            root.showOffsetToast(lyricEngine.syncOffsetMs)
+        } else if (root.readyToUnlock && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
             event.accepted = true
             root.triggerUnlock()
         }
@@ -130,13 +164,19 @@ Item {
     component CairoWordDelegate: Item {
         id: delegateRoot
         width: root.width
-        height: 150
+        height: 140
         x: (root.width - width) / 2
 
         property int stage: 4 // -1: pre-entry, 0: active bottom, 1: middle, 2: top, 3: exiting, 4: idle
         property string chunkText: ""
         property string glyphMotif: ""
         property real currentDuration: 1.0
+        property real chunkStartTime: 0.0
+        property real chunkStartMs: 0
+        property real chunkEndMs: 0
+        property real vocalEndMs: 0
+        property var rowWords: []
+
 
         // Spatial animated properties
         property real stageY: root.cy + 210
@@ -144,7 +184,6 @@ Item {
         property real stageScaleX: 0.88
         property real stageScaleY: 0.50
         property real stageRotX: 8.0
-        property real tapeScaleX: 0.0
 
         property bool enableAnim: true
 
@@ -154,30 +193,24 @@ Item {
 
         // Transitions: 340ms Easing.OutQuint across all barrel coordinates
         Behavior on stageY {
-            enabled: delegateRoot.enableAnim
+            enabled: delegateRoot.enableAnim && delegateRoot.stage >= 0
             NumberAnimation { duration: 340; easing.type: Easing.OutQuint }
         }
         Behavior on stageScaleX {
-            enabled: delegateRoot.enableAnim
+            enabled: delegateRoot.enableAnim && delegateRoot.stage >= 0
             NumberAnimation { duration: 340; easing.type: Easing.OutQuint }
         }
         Behavior on stageScaleY {
-            enabled: delegateRoot.enableAnim
+            enabled: delegateRoot.enableAnim && delegateRoot.stage >= 0
             NumberAnimation { duration: 340; easing.type: Easing.OutQuint }
         }
         Behavior on stageRotX {
-            enabled: delegateRoot.enableAnim
+            enabled: delegateRoot.enableAnim && delegateRoot.stage >= 0
             NumberAnimation { duration: 340; easing.type: Easing.OutQuint }
         }
         Behavior on stageOpacity {
-            enabled: delegateRoot.enableAnim
+            enabled: delegateRoot.enableAnim && delegateRoot.stage >= 0
             NumberAnimation { duration: 340; easing.type: Easing.OutQuint }
-        }
-
-        // Horizontal tape wipe: 200ms Easing.OutQuart
-        Behavior on tapeScaleX {
-            enabled: delegateRoot.enableAnim
-            NumberAnimation { duration: 200; easing.type: Easing.OutQuart }
         }
 
         transform: [
@@ -195,59 +228,62 @@ Item {
             }
         ]
 
+        function calcFontSize(txt) {
+            var len = (txt || "").length
+            if (len > 12) return 86
+            if (len > 8) return 102
+            return 118
+        }
+
         function setStage(newStage) {
             stage = newStage
             if (newStage === -1) {
-                // Stage -1 (Pre-Entry Spawn): y: cy + 210, opacity: 0.0, xScale: 0.88, yScale: 0.50
+                // Stage -1 (Pre-Entry Spawn: 0ms teleport without downward animation)
                 enableAnim = false
-                stageY = root.cy + 210
                 stageOpacity = 0.0
+                stageY = root.cy + 195
                 stageScaleX = 0.88
                 stageScaleY = 0.50
                 stageRotX = 8.0
-                tapeScaleX = 0.0
                 z = 1
                 enableAnim = true
             } else if (newStage === 0) {
-                // Stage 0 (Bottom Active Spoken Row — With Cutout Tape):
-                // y: cy + 110, opacity: 1.0, xScale: 1.0, yScale: 1.0, rotX: 0, z: 30
-                stageY = root.cy + 110
+                // Stage 0 (Bottom Active Spoken Row: glides up from +195 to +105)
+                stageY = root.cy + 105
                 stageOpacity = 1.0
                 stageScaleX = 1.0
                 stageScaleY = 1.0
                 stageRotX = 0.0
-                tapeScaleX = 1.0
                 z = 30
             } else if (newStage === 1) {
-                // Stage 1 (Middle Row — Just Passed):
-                // y: cy - 12, opacity: 0.92, xScale: 0.86, yScale: 0.74, rotX: 20, z: 20
-                stageY = root.cy - 12
+                // Stage 1 (Middle Row — Just Passed)
+                stageY = root.cy - 35
                 stageOpacity = 0.92
                 stageScaleX = 0.86
                 stageScaleY = 0.74
                 stageRotX = 20.0
                 z = 20
             } else if (newStage === 2) {
-                // Stage 2 (Top Row — Receding Barrel Edge):
-                // y: cy - 118, opacity: 0.70, xScale: 0.72, yScale: 0.54, rotX: 38, z: 10
-                stageY = root.cy - 118
+                // Stage 2 (Top Row — Receding Barrel Edge)
+                stageY = root.cy - 135
                 stageOpacity = 0.70
                 stageScaleX = 0.72
                 stageScaleY = 0.54
                 stageRotX = 38.0
                 z = 10
             } else if (newStage === 3) {
-                // Stage 3 (Exiting Top — Crushing Flat):
-                // y: cy - 195, opacity: 0.0, xScale: 0.54, yScale: 0.12, rotX: 58
-                stageY = root.cy - 195
+                // Stage 3 (Exiting Top — Crushing Flat)
+                stageY = root.cy - 182
                 stageOpacity = 0.0
                 stageScaleX = 0.54
                 stageScaleY = 0.12
                 stageRotX = 58.0
-                z = 5
+                z = 1
             } else {
+                // Stage 4 (Idle Pool Dormant)
+                enableAnim = false
                 stageOpacity = 0.0
-                stage = 4
+                stageY = root.cy + 400
                 z = 0
             }
         }
@@ -257,76 +293,61 @@ Item {
             anchors.centerIn: parent
             spacing: 20
 
-            // 18 Custom Cairo Angular SVG Vector Glyph
+            // 18 Custom Cairo Angular SVG Vector Glyph with CurveRenderer
+            // Strictly visible only on Stage 0 (hidden on Stage 1 and Stage 2)
             CairoGlyph {
                 id: glyphItem
                 motif: delegateRoot.glyphMotif
-                glyphColor: Theme.m3primary || Theme.accent || "#c0c4ee"
+                glyphColor: root.vibrantPrimary
                 anchors.verticalCenter: parent.verticalCenter
                 width: 86
                 height: 86
-                visible: motif.length > 0
+                opacity: (delegateRoot.stage === 0 && motif.length > 0) ? 1.0 : 0.0
+                visible: opacity > 0.01 && motif.length > 0
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 120; easing.type: Easing.OutQuad }
+                }
             }
 
-            // Word(s) Item with Active Angled Cutout Tape
+            // Word Box: holds the 0.52 translucent glass tape highlight behind the single word text
             Item {
-                id: wordTapeItem
-                width: wordText.contentWidth + 56
-                height: Math.max(90, wordText.contentHeight + 20)
+                id: wordBox
                 anchors.verticalCenter: parent.verticalCenter
+                width: wordText.contentWidth
+                height: Math.max(80, wordText.contentHeight)
 
-                // Active Angled Cutout Tape Polygon:
-                // Sheared polygon (top-left 1.5%, 4%; top-right 100%, 0%; bottom-right 98.5%, 96%; bottom-left 0%, 100%; rotation -1.4deg)
-                Item {
-                    id: tapeContainer
-                    anchors.fill: parent
-                    rotation: -1.4
-                    transformOrigin: Item.Left
-                    opacity: delegateRoot.stage === 0 ? 1.0 : (delegateRoot.stage === 1 ? 0.18 : 0.0)
-                    scale: delegateRoot.tapeScaleX
+                // Translucent Glass Tape highlight block
+                Rectangle {
+                    id: activeWordHighlight
+                    z: -1
+                    anchors.centerIn: parent
+                    width: wordText.contentWidth + 36
+                    height: wordText.contentHeight + 12
+                    radius: 8
+                    color: Qt.rgba(root.highlightColor.r, root.highlightColor.g, root.highlightColor.b, 0.45)
+                    opacity: (delegateRoot.stage === 0) ? 1.0 : 0.0
+                    visible: opacity > 0.01
 
                     Behavior on opacity {
-                        NumberAnimation { duration: 340; easing.type: Easing.OutQuint }
-                    }
-
-                    Shape {
-                        id: tapeShape
-                        anchors.fill: parent
-                        asynchronous: true
-                        preferredRendererType: Shape.CurveRenderer
-                        antialiasing: true
-                        smooth: true
-
-                        ShapePath {
-                            fillColor: root.tapeFillColor
-                            strokeWidth: 0
-                            strokeColor: "transparent"
-                            startX: tapeShape.width * 0.015
-                            startY: tapeShape.height * 0.04
-                            PathLine { x: tapeShape.width * 1.000; y: 0 }
-                            PathLine { x: tapeShape.width * 0.985; y: tapeShape.height * 0.96 }
-                            PathLine { x: 0;                       y: tapeShape.height * 1.000 }
-                            PathLine { x: tapeShape.width * 0.015; y: tapeShape.height * 0.04 }
-                        }
+                        NumberAnimation { duration: 140; easing.type: Easing.OutQuad }
                     }
                 }
 
-                // Lyric Text:
-                // Plus Jakarta Sans / Manrope, ExtraBold, natural casing, letterSpacing: -3.5, pixelSize: 118
-                // Active inside tape: #f7ebed, Stage 1/2: bronze #9c6e54
                 Text {
                     id: wordText
                     anchors.centerIn: parent
                     text: delegateRoot.chunkText
                     font.family: "Plus Jakarta Sans, Manrope, sans-serif"
                     font.weight: Font.ExtraBold
-                    font.italic: delegateRoot.stage === 0
-                    font.letterSpacing: -3.5
-                    font.pixelSize: Math.min(118, Math.max(56, Math.round((root.width * 0.72) / Math.max(5, text.length * 0.62))))
-                    color: delegateRoot.stage === 0 ? root.activeTextColor : root.bronzeColor
+                    font.letterSpacing: -2.8
+                    font.pixelSize: delegateRoot.calcFontSize(delegateRoot.chunkText)
+                    color: (delegateRoot.stage === 0)
+                           ? root.highlightedTextColor
+                           : root.bronzeColor
 
                     Behavior on color {
-                        ColorAnimation { duration: 340; easing.type: Easing.OutQuint }
+                        ColorAnimation { duration: 90; easing.type: Easing.OutQuad }
                     }
                 }
             }
@@ -351,28 +372,44 @@ Item {
     readonly property var delegates: [d0, d1, d2, d3, d4]
     property int poolPointer: 0
 
-    readonly property bool hasActiveWords: (
-        (d0.stage >= 0 && d0.stage <= 2 && d0.stageOpacity > 0.05) ||
-        (d1.stage >= 0 && d1.stage <= 2 && d1.stageOpacity > 0.05) ||
-        (d2.stage >= 0 && d2.stage <= 2 && d2.stageOpacity > 0.05) ||
-        (d3.stage >= 0 && d3.stage <= 2 && d3.stageOpacity > 0.05) ||
-        (d4.stage >= 0 && d4.stage <= 2 && d4.stageOpacity > 0.05)
-    )
+    readonly property bool hasActiveWords: {
+        for (var i = 0; i < delegates.length; i++) {
+            if (delegates[i].stage >= 0 && delegates[i].stage <= 2) return true
+        }
+        return false
+    }
+
+    function pushNewWord(beat) {
+        handleBeatTriggered(beat)
+    }
 
     function handleBeatTriggered(beat) {
-        if (!beat || !beat.text) return
+        if (!beat) return
 
-        // 1. Advance all active delegates up the barrel
+        if (ambientBorder && typeof ambientBorder.triggerBeat === "function") {
+            ambientBorder.triggerBeat()
+        }
+
+        // 1. Synchronously increment stage += 1 on EVERY existing active delegate first
+        // before activating the new delegate at stage = 0.
+        // Assert that at most ONE delegate in the entire pool ever has stage === 0.
         for (var i = 0; i < delegates.length; i++) {
             var d = delegates[i]
-            if (d.stage === 0) {
-                d.setStage(1)
+            if (d.stage === 2) {
+                d.setStage(3)
             } else if (d.stage === 1) {
                 d.setStage(2)
-            } else if (d.stage === 2) {
-                d.setStage(3)
+            } else if (d.stage === 0) {
+                d.setStage(1)
             } else if (d.stage === 3) {
                 d.setStage(4)
+            }
+        }
+
+        // Safety assertion: enforce zero delegates remaining at stage 0
+        for (var i = 0; i < delegates.length; i++) {
+            if (delegates[i].stage === 0) {
+                delegates[i].setStage(1)
             }
         }
 
@@ -380,14 +417,25 @@ Item {
         var nextD = delegates[poolPointer]
         poolPointer = (poolPointer + 1) % delegates.length
 
-        // 3. Set content and spawn at Stage -1
+        // 3. Set content and reset to spawn at Stage -1 (0ms teleport without downward fly)
         nextD.chunkText = beat.text
         nextD.glyphMotif = beat.glyph || ""
         nextD.currentDuration = beat.duration || 1.0
+        nextD.chunkStartTime = beat.time || 0.0
+        nextD.chunkStartMs = beat.startMs || Math.round(beat.time * 1000)
+        nextD.chunkEndMs = beat.endMs || Math.round((beat.time + beat.duration) * 1000)
+        nextD.vocalEndMs = beat.vocalEndMs || nextD.chunkEndMs
+        nextD.rowWords = beat.rowWords || [{ text: beat.text, startMs: nextD.chunkStartMs, endMs: nextD.vocalEndMs }]
         nextD.setStage(-1)
 
-        // 4. Animate immediately into Stage 0
+        // 4. On next frame, glide smoothly upward into Stage 0 with Behavior enabled
         Qt.callLater(function() {
+            // Strictly enforce single-stage-0 invariant across all other delegates
+            for (var j = 0; j < delegates.length; j++) {
+                if (delegates[j] !== nextD && delegates[j].stage === 0) {
+                    delegates[j].setStage(1)
+                }
+            }
             nextD.setStage(0)
         })
     }
@@ -415,6 +463,11 @@ Item {
             d2.chunkText = w2.text
             d2.glyphMotif = w2.glyph || ""
             d2.currentDuration = w2.duration || 1.0
+            d2.chunkStartTime = w2.time || 0.0
+            d2.chunkStartMs = w2.startMs || Math.round(w2.time * 1000)
+            d2.chunkEndMs = w2.endMs || Math.round((w2.time + w2.duration) * 1000)
+            d2.vocalEndMs = w2.vocalEndMs || d2.chunkEndMs
+            d2.rowWords = w2.rowWords || [{ text: w2.text, startMs: d2.chunkStartMs, endMs: d2.vocalEndMs }]
             d2.setStage(2)
         }
         if (idx >= 1) {
@@ -422,12 +475,22 @@ Item {
             d1.chunkText = w1.text
             d1.glyphMotif = w1.glyph || ""
             d1.currentDuration = w1.duration || 1.0
+            d1.chunkStartTime = w1.time || 0.0
+            d1.chunkStartMs = w1.startMs || Math.round(w1.time * 1000)
+            d1.chunkEndMs = w1.endMs || Math.round((w1.time + w1.duration) * 1000)
+            d1.vocalEndMs = w1.vocalEndMs || d1.chunkEndMs
+            d1.rowWords = w1.rowWords || [{ text: w1.text, startMs: d1.chunkStartMs, endMs: d1.vocalEndMs }]
             d1.setStage(1)
         }
         var w0 = lyricEngine.allWords[idx]
         d0.chunkText = w0.text
         d0.glyphMotif = w0.glyph || ""
         d0.currentDuration = w0.duration || 1.0
+        d0.chunkStartTime = w0.time || 0.0
+        d0.chunkStartMs = w0.startMs || Math.round(w0.time * 1000)
+        d0.chunkEndMs = w0.endMs || Math.round((w0.time + w0.duration) * 1000)
+        d0.vocalEndMs = w0.vocalEndMs || d0.chunkEndMs
+        d0.rowWords = w0.rowWords || [{ text: w0.text, startMs: d0.chunkStartMs, endMs: d0.vocalEndMs }]
         d0.setStage(0)
 
         poolPointer = 3
@@ -467,7 +530,7 @@ Item {
 
             CairoGlyph {
                 motif: "dhun_play"
-                glyphColor: Theme.m3primary || Theme.accent || "#c0c4ee"
+                glyphColor: root.vibrantPrimary
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 72
                 height: 72
@@ -480,7 +543,7 @@ Item {
                 font.weight: Font.ExtraBold
                 font.letterSpacing: 4.0
                 font.pixelSize: 22
-                color: Theme.m3primary || Theme.accent || "#c0c4ee"
+                color: root.vibrantPrimary
                 opacity: 0.88
             }
 
@@ -522,4 +585,33 @@ Item {
     }
 
     onIrisRadiusChanged: irisCanvas.requestPaint()
+
+    // ── 8. Sync Offset OSD Toast ──────────────────────────────────────────
+    Rectangle {
+        id: offsetToastBox
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: 36
+        width: offsetToastLabel.contentWidth + 32
+        height: 38
+        radius: 8
+        color: "#181a20"
+        border.width: 1
+        border.color: root.vibrantPrimary
+        opacity: root.offsetToastVisible ? 0.94 : 0.0
+        visible: opacity > 0.01
+        z: 100
+
+        Behavior on opacity { NumberAnimation { duration: 150 } }
+
+        Text {
+            id: offsetToastLabel
+            anchors.centerIn: parent
+            text: root.offsetToastText
+            font.family: "Plus Jakarta Sans, Manrope, sans-serif"
+            font.weight: Font.Bold
+            font.pixelSize: 14
+            color: root.vibrantPrimary
+        }
+    }
 }

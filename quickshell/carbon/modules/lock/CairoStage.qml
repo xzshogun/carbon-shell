@@ -168,13 +168,15 @@ Item {
 
         property int stage: 4 // -1: pre-entry, 0: active bottom, 1: middle, 2: top, 3: exiting, 4: idle
         property string chunkText: ""
-        property string glyphMotif: ""
+        property var glyphInput: null
+        property var glyphMotif: null
         property real currentDuration: 1.0
         property real chunkStartTime: 0.0
         property real chunkStartMs: 0
         property real chunkEndMs: 0
         property real vocalEndMs: 0
         property var rowWords: []
+        clip: false
 
 
         // Spatial animated properties
@@ -234,6 +236,23 @@ Item {
             return 118
         }
 
+        function spawnAtStage0() {
+            enableAnim = false
+            stageOpacity = 0.0
+            stageY = root.cy + 210
+            stageScaleX = 0.88
+            stageScaleY = 0.50
+            stageRotX = 8.0
+            z = 30
+            stage = 0
+            enableAnim = true
+            stageY = root.cy + 105
+            stageOpacity = 1.0
+            stageScaleX = 1.0
+            stageScaleY = 1.0
+            stageRotX = 0.0
+        }
+
         function setStage(newStage) {
             stage = newStage
             if (newStage === -1) {
@@ -290,20 +309,23 @@ Item {
         Row {
             id: contentRow
             anchors.centerIn: parent
-            spacing: 20
+            spacing: 24
+            clip: false
 
-            // 18 Custom Cairo Angular SVG Vector Glyph with CurveRenderer
+            // 3-Layer Animated Kinetic Vector Glyph with CurveRenderer
             // Strictly visible only on Stage 0 (hidden on Stage 1 and Stage 2)
             CairoGlyph {
                 id: glyphItem
+                z: 50
                 stage: delegateRoot.stage
-                motif: delegateRoot.glyphMotif
+                activeInStage0: delegateRoot.stage === 0
+                glyphInput: delegateRoot.glyphInput ? delegateRoot.glyphInput : delegateRoot.glyphMotif
                 glyphColor: root.vibrantPrimary
                 anchors.verticalCenter: parent.verticalCenter
-                width: 86
-                height: 86
-                opacity: (delegateRoot.stage === 0 && motif.length > 0) ? 1.0 : 0.0
-                visible: opacity > 0.01 && motif.length > 0
+                width: 88
+                height: 88
+                opacity: (delegateRoot.stage === 0 && hasValidGlyph) ? 1.0 : 0.0
+                visible: opacity > 0.01 && hasValidGlyph
 
                 Behavior on opacity {
                     NumberAnimation { duration: 120; easing.type: Easing.OutQuad }
@@ -392,26 +414,21 @@ Item {
             ambientBorder.triggerBeat()
         }
 
-        // 1. Synchronously increment stage += 1 on EVERY existing active delegate first
-        // before activating the new delegate at stage = 0.
-        // Assert that at most ONE delegate in the entire pool ever has stage === 0.
+        // 1. Strictly shift active delegates by +1 exactly once per token change:
+        // Stage 2 -> Stage 3 (exiting top)
+        // Stage 1 -> Stage 2 (top row)
+        // Stage 0 / -1 -> Stage 1 (middle row)
+        // Stage 3 -> Stage 4 (idle pool)
         for (var i = 0; i < delegates.length; i++) {
             var d = delegates[i]
             if (d.stage === 2) {
                 d.setStage(3)
             } else if (d.stage === 1) {
                 d.setStage(2)
-            } else if (d.stage === 0) {
+            } else if (d.stage === 0 || d.stage === -1) {
                 d.setStage(1)
             } else if (d.stage === 3) {
                 d.setStage(4)
-            }
-        }
-
-        // Safety assertion: enforce zero delegates remaining at stage 0
-        for (var i = 0; i < delegates.length; i++) {
-            if (delegates[i].stage === 0) {
-                delegates[i].setStage(1)
             }
         }
 
@@ -419,27 +436,18 @@ Item {
         var nextD = delegates[poolPointer]
         poolPointer = (poolPointer + 1) % delegates.length
 
-        // 3. Set content and reset to spawn at Stage -1 (0ms teleport without downward fly)
+        // 3. Set content and spawn smoothly into Stage 0
         nextD.chunkText = beat.text
-        nextD.glyphMotif = beat.glyph || ""
+        nextD.glyphInput = beat.glyph || null
+        nextD.glyphMotif = (beat.glyph && beat.glyph.motif) ? beat.glyph.motif : (typeof beat.glyph === "string" ? beat.glyph : "")
         nextD.currentDuration = beat.duration || 1.0
         nextD.chunkStartTime = beat.time || 0.0
         nextD.chunkStartMs = beat.startMs || Math.round(beat.time * 1000)
         nextD.chunkEndMs = beat.endMs || Math.round((beat.time + beat.duration) * 1000)
         nextD.vocalEndMs = beat.vocalEndMs || nextD.chunkEndMs
         nextD.rowWords = beat.rowWords || [{ text: beat.text, startMs: nextD.chunkStartMs, endMs: nextD.vocalEndMs }]
-        nextD.setStage(-1)
 
-        // 4. On next frame, glide smoothly upward into Stage 0 with Behavior enabled
-        Qt.callLater(function() {
-            // Strictly enforce single-stage-0 invariant across all other delegates
-            for (var j = 0; j < delegates.length; j++) {
-                if (delegates[j] !== nextD && delegates[j].stage === 0) {
-                    delegates[j].setStage(1)
-                }
-            }
-            nextD.setStage(0)
-        })
+        nextD.spawnAtStage0()
     }
 
     function handleClearRequested() {
@@ -463,7 +471,8 @@ Item {
         if (idx >= 2) {
             var w2 = lyricEngine.allWords[idx - 2]
             d2.chunkText = w2.text
-            d2.glyphMotif = w2.glyph || ""
+            d2.glyphInput = w2.glyph || null
+            d2.glyphMotif = (w2.glyph && w2.glyph.motif) ? w2.glyph.motif : (typeof w2.glyph === "string" ? w2.glyph : "")
             d2.currentDuration = w2.duration || 1.0
             d2.chunkStartTime = w2.time || 0.0
             d2.chunkStartMs = w2.startMs || Math.round(w2.time * 1000)
@@ -475,7 +484,8 @@ Item {
         if (idx >= 1) {
             var w1 = lyricEngine.allWords[idx - 1]
             d1.chunkText = w1.text
-            d1.glyphMotif = w1.glyph || ""
+            d1.glyphInput = w1.glyph || null
+            d1.glyphMotif = (w1.glyph && w1.glyph.motif) ? w1.glyph.motif : (typeof w1.glyph === "string" ? w1.glyph : "")
             d1.currentDuration = w1.duration || 1.0
             d1.chunkStartTime = w1.time || 0.0
             d1.chunkStartMs = w1.startMs || Math.round(w1.time * 1000)
@@ -486,7 +496,8 @@ Item {
         }
         var w0 = lyricEngine.allWords[idx]
         d0.chunkText = w0.text
-        d0.glyphMotif = w0.glyph || ""
+        d0.glyphInput = w0.glyph || null
+        d0.glyphMotif = (w0.glyph && w0.glyph.motif) ? w0.glyph.motif : (typeof w0.glyph === "string" ? w0.glyph : "")
         d0.currentDuration = w0.duration || 1.0
         d0.chunkStartTime = w0.time || 0.0
         d0.chunkStartMs = w0.startMs || Math.round(w0.time * 1000)
@@ -531,7 +542,8 @@ Item {
             spacing: 14
 
             CairoGlyph {
-                motif: "dhun_play"
+                glyphInput: "DHUN_VINYL"
+                activeInStage0: true
                 glyphColor: root.vibrantPrimary
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 72

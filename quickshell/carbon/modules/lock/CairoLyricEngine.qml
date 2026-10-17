@@ -83,10 +83,51 @@ Item {
     property int clusterSize: 0
 
     property int currentWordIndex: -1
+    property int currentTokenIndex: -1
+    property real lastTokenStepTimeMs: 0
     property var activeBeat: null
 
     signal beatTriggered(var beatData)
     signal clearRequested()
+
+    function sanitizeLineTokens(tokens) {
+        if (!tokens || tokens.length === 0) return [];
+
+        // 1. Deduplicate consecutive identical ad-lib echoes within < 350ms
+        var deduped = [];
+        for (var i = 0; i < tokens.length; i++) {
+            var cur = tokens[i];
+            if (deduped.length > 0) {
+                var prev = deduped[deduped.length - 1];
+                var cleanCur = (cur.word || "").trim().toLowerCase();
+                var cleanPrev = (prev.word || "").trim().toLowerCase();
+                if (cleanCur.length > 0 && cleanCur === cleanPrev && (cur.startMs - prev.endMs) < 350) {
+                    prev.endMs = Math.max(prev.endMs, cur.endMs);
+                    prev.vocalEndMs = Math.max(prev.vocalEndMs || prev.endMs, cur.vocalEndMs || cur.endMs);
+                    continue;
+                }
+            }
+            deduped.push(cur);
+        }
+
+        // 2. Enforce minimum 210ms duration per token and shift subsequent tokens on same line
+        for (var k = 0; k < deduped.length; k++) {
+            var tok = deduped[k];
+            tok.endMs = Math.max(tok.startMs + 210, tok.endMs);
+            tok.vocalEndMs = Math.max(tok.startMs + 210, tok.vocalEndMs || tok.endMs);
+            if (k + 1 < deduped.length) {
+                var nextTok = deduped[k + 1];
+                if (nextTok.startMs < tok.startMs + 210) {
+                    var shiftMs = (tok.startMs + 210) - nextTok.startMs;
+                    nextTok.startMs += shiftMs;
+                    nextTok.endMs += shiftMs;
+                    if (nextTok.vocalEndMs) nextTok.vocalEndMs += shiftMs;
+                }
+            }
+        }
+
+        return deduped;
+    }
 
     function tokenizeLineToSingleWords(lineText, lineStartMs, nextLineStartMs) {
         var rawTokens = lineText.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
@@ -121,7 +162,7 @@ Item {
             });
             cursorMs += durMs;
         }
-        return result;
+        return root.sanitizeLineTokens(result);
     }
 
     readonly property var leadGlueWords: new Set([
@@ -254,7 +295,8 @@ Item {
                     })
                 }
 
-                var mixedTokensA = root.mixSingleAndDoubleWords(rawWordTokens)
+                var cleanTokensA = root.sanitizeLineTokens(rawWordTokens)
+                var mixedTokensA = root.sanitizeLineTokens(root.mixSingleAndDoubleWords(cleanTokensA))
                 for (var ma = 0; ma < mixedTokensA.length; ma++) {
                     var mItemA = mixedTokensA[ma]
                     var vEndA = mItemA.vocalEndMs || mItemA.endMs
@@ -284,7 +326,7 @@ Item {
                 var singleWords = root.tokenizeLineToSingleWords(cur.text, lineStartMs, nextLineStartMs)
                 if (singleWords.length === 0) continue
 
-                var mixedTokensB = root.mixSingleAndDoubleWords(singleWords)
+                var mixedTokensB = root.sanitizeLineTokens(root.mixSingleAndDoubleWords(singleWords))
                 for (var mb = 0; mb < mixedTokensB.length; mb++) {
                     var mItemB = mixedTokensB[mb]
                     var vEndB = mItemB.vocalEndMs || mItemB.endMs
@@ -314,34 +356,25 @@ Item {
 
         root.allWords = wordsList.sort(function(a, b) { return a.startMs - b.startMs })
 
-        // 3rd-Beat Rhythm Fallback Pass:
-        // Only trigger fallback on words with length >= 4 that are NOT in the stop-word list!
-        var RHYTHM_FALLBACK_MOTIFS = [
-            "JAAN_SPARKLE", "NOOR_COMET", "NASHA_PORTAL"
+        // Mandatory Rhythm Fallback (Every 2nd/3rd row MUST display a glyph):
+        var ROTATING_FALLBACKS = [
+            "JAAN_SPARKLE", "NOOR_COMET", "NASHA_PORTAL", "ISHQ_HEART"
         ]
-        var rhythmBeatCount = 0
+        var fallbackIdx = 0
+        var wordsSinceLastGlyph = 0
 
         for (var b = 0; b < root.allWords.length; b++) {
             var item = root.allWords[b]
-            if (item.glyph && item.glyph.length > 0) {
-                rhythmBeatCount = 0
-                continue
-            }
-
-            rhythmBeatCount++
-            if (rhythmBeatCount >= 3) {
-                var candidateWord = ""
-                if (item.rowWords && item.rowWords.length > 0) {
-                    candidateWord = item.rowWords[0].text
-                } else {
-                    candidateWord = (item.text || "").split(/\s+/)[0] || ""
-                }
-
-                var normWord = GlyphMap.normalizeLyricToken(candidateWord)
-                if (normWord.length >= 4 && !GlyphMap.isStopWord(normWord)) {
-                    var fallbackMotif = RHYTHM_FALLBACK_MOTIFS[b % RHYTHM_FALLBACK_MOTIFS.length]
-                    item.glyph = GlyphMap.getGlyphObject(fallbackMotif) || fallbackMotif
-                    rhythmBeatCount = 0
+            var hasG = item.glyph && ((typeof item.glyph === "object" && item.glyph.corePath) || (typeof item.glyph === "string" && item.glyph.length > 0))
+            if (hasG) {
+                wordsSinceLastGlyph = 0
+            } else {
+                wordsSinceLastGlyph++
+                if (wordsSinceLastGlyph >= 2) {
+                    var fMotif = ROTATING_FALLBACKS[fallbackIdx % ROTATING_FALLBACKS.length]
+                    fallbackIdx++
+                    item.glyph = GlyphMap.getGlyphObject(fMotif) || fMotif
+                    wordsSinceLastGlyph = 0
                 }
             }
         }
@@ -366,87 +399,57 @@ Item {
             root.row1Word = null
             root.row2Word = null
             root.clusterSize = 0
+            root.currentTokenIndex = -1
             root.currentWordIndex = -1
             root.activeBeat = null
             root.clearRequested()
             return
         }
 
-        var posMs = root.effectivePositionMs
+        var livePosMs = root.livePositionMs
+        var effectivePos = livePosMs + 140
 
-        if (posMs < root.allWords[0].startMs) {
+        if (effectivePos < root.allWords[0].startMs) {
             root.row0Word = null
             root.row1Word = null
             root.row2Word = null
             root.clusterSize = 0
+            root.currentTokenIndex = -1
             root.currentWordIndex = -1
             root.activeBeat = null
             root.clearRequested()
             return
         }
 
-        var idx = -1
+        var targetIndex = -1
         for (var i = 0; i < root.allWords.length; i++) {
-            if (root.allWords[i].startMs <= posMs) {
-                idx = i
+            if (root.allWords[i].startMs <= effectivePos) {
+                targetIndex = i
             } else {
                 break
             }
         }
 
         // Expire chunk during extended instrumental pauses (> 4.5s after vocalEndMs and next chunk is > 1.2s away)
-        if (idx >= 0 && idx < root.allWords.length) {
-            var curChunk = root.allWords[idx]
-            var nextChunk = (idx + 1 < root.allWords.length) ? root.allWords[idx + 1] : null
+        if (targetIndex >= 0 && targetIndex < root.allWords.length) {
+            var curChunk = root.allWords[targetIndex]
+            var nextChunk = (targetIndex + 1 < root.allWords.length) ? root.allWords[targetIndex + 1] : null
             var expireMs = curChunk.vocalEndMs + 4500
             if (nextChunk) {
-                if (posMs > expireMs && (nextChunk.startMs - posMs > 1200)) {
-                    idx = -1
+                if (effectivePos > expireMs && (nextChunk.startMs - effectivePos > 1200)) {
+                    targetIndex = -1
                 }
             } else {
-                if (posMs > expireMs) {
-                    idx = -1
+                if (effectivePos > expireMs) {
+                    targetIndex = -1
                 }
             }
         }
 
-        if (idx !== root.currentWordIndex) {
-            var prevIdx = root.currentWordIndex
-            root.currentWordIndex = idx
-
-            if (idx >= 0 && idx < root.allWords.length) {
-                var newWord = root.allWords[idx]
-                root.activeBeat = newWord
-
-                var isNewPhrase = false
-                if (prevIdx >= 0 && (idx < prevIdx || idx > prevIdx + 2)) {
-                    isNewPhrase = true
-                } else if (root.row2Word) {
-                    var gap = newWord.startMs - root.row2Word.endMs
-                    if (gap > 2000 || (newWord.lineIndex !== root.row2Word.lineIndex && gap > 1200)) {
-                        isNewPhrase = true
-                    }
-                }
-
-                if (isNewPhrase || root.clusterSize === 0) {
-                    root.row0Word = null
-                    root.row1Word = null
-                    root.row2Word = newWord
-                    root.clusterSize = 1
-                } else if (root.clusterSize === 1) {
-                    root.row0Word = null
-                    root.row1Word = root.row2Word
-                    root.row2Word = newWord
-                    root.clusterSize = 2
-                } else {
-                    root.row0Word = root.row1Word
-                    root.row1Word = root.row2Word
-                    root.row2Word = newWord
-                    root.clusterSize = 3
-                }
-
-                root.beatTriggered(newWord)
-            } else {
+        if (targetIndex === -1) {
+            if (root.currentTokenIndex !== -1) {
+                root.currentTokenIndex = -1
+                root.currentWordIndex = -1
                 root.row0Word = null
                 root.row1Word = null
                 root.row2Word = null
@@ -454,6 +457,70 @@ Item {
                 root.activeBeat = null
                 root.clearRequested()
             }
+            return
+        }
+
+        if (targetIndex !== root.currentTokenIndex) {
+            var nowMs = Date.now()
+            var nextStep = targetIndex
+
+            if (targetIndex > root.currentTokenIndex) {
+                var diff = targetIndex - root.currentTokenIndex
+                if (diff > 3 || root.currentTokenIndex === -1) {
+                    // Scrub / Seek / Initial Sync: jump directly
+                    nextStep = targetIndex
+                } else if (diff === 2) {
+                    // Fast sub-200ms syllable was about to be skipped between polls!
+                    // Advance by +1 first and enforce 170ms minimum hold
+                    if (nowMs - root.lastTokenStepTimeMs < 170 && root.currentTokenIndex >= 0) {
+                        return
+                    }
+                    nextStep = root.currentTokenIndex + 1
+                } else if (diff === 1) {
+                    if (nowMs - root.lastTokenStepTimeMs < 170 && root.currentTokenIndex >= 0) {
+                        return
+                    }
+                    nextStep = targetIndex
+                }
+            } else {
+                nextStep = targetIndex
+            }
+
+            root.lastTokenStepTimeMs = nowMs
+            root.currentTokenIndex = nextStep
+            root.currentWordIndex = nextStep
+
+            var newWord = root.allWords[nextStep]
+            root.activeBeat = newWord
+
+            var isNewPhrase = false
+            if (nextStep === 0) {
+                isNewPhrase = true
+            } else if (root.row2Word) {
+                var gap = newWord.startMs - root.row2Word.endMs
+                if (gap > 2000 || (newWord.lineIndex !== root.row2Word.lineIndex && gap > 1200)) {
+                    isNewPhrase = true
+                }
+            }
+
+            if (isNewPhrase || root.clusterSize === 0) {
+                root.row0Word = null
+                root.row1Word = null
+                root.row2Word = newWord
+                root.clusterSize = 1
+            } else if (root.clusterSize === 1) {
+                root.row0Word = null
+                root.row1Word = root.row2Word
+                root.row2Word = newWord
+                root.clusterSize = 2
+            } else {
+                root.row0Word = root.row1Word
+                root.row1Word = root.row2Word
+                root.row2Word = newWord
+                root.clusterSize = 3
+            }
+
+            root.beatTriggered(newWord)
         }
     }
 

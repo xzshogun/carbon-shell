@@ -216,7 +216,9 @@ var RAW_BUCKETS = {
         "chahat", "dhadkan", "dilbar", "diljaniya", "premi", "aashiq", "ashiq", "dilbaro",
         "broken", "break", "hurt", "pain", "bleed", "bleeding", "scar", "scars", "shame", "lie", "lies", "fake",
         "dard", "zakham", "tuta", "toota", "bewafa", "dhoka", "judai",
-        "दिल", "प्यार", "इश्क़", "मोहब्बत", "धड़कन", "चाहत", "दर्द", "ज़ख़्म", "जुदाई", "टूटा", "बेवफ़ा"
+        "lagdi", "lagge", "lagda", "jachdi", "jachda", "pasand", "tere", "tenu", "tainu",
+        "दिल", "प्यार", "इश्क़", "मोहब्बत", "धड़कन", "चाहत", "दर्द", "ज़ख़्म", "जुदाई", "टूटा", "बेवफ़ा",
+        "ਲੱਗਦੀ", "ਜਚਦੀ", "ਪਸੰਦ", "ਤੈਨੂੰ", "ਲੱਗਦਾ", "ਜਚਦਾ"
     ],
 
     // 2. AAG_FIRE
@@ -256,7 +258,9 @@ var RAW_BUCKETS = {
         "baby", "babe", "darling", "shawty", "honey", "angel", "beautiful", "stunning", "gorgeous", "pretty", "crush",
         "jaan", "jan", "jaanu", "janu", "jana", "piya", "mahiya", "heeriye", "hiriye",
         "sohniye", "sohna", "sajna", "sajan", "sanam", "mehboob", "habibi", "kudi", "kudiye", "billo", "raani", "soniyo",
-        "हसीन", "जान", "पिया", "सजना", "सनम", "हीरिये", "कुड़ी", "सोहणी"
+        "suit", "patola", "punjaban", "punjabi", "jatti", "jattiye", "mutiyar", "sohni", "nakhra", "nakhre", "taur", "shaukeen",
+        "हसीन", "जान", "पिया", "सजना", "सनम", "हीरिये", "कुड़ी", "सोहणी", "रक़म", "सूट", "पटोला",
+        "ਰਕਮ", "ਸੂਟ", "ਪਟੋਲਾ", "ਪੰਜਾਬਣ", "ਜੱਟੀ", "ਕੁੜੀ", "ਮੁਟਿਆਰ", "ਸੋਹਣੀ", "ਨਖ਼ਰਾ"
     ],
 
     // 7. BAARISH_DROP
@@ -279,7 +283,9 @@ var RAW_BUCKETS = {
     "TAJ_CROWN": [
         "king", "queen", "crown", "royal", "throne", "boss", "legend", "lord", "empire", "rule", "ruler",
         "taj", "badshah", "rani", "shah", "sultan", "gabru", "jatt", "sardar", "nawab", "hukam", "raaj",
-        "राज", "ताज", "बादशाह", "रानी", "सरदार", "हुक्म"
+        "sareyan", "saareyan", "sab", "top", "sira", "sirra", "att", "end", "ghaint", "munda",
+        "राज", "ताज", "बादशाह", "रानी", "सरदार", "हुक्म",
+        "ਸਿਰਾ", "ਅੱਤ", "ਘੈਂਟ", "ਮੁੰਡਾ", "ਜੱਟ", "ਸਰਦਾਰ"
     ],
 
     // 10. JAAM_ELIXIR
@@ -326,7 +332,9 @@ var RAW_BUCKETS = {
         "bass", "808", "sub", "drop", "tempo", "groove", "kick", "frequency", "wave", "waves", "rhythm",
         "speaker", "speakers", "loud", "heavy", "boom", "bounce",
         "dhak", "thumka", "dhol", "tabla", "beatdrop",
-        "थाप", "धड़क", "ढोल", "धमाका"
+        "karda", "kardi", "karde", "nach", "nachdi", "bhangra", "beat", "club", "party",
+        "थाप", "धड़क", "ढोल", "धमाका",
+        "ਕਰਦਾ", "ਕਰਦੀ", "ਨੱਚ", "ਭੰਗੜਾ"
     ],
 
     // 16. NOOR_COMET

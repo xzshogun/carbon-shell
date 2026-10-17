@@ -13,6 +13,7 @@ Item {
     width: 86
     height: 86
 
+    property int stage: -1
     property string motif: ""
     property color glyphColor: Theme.m3primary || Theme.accent || "#c0c4ee"
 
@@ -21,30 +22,58 @@ Item {
 
     visible: hasValidGlyph
 
-    property real glyphScale: 1.0
-    scale: glyphScale
+    ParallelAnimation {
+        id: popAnim
+        NumberAnimation {
+            target: root
+            property: "scale"
+            from: 0.35
+            to: 1.0
+            duration: 320
+            easing.type: Easing.OutBack
+            easing.overshoot: 1.8
+        }
+        NumberAnimation {
+            target: root
+            property: "rotation"
+            from: -14
+            to: 0
+            duration: 300
+            easing.type: Easing.OutCubic
+        }
+    }
 
-    Behavior on glyphScale {
-        SpringAnimation {
-            spring: 3.8
-            damping: 0.32
-            epsilon: 0.005
-            mass: 0.75
+    onStageChanged: {
+        if (stage === 0 && hasValidGlyph) {
+            popAnim.restart()
         }
     }
 
     onMotifChanged: {
-        if (motif.length > 0) {
-            glyphScale = 0.4
-            Qt.callLater(function() { glyphScale = 1.0 })
+        if (stage === 0 && hasValidGlyph) {
+            popAnim.restart()
         }
     }
 
     onVisibleChanged: {
-        if (visible) {
-            glyphScale = 0.4
-            Qt.callLater(function() { glyphScale = 1.0 })
+        if (visible && (stage === 0 || stage === -1)) {
+            popAnim.restart()
         }
+    }
+
+    Component.onCompleted: {
+        if (stage === 0 && hasValidGlyph) {
+            popAnim.restart()
+        }
+    }
+
+    // Soft glow aura behind the crisp vector core (dual-tone depth)
+    Rectangle {
+        id: glowAura
+        anchors.fill: parent
+        radius: width / 2
+        color: root.glyphColor
+        opacity: 0.22
     }
 
     Shape {
@@ -58,7 +87,7 @@ Item {
         ShapePath {
             strokeWidth: -1 // No stroke, pure fill
             strokeColor: "transparent"
-            fillColor: root.glyphColor
+            fillColor: Qt.lighter(root.glyphColor, 1.25)
             fillRule: ShapePath.OddEvenFill
 
             PathSvg {

@@ -296,6 +296,7 @@ Item {
             // Strictly visible only on Stage 0 (hidden on Stage 1 and Stage 2)
             CairoGlyph {
                 id: glyphItem
+                stage: delegateRoot.stage
                 motif: delegateRoot.glyphMotif
                 glyphColor: root.vibrantPrimary
                 anchors.verticalCenter: parent.verticalCenter

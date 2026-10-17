@@ -116,11 +116,51 @@ Item {
             result.push({
                 word: rawTokens[j],
                 startMs: Math.round(cursorMs),
-                endMs: isLast ? Math.round(nextLineStartMs) : Math.round(cursorMs + durMs)
+                endMs: isLast ? Math.round(nextLineStartMs) : Math.round(cursorMs + durMs),
+                vocalEndMs: isLast ? Math.round(nextLineStartMs) : Math.round(cursorMs + durMs)
             });
             cursorMs += durMs;
         }
         return result;
+    }
+
+    function mixSingleAndDoubleWords(wordTokens) {
+        var mixed = [];
+        var i = 0;
+        while (i < wordTokens.length) {
+            var curr = wordTokens[i];
+            var next = (i + 1 < wordTokens.length) ? wordTokens[i + 1] : null;
+
+            var cleanCurr = (curr.word || "").replace(/[^a-zA-Z0-9\u0900-\u097F]/g, "");
+            var cleanNext = next ? (next.word || "").replace(/[^a-zA-Z0-9\u0900-\u097F]/g, "") : "";
+
+            // Rules for merging 2 words into a single 2-word row:
+            // 1. Next word exists on the same line
+            // 2. Current word does NOT end with pause punctuation (, ; ? ! - ...)
+            // 3. Combined character length is <= 9 chars (so two long words never overflow the box)
+            // 4. Either the first word is a short helper (<= 3 chars like "in", "on", "my", "we", "tu", "te")
+            //    OR a deterministic 55% rhythm hash triggers on two medium-short words:
+            var hasPausePunct = /[,;\-\u2014\?\!]$|\.\.$/.test((curr.word || "").trim());
+            var combinedLen = cleanCurr.length + cleanNext.length;
+            var firstChar = (curr.word && curr.word.length > 0) ? curr.word.charCodeAt(0) : 0;
+            var rhythmHash = ((firstChar * 31 + i * 17) % 100) < 55;
+
+            var shouldPair = next && !hasPausePunct && combinedLen <= 9 && (cleanCurr.length <= 3 || rhythmHash);
+
+            if (shouldPair) {
+                mixed.push({
+                    word: curr.word.trim() + " " + next.word.trim(), // Combined into ONE string for the single highlight box!
+                    startMs: curr.startMs,
+                    endMs: next.endMs,
+                    vocalEndMs: next.vocalEndMs || next.endMs
+                });
+                i += 2; // Skip both words since they are now paired
+            } else {
+                mixed.push(curr); // Keep as a 1-word punch row
+                i += 1;
+            }
+        }
+        return mixed;
     }
 
     function processLyrics() {
@@ -148,6 +188,7 @@ Item {
 
             // A. Check for rich word-level timestamps (enhanced LRC)
             if (cur.words && cur.words.length > 0) {
+                var rawWordTokens = []
                 for (var w = 0; w < cur.words.length; w++) {
                     var cw = cur.words[w]
                     var wStart = Math.round(cw.time * 1000)
@@ -159,42 +200,67 @@ Item {
                         ? Math.round(cur.words[w + 1].time * 1000)
                         : nextLineStartMs
 
-                    wordsList.push({
-                        id: i + "_" + w,
-                        text: cw.text,
-                        glyph: GlyphMap.lookupGlyph(cw.text) || "",
-                        time: wStart / 1000.0,
+                    rawWordTokens.push({
+                        word: cw.text,
                         startMs: wStart,
                         endMs: nextWStart,
-                        vocalEndMs: Math.max(wStart + 120, vocalEnd),
-                        duration: (nextWStart - wStart) / 1000.0,
+                        vocalEndMs: Math.max(wStart + 120, vocalEnd)
+                    })
+                }
+
+                var mixedTokensA = root.mixSingleAndDoubleWords(rawWordTokens)
+                for (var ma = 0; ma < mixedTokensA.length; ma++) {
+                    var mItemA = mixedTokensA[ma]
+                    var vEndA = mItemA.vocalEndMs || mItemA.endMs
+                    wordsList.push({
+                        id: i + "_" + ma,
+                        text: mItemA.word,
+                        glyph: GlyphMap.lookupGlyph(mItemA.word) || (function(txt) {
+                            var p = txt.trim().split(/\s+/)
+                            for (var k = 0; k < p.length; k++) {
+                                var g = GlyphMap.lookupGlyph(p[k])
+                                if (g) return g
+                            }
+                            return ""
+                        })(mItemA.word),
+                        time: mItemA.startMs / 1000.0,
+                        startMs: mItemA.startMs,
+                        endMs: mItemA.endMs,
+                        vocalEndMs: vEndA,
+                        duration: (mItemA.endMs - mItemA.startMs) / 1000.0,
                         lineIndex: i,
-                        chunkIndex: w,
-                        rowWords: [{ text: cw.text, startMs: wStart, endMs: Math.max(wStart + 120, vocalEnd) }]
+                        chunkIndex: ma,
+                        rowWords: [{ text: mItemA.word, startMs: mItemA.startMs, endMs: vEndA }]
                     })
                 }
             } else {
-                // B. Pure 1-Word Architecture (Standard .lrc Lines)
+                // B. Pure 1-to-2 Word Architecture (Standard .lrc Lines)
                 var singleWords = root.tokenizeLineToSingleWords(cur.text, lineStartMs, nextLineStartMs)
                 if (singleWords.length === 0) continue
 
-                for (var j = 0; j < singleWords.length; j++) {
-                    var sw = singleWords[j]
-                    var isLast = (j === singleWords.length - 1)
-                    var chunkEndMs = isLast ? nextLineStartMs : singleWords[j + 1].startMs
-
+                var mixedTokensB = root.mixSingleAndDoubleWords(singleWords)
+                for (var mb = 0; mb < mixedTokensB.length; mb++) {
+                    var mItemB = mixedTokensB[mb]
+                    var vEndB = mItemB.vocalEndMs || mItemB.endMs
                     wordsList.push({
-                        id: i + "_" + j,
-                        text: sw.word,
-                        glyph: GlyphMap.lookupGlyph(sw.word) || "",
-                        time: sw.startMs / 1000.0,
-                        startMs: sw.startMs,
-                        endMs: chunkEndMs,
-                        vocalEndMs: sw.endMs,
-                        duration: (chunkEndMs - sw.startMs) / 1000.0,
+                        id: i + "_" + mb,
+                        text: mItemB.word,
+                        glyph: GlyphMap.lookupGlyph(mItemB.word) || (function(txt) {
+                            var p = txt.trim().split(/\s+/)
+                            for (var k = 0; k < p.length; k++) {
+                                var g = GlyphMap.lookupGlyph(p[k])
+                                if (g) return g
+                            }
+                            return ""
+                        })(mItemB.word),
+                        time: mItemB.startMs / 1000.0,
+                        startMs: mItemB.startMs,
+                        endMs: mItemB.endMs,
+                        vocalEndMs: vEndB,
+                        duration: (mItemB.endMs - mItemB.startMs) / 1000.0,
                         lineIndex: i,
-                        chunkIndex: j,
-                        rowWords: [{ text: sw.word, startMs: sw.startMs, endMs: sw.endMs }]
+                        chunkIndex: mb,
+                        rowWords: [{ text: mItemB.word, startMs: mItemB.startMs, endMs: vEndB }]
                     })
                 }
             }

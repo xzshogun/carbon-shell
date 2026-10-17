@@ -50,8 +50,11 @@ Item {
             }
         }
         if (motif && motif.length > 0) {
-            if (GlyphMap.GLYPH_OBJECTS && GlyphMap.GLYPH_OBJECTS[motif]) {
-                var o = GlyphMap.GLYPH_OBJECTS[motif];
+            var mKey = motif.toUpperCase();
+            var mLower = motif.toLowerCase();
+            var pool = (GlyphMap.KINETIC_GLYPHS) ? GlyphMap.KINETIC_GLYPHS : (GlyphMap.GLYPH_OBJECTS || {});
+            var o = pool[motif] || pool[mKey] || pool[mLower] || (GlyphMap.GLYPH_OBJECTS ? (GlyphMap.GLYPH_OBJECTS[motif] || GlyphMap.GLYPH_OBJECTS[mKey] || GlyphMap.GLYPH_OBJECTS[mLower]) : null);
+            if (o) {
                 return {
                     corePath: o.corePath || "",
                     haloPath: o.haloPath || "",
@@ -59,9 +62,9 @@ Item {
                     animType: o.animType || "orbit"
                 };
             }
-            if (GlyphMap.GLYPH_PATHS && GlyphMap.GLYPH_PATHS[motif]) {
+            if (GlyphMap.GLYPH_PATHS && (GlyphMap.GLYPH_PATHS[motif] || GlyphMap.GLYPH_PATHS[mKey] || GlyphMap.GLYPH_PATHS[mLower])) {
                 return {
-                    corePath: GlyphMap.GLYPH_PATHS[motif],
+                    corePath: GlyphMap.GLYPH_PATHS[motif] || GlyphMap.GLYPH_PATHS[mKey] || GlyphMap.GLYPH_PATHS[mLower],
                     haloPath: "",
                     satPath: "",
                     animType: "pulse"

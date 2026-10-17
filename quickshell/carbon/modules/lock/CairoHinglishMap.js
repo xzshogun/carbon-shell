@@ -1,287 +1,342 @@
-// CairoHinglishMap.js: 18 Custom Angular SVG Paths, Multilingual Normalizer, & Keyword Engine for Carbon // Cairo
+// CairoHinglishMap.js: 16 Custom 3-Layer Kinetic Vector Assemblies & Multilingual Normalizer for Carbon // Cairo
 // Strictly 0% Unicode Emojis. Native 24x24 EvenOdd SVG Paths.
 
 .pragma library
 
-var GLYPH_OBJECTS = {
-    "ishq_heart": {
-        corePath: "M12 21.4 C12 21.4 3.0 15.2 3.0 8.8 C3.0 5.4 5.6 3.0 8.6 3.0 C10.4 3.0 11.4 3.9 12 4.9 C12.6 3.9 13.6 3.0 15.4 3.0 C18.4 3.0 21.0 5.4 21.0 8.8 C21.0 15.2 12 21.4 12 21.4 Z M13.2 7.2 L9.2 12.5 L12.2 12.5 L10.8 16.8 L14.8 11.5 L11.8 11.5 Z",
-        haloPath: "M12 23.5 C12 23.5 1.5 16.5 1.5 8.8 C1.5 4.5 4.8 1.5 8.6 1.5 C10.8 1.5 12 2.7 12 3.8 C12 2.7 13.2 1.5 15.4 1.5 C19.2 1.5 22.5 4.5 22.5 8.8 C22.5 16.5 12 23.5 12 23.5 Z M12 21.5 C12 21.5 21 15.2 21 8.8 C21 5.4 18.4 3.0 15.4 3.0 C13.6 3.0 12.6 3.9 12 4.9 C11.4 3.9 10.4 3.0 8.6 3.0 C5.6 3.0 3.0 5.4 3.0 8.8 C3.0 15.2 12 21.5 12 21.5 Z",
-        satPath: "M20.5 1.5 L21.2 3.0 L22.8 3.7 L21.2 4.4 L20.5 6.0 L19.8 4.4 L18.2 3.7 L19.8 3.0 Z M3.5 3.5 L4.0 4.8 L5.2 5.2 L4.0 5.8 L3.5 7.0 L3.0 5.8 L1.8 5.2 L3.0 4.8 Z",
-        animType: "pulse"
-    },
-    "jaan_sparkle": {
-        corePath: "M12.0 2.0 Q12.0 12.0 22.0 12.0 Q12.0 12.0 12.0 22.0 Q12.0 12.0 2.0 12.0 Q12.0 12.0 12.0 2.0 Z M12.0 9.2 A2.8 2.8 0 1 0 12.0 14.8 A2.8 2.8 0 1 0 12.0 9.2 Z",
-        haloPath: "M12.0 0.5 L23.5 12.0 L12.0 23.5 L0.5 12.0 Z M12.0 2.5 L2.5 12.0 L12.0 21.5 L21.5 12.0 Z",
-        satPath: "M19.5 4.5 Q19.5 8.0 23.0 8.0 Q19.5 8.0 19.5 11.5 Q19.5 8.0 16.0 8.0 Q19.5 8.0 19.5 4.5 Z M4.5 16.5 Q4.5 19.0 7.0 19.0 Q4.5 19.0 4.5 21.5 Q4.5 19.0 2.0 19.0 Q4.5 19.0 4.5 16.5 Z",
-        animType: "orbit"
-    },
-    "naina_eye": {
-        corePath: "M1.2 12.0 C4.5 6.0 8.2 4.0 12.0 4.0 C15.8 4.0 19.5 6.0 22.8 12.0 C19.5 18.0 15.8 20.0 12.0 20.0 C8.2 20.0 4.5 18.0 1.2 12.0 Z M12.0 7.0 A5.0 5.0 0 1 0 12.0 17.0 A5.0 5.0 0 1 0 12.0 7.0 Z M13.8 8.8 A1.8 1.8 0 1 0 13.8 12.4 A1.8 1.8 0 1 0 13.8 8.8 Z",
-        haloPath: "M12.0 2.0 C5.5 2.0 0.5 8.0 0.5 12.0 C0.5 16.0 5.5 22.0 12.0 22.0 C18.5 22.0 23.5 16.0 23.5 12.0 C23.5 8.0 18.5 2.0 12.0 2.0 Z M12.0 3.8 C17.5 3.8 21.8 9.0 21.8 12.0 C21.8 15.0 17.5 20.2 12.0 20.2 C6.5 20.2 2.2 15.0 2.2 12.0 C2.2 9.0 6.5 3.8 12.0 3.8 Z",
-        satPath: "M10.8 10.2 A1.4 1.4 0 1 0 10.8 13.0 A1.4 1.4 0 1 0 10.8 10.2 Z M18.5 7.5 L19.2 9.0 L20.5 9.5 L19.2 10.0 L18.5 11.5 L17.8 10.0 L16.5 9.5 L17.8 9.0 Z",
-        animType: "scan"
-    },
-    "raat_moon": {
-        corePath: "M14.8 2.2 C9.2 2.8 5.0 7.5 5.0 13.2 C5.0 17.2 7.2 20.8 10.6 22.5 C5.4 22.0 1.5 17.6 1.5 12.2 C1.5 6.4 6.2 1.8 12.0 1.8 C13.0 1.8 14.0 1.9 14.8 2.2 Z",
-        haloPath: "M12.0 1.0 A11.0 11.0 0 1 0 12.0 23.0 A11.0 11.0 0 1 0 12.0 1.0 Z M12.0 2.8 A9.2 9.2 0 1 1 12.0 21.2 A9.2 9.2 0 1 1 12.0 2.8 Z",
-        satPath: "M18.0 4.5 Q18.0 8.5 22.0 8.5 Q18.0 8.5 18.0 12.5 Q18.0 8.5 14.0 8.5 Q18.0 8.5 18.0 4.5 Z M13.5 17.5 L21.5 17.5 L21.5 19.0 L13.5 19.0 Z",
-        animType: "float"
-    },
-    "gaddi_car": {
-        corePath: "M2.5 13.5 L5.8 6.5 C6.3 5.5 7.3 5 8.5 5 L15.5 5 C16.7 5 17.7 5.5 18.2 6.5 L21.5 13.5 L23 14.5 L22.2 19.5 L19.5 19.5 L19.5 17.5 L4.5 17.5 L4.5 19.5 L1.8 19.5 L1 14.5 Z M6.8 7.2 L5.2 11.2 L18.8 11.2 L17.2 7.2 Z",
-        haloPath: "M0.5 21.5 L23.5 21.5 L23.5 23.0 L0.5 23.0 Z M4.0 2.5 L20.0 2.5 L20.0 4.0 L4.0 4.0 Z",
-        satPath: "M4.2 13.5 L8.5 14.8 L8.2 16.2 L3.8 15.2 Z M19.8 13.5 L15.5 14.8 L15.8 16.2 L20.2 15.2 Z",
-        animType: "scan"
-    },
-    "aag_fire": {
-        corePath: "M12.8 1.2 C15.2 4.8 19.8 8.2 19.8 14.0 C19.8 18.8 16.2 22.5 11.8 22.5 C7.2 22.5 4.2 19.0 4.2 14.5 C4.2 11.2 6.2 8.2 7.8 6.8 C7.2 9.2 8.2 11.0 9.6 11.5 C8.8 7.5 10.5 3.8 12.8 1.2 Z M12.0 13.2 C10.2 14.8 9.2 16.5 9.8 18.5 C10.2 19.8 11.5 20.5 13.0 20.0 C14.5 19.4 15.2 17.5 14.2 15.5 C13.6 14.4 12.8 13.8 12.0 13.2 Z",
-        haloPath: "M12.0 5.0 C16.5 5.0 21.5 10.0 21.5 16.0 C21.5 20.5 17.5 23.5 12.0 23.5 C6.5 23.5 2.5 20.5 2.5 16.0 C2.5 10.0 7.5 5.0 12.0 5.0 Z M12.0 7.0 C8.5 7.0 4.5 11.0 4.5 16.0 C4.5 19.2 7.8 21.5 12.0 21.5 C16.2 21.5 19.5 19.2 19.5 16.0 C19.5 11.0 15.5 7.0 12.0 7.0 Z",
-        satPath: "M18.5 3.0 A1.5 1.5 0 1 0 18.5 6.0 A1.5 1.5 0 1 0 18.5 3.0 Z M6.5 4.5 A1.2 1.2 0 1 0 6.5 6.9 A1.2 1.2 0 1 0 6.5 4.5 Z",
-        animType: "float"
-    },
-    "baarish_drop": {
-        corePath: "M12.0 1.8 C12.0 1.8 19.0 9.8 19.0 14.8 C19.0 18.7 15.9 21.8 12.0 21.8 C8.1 21.8 5.0 18.7 5.0 14.8 C5.0 9.8 12.0 1.8 12.0 1.8 Z M9.2 11.5 C8.2 13.2 8.5 15.8 10.2 17.2 C10.8 17.7 11.6 17.2 11.2 16.5 C10.0 15.2 9.8 13.5 10.6 12.0 C11.0 11.2 9.8 10.6 9.2 11.5 Z",
-        haloPath: "M12.0 16.5 C17.0 16.5 22.0 18.5 22.0 21.0 C22.0 23.5 17.0 23.5 12.0 23.5 C7.0 23.5 2.0 23.5 2.0 21.0 C2.0 18.5 7.0 16.5 12.0 16.5 Z M12.0 18.0 C7.5 18.0 3.8 19.5 3.8 21.0 C3.8 22.0 7.5 22.0 12.0 22.0 C16.5 22.0 20.2 22.0 20.2 21.0 C20.2 19.5 16.5 18.0 12.0 18.0 Z",
-        satPath: "M19.5 4.0 A1.4 1.4 0 1 0 19.5 6.8 A1.4 1.4 0 1 0 19.5 4.0 Z M4.5 8.5 A1.1 1.1 0 1 0 4.5 10.7 A1.1 1.1 0 1 0 4.5 8.5 Z",
-        animType: "float"
-    },
-    "kismat_dice": {
-        corePath: "M3.5 5.5 L12.5 3.2 L14.8 12.2 L5.8 14.5 Z M7.2 7.2 A1.1 1.1 0 1 0 7.2 9.4 A1.1 1.1 0 1 0 7.2 7.2 Z M11.0 9.8 A1.1 1.1 0 1 0 11.0 12.0 A1.1 1.1 0 1 0 11.0 9.8 Z M11.5 15.5 L15.2 14.5 L16.2 10.8 L20.8 12.2 L18.5 20.8 L10.2 18.5 Z M15.8 15.8 A1.1 1.1 0 1 0 15.8 18.0 A1.1 1.1 0 1 0 15.8 15.8 Z",
-        haloPath: "M12.0 1.0 A11.0 11.0 0 1 0 12.0 23.0 A11.0 11.0 0 1 0 12.0 1.0 Z M12.0 2.8 A9.2 9.2 0 1 1 12.0 21.2 A9.2 9.2 0 1 1 12.0 2.8 Z",
-        satPath: "M20.5 4.5 L21.2 6.0 L22.8 6.5 L21.2 7.0 L20.5 8.5 L19.8 7.0 L18.2 6.5 L19.8 6.0 Z M3.5 17.5 L4.0 18.8 L5.2 19.2 L4.0 19.8 L3.5 21.0 L3.0 19.8 L1.8 19.2 L3.0 18.8 Z",
-        animType: "orbit"
-    },
-    "taj_crown": {
-        corePath: "M2.5 18.0 L4.2 7.5 Q8.0 13.0 12.0 4.5 Q16.0 13.0 19.8 7.5 L21.5 18.0 C21.5 19.1 20.6 20.0 19.5 20.0 L4.5 20.0 C3.4 20.0 2.5 19.1 2.5 18.0 Z M12.0 11.5 Q12.0 14.0 14.5 14.0 Q12.0 14.0 12.0 16.5 Q12.0 14.0 9.5 14.0 Q12.0 14.0 12.0 11.5 Z",
-        haloPath: "M1.5 21.0 L22.5 21.0 L22.5 23.0 L1.5 23.0 Z M12.0 1.0 C17.0 1.0 23.0 5.5 23.0 11.0 L21.0 11.0 C21.0 6.5 16.0 2.8 12.0 2.8 C8.0 2.8 3.0 6.5 3.0 11.0 L1.0 11.0 C1.0 5.5 7.0 1.0 12.0 1.0 Z",
-        satPath: "M4.0 4.2 A1.3 1.3 0 1 0 4.0 6.8 A1.3 1.3 0 1 0 4.0 4.2 Z M12.0 1.2 A1.4 1.4 0 1 0 12.0 4.0 A1.4 1.4 0 1 0 12.0 1.2 Z M20.0 4.2 A1.3 1.3 0 1 0 20.0 6.8 A1.3 1.3 0 1 0 20.0 4.2 Z",
-        animType: "float"
-    },
-    "dard_broken": {
-        corePath: "M11.2 4.5 L9.0 10.5 L13.2 12.2 L9.8 19.8 L3.2 13.0 C0.8 10.5 0.8 6.5 3.2 4.0 C5.4 1.8 8.8 1.8 11.2 4.5 Z M13.8 4.2 C16.0 2.0 19.2 2.2 21.2 4.4 C23.6 6.8 23.4 10.8 21.0 13.2 L12.5 21.8 L15.2 13.8 L11.0 12.0 L13.8 4.2 Z",
-        haloPath: "M12.0 23.0 C12.0 23.0 1.5 16.5 1.5 8.5 C1.5 4.0 5.0 1.5 9.0 1.5 C10.8 1.5 12 2.5 12 3.5 C12 2.5 13.2 1.5 15.0 1.5 C19.0 1.5 22.5 4.0 22.5 8.5 C22.5 16.5 12.0 23.0 12.0 23.0 Z M12.0 21.0 C12.0 21.0 20.8 15.0 20.8 8.5 C20.8 5.0 18.0 3.0 15.0 3.0 C13.5 3.0 12.5 3.8 12.0 4.8 C11.5 3.8 10.5 3.0 9.0 3.0 C6.0 3.0 3.2 5.0 3.2 8.5 C3.2 15.0 12.0 21.0 12.0 21.0 Z",
-        satPath: "M11.5 8.0 L12.5 8.0 L12.5 10.5 L11.5 10.5 Z M12.0 14.5 L13.0 14.5 L13.0 17.0 L12.0 17.0 Z",
-        animType: "sway"
-    },
-    "tanha_solo": {
-        corePath: "M12 2.5 C14.6 2.5 16.8 4.6 16.8 7.2 C16.8 9.8 14.6 12.0 12 12.0 C9.4 12.0 7.2 9.8 7.2 7.2 C7.2 4.6 9.4 2.5 12 2.5 Z M3.2 21.5 C3.8 16.2 7.2 13.8 12 13.8 C16.8 13.8 20.2 16.2 20.8 21.5 L14.2 21.5 L15.8 16.2 L13.8 16.2 L12.2 21.5 Z",
-        haloPath: "M12.0 1.0 A11.0 11.0 0 1 0 12.0 23.0 A11.0 11.0 0 1 0 12.0 1.0 Z M12.0 2.8 A9.2 9.2 0 1 1 12.0 21.2 A9.2 9.2 0 1 1 12.0 2.8 Z",
-        satPath: "M20.5 3.5 A1.5 1.5 0 1 0 20.5 6.5 A1.5 1.5 0 1 0 20.5 3.5 Z",
-        animType: "sway"
-    },
-    "waqt_time": {
-        corePath: "M4.5 2.0 L19.5 2.0 L18.8 4.2 L13.8 11.5 L18.8 19.8 L19.5 22.0 L4.5 22.0 L5.2 19.8 L10.2 11.5 L5.2 4.2 Z M7.8 4.5 L16.2 4.5 L12.0 10.2 Z M12.0 13.8 L8.5 19.2 L15.5 19.2 Z",
-        haloPath: "M12.0 1.0 A11.0 11.0 0 1 0 12.0 23.0 A11.0 11.0 0 1 0 12.0 1.0 Z M12.0 2.8 A9.2 9.2 0 1 1 12.0 21.2 A9.2 9.2 0 1 1 12.0 2.8 Z",
-        satPath: "M12.0 11.2 A1.0 1.0 0 1 0 12.0 13.2 A1.0 1.0 0 1 0 12.0 11.2 Z M12.0 15.0 A0.9 0.9 0 1 0 12.0 16.8 A0.9 0.9 0 1 0 12.0 15.0 Z",
-        animType: "float"
-    },
-    "khwab_cloud": {
-        corePath: "M6.5 19.5 C3.7 19.5 1.5 17.3 1.5 14.5 C1.5 12.0 3.3 9.9 5.7 9.6 C6.6 6.2 9.7 3.8 13.4 3.8 C17.6 3.8 21.0 7.1 21.2 11.2 C22.5 12.0 23.2 13.4 23.2 15.0 C23.2 17.5 21.2 19.5 18.7 19.5 Z",
-        haloPath: "M7.0 21.5 C2.5 21.5 0.5 18.0 0.5 14.5 C0.5 11.0 3.0 8.0 6.5 7.5 C7.5 3.0 11.5 1.5 15.5 1.5 C20.0 1.5 23.5 5.5 23.5 10.5 C24.5 12.5 24.5 15.0 23.5 17.5 C22.5 21.5 18.5 21.5 16.0 21.5 Z M7.0 19.8 L16.0 19.8 C18.5 19.8 21.5 19.5 22.0 16.5 C22.5 14.5 22.5 12.5 21.5 11.0 C21.5 7.0 18.5 3.5 15.0 3.5 C11.5 3.5 8.5 4.8 7.5 8.8 C4.5 9.2 2.2 11.8 2.2 14.5 C2.2 17.5 4.0 19.8 7.0 19.8 Z",
-        satPath: "M14.5 8.5 Q14.5 12.0 18.0 12.0 Q14.5 12.0 14.5 15.5 Q14.5 12.0 11.0 12.0 Q14.5 12.0 14.5 8.5 Z M4.5 5.0 Q4.5 7.0 6.5 7.0 Q4.5 7.0 4.5 9.0 Q4.5 7.0 2.5 7.0 Q4.5 7.0 4.5 5.0 Z",
-        animType: "float"
-    },
-    "sona_diamond": {
-        corePath: "M6.2 3.0 L17.8 3.0 L22.5 9.2 L12.0 21.8 L1.5 9.2 Z M7.5 5.2 L4.5 9.0 L9.2 9.0 Z M12.0 5.2 L10.2 9.0 L13.8 9.0 Z M16.5 5.2 L14.8 9.0 L19.5 9.0 Z M5.2 10.8 L10.8 18.2 L9.5 10.8 Z M13.2 18.2 L18.8 10.8 L14.5 10.8 Z",
-        haloPath: "M8.0 0.5 L16.0 0.5 L23.5 8.0 L23.5 16.0 L16.0 23.5 L8.0 23.5 L0.5 16.0 L0.5 8.0 Z M8.5 2.2 L1.8 8.5 L1.8 15.5 L8.5 21.8 L15.5 21.8 L22.2 15.5 L22.2 8.5 L15.5 2.2 Z",
-        satPath: "M20.5 1.5 L21.2 3.2 L23.0 3.8 L21.2 4.4 L20.5 6.2 L19.8 4.4 L18.0 3.8 L19.8 3.2 Z M3.5 17.5 L4.0 19.0 L5.5 19.5 L4.0 20.0 L3.5 21.5 L3.0 20.0 L1.5 19.5 L3.0 19.0 Z",
-        animType: "pulse"
-    },
-    "dhun_play": {
-        corePath: "M9.0 17.5 A3.2 3.2 0 1 1 5.8 14.3 C6.6 14.3 7.2 14.5 7.6 14.8 L7.6 5.2 L20.2 2.8 L20.2 15.2 A3.2 3.2 0 1 1 17.0 12.0 C17.8 12.0 18.4 12.2 18.8 12.5 L18.8 6.8 L9.0 8.6 Z",
-        haloPath: "M12.0 2.0 A10.0 10.0 0 1 0 12.0 22.0 A10.0 10.0 0 1 0 12.0 2.0 Z M12.0 3.8 A8.2 8.2 0 1 1 12.0 20.2 A8.2 8.2 0 1 1 12.0 3.8 Z",
-        satPath: "M3.5 6.0 Q3.5 8.5 6.0 8.5 Q3.5 8.5 3.5 11.0 Q3.5 8.5 1.0 8.5 Q3.5 8.5 3.5 6.0 Z M21.0 18.5 A1.5 1.5 0 1 0 21.0 21.5 A1.5 1.5 0 1 0 21.0 18.5 Z",
-        animType: "orbit"
-    },
-    "dhun_music": {
-        corePath: "M9.0 17.5 A3.2 3.2 0 1 1 5.8 14.3 C6.6 14.3 7.2 14.5 7.6 14.8 L7.6 5.2 L20.2 2.8 L20.2 15.2 A3.2 3.2 0 1 1 17.0 12.0 C17.8 12.0 18.4 12.2 18.8 12.5 L18.8 6.8 L9.0 8.6 Z",
-        haloPath: "M12.0 2.0 A10.0 10.0 0 1 0 12.0 22.0 A10.0 10.0 0 1 0 12.0 2.0 Z M12.0 3.8 A8.2 8.2 0 1 1 12.0 20.2 A8.2 8.2 0 1 1 12.0 3.8 Z",
-        satPath: "M3.5 6.0 Q3.5 8.5 6.0 8.5 Q3.5 8.5 3.5 11.0 Q3.5 8.5 1.0 8.5 Q3.5 8.5 3.5 6.0 Z M21.0 18.5 A1.5 1.5 0 1 0 21.0 21.5 A1.5 1.5 0 1 0 21.0 18.5 Z",
-        animType: "orbit"
-    },
-    "bass_wave": {
-        corePath: "M3.0 9.0 C3.8 9.0 4.5 9.7 4.5 10.5 L4.5 14.5 C4.5 15.3 3.8 16.0 3.0 16.0 C2.2 16.0 1.5 15.3 1.5 14.5 L1.5 10.5 C1.5 9.7 2.2 9.0 3.0 9.0 Z M7.5 5.0 C8.3 5.0 9.0 5.7 9.0 6.5 L9.0 18.5 C9.0 19.3 8.3 20.0 7.5 20.0 C6.7 20.0 6.0 19.3 6.0 18.5 L6.0 6.5 C6.0 5.7 6.7 5.0 7.5 5.0 Z M12.0 1.5 C12.8 1.5 13.5 2.2 13.5 3.0 L13.5 21.0 C13.5 21.8 12.8 22.5 12.0 22.5 C11.2 22.5 10.5 21.8 10.5 21.0 L10.5 3.0 C10.5 2.2 11.2 1.5 12.0 1.5 Z M16.5 5.0 C17.3 5.0 18.0 5.7 18.0 6.5 L18.0 18.5 C18.0 19.3 17.3 20.0 16.5 20.0 C15.7 20.0 15.0 19.3 15.0 18.5 L15.0 6.5 C15.0 5.7 15.7 5.0 16.5 5.0 Z M21.0 9.0 C21.8 9.0 22.5 9.7 22.5 10.5 L22.5 14.5 C22.5 15.3 21.8 16.0 21.0 16.0 C20.2 16.0 19.5 15.3 19.5 14.5 L19.5 10.5 C19.5 9.7 20.2 9.0 21.0 9.0 Z",
-        haloPath: "M0.5 12.0 C0.5 7.0 5.5 3.0 12.0 3.0 C18.5 3.0 23.5 7.0 23.5 12.0 C23.5 17.0 18.5 21.0 12.0 21.0 C5.5 21.0 0.5 17.0 0.5 12.0 Z M2.0 12.0 C2.0 16.0 6.2 19.5 12.0 19.5 C17.8 19.5 22.0 16.0 22.0 12.0 C22.0 8.0 17.8 4.5 12.0 4.5 C6.2 4.5 2.0 8.0 2.0 12.0 Z",
-        satPath: "M7.5 1.5 A1.2 1.2 0 1 0 7.5 3.9 A1.2 1.2 0 1 0 7.5 1.5 Z M16.5 1.5 A1.2 1.2 0 1 0 16.5 3.9 A1.2 1.2 0 1 0 16.5 1.5 Z",
-        animType: "scan"
-    },
-    "jaam_chalice": {
-        corePath: "M2.5 3.5 L21.5 3.5 L13.2 13.5 L13.2 19.5 L18.0 19.5 L17.4 21.8 L6.0 21.8 L6.6 19.5 L10.8 19.5 L10.8 13.5 Z M5.8 5.8 L9.8 10.6 L18.2 5.8 Z",
-        haloPath: "M12.0 0.5 C6.0 0.5 1.5 2.5 1.5 5.0 L22.5 5.0 C22.5 2.5 18.0 0.5 12.0 0.5 Z",
-        satPath: "M16.5 1.2 L17.8 2.5 L16.5 3.8 L15.2 2.5 Z M7.5 1.5 A1.2 1.2 0 1 0 7.5 3.9 A1.2 1.2 0 1 0 7.5 1.5 Z",
-        animType: "float"
-    },
-    "nasha_vortex": {
-        corePath: "M12.0 5.0 C8.1 5.0 5.0 8.1 5.0 12.0 C5.0 14.8 7.2 17.0 10.0 17.0 C12.2 17.0 14.0 15.2 14.0 13.0 C14.0 11.3 12.7 10.0 11.0 10.0 C9.9 10.0 9.0 10.9 9.0 12.0 C9.0 12.6 9.4 13.0 10.0 13.0 L10.0 14.5 C8.6 14.5 7.5 13.4 7.5 12.0 C7.5 10.1 9.1 8.5 11.0 8.5 C13.5 8.5 15.5 10.5 15.5 13.0 C15.5 16.0 13.0 18.5 10.0 18.5 C6.4 18.5 3.5 15.6 3.5 12.0 C3.5 7.3 7.3 3.5 12.0 3.5 C16.7 3.5 20.5 7.3 20.5 12.0 L19.0 12.0 C19.0 8.1 15.9 5.0 12.0 5.0 Z",
-        haloPath: "M12.0 1.0 C18.1 1.0 23.0 5.9 23.0 12.0 C23.0 18.1 18.1 23.0 12.0 23.0 C5.9 23.0 1.0 18.1 1.0 12.0 C1.0 5.9 5.9 1.0 12.0 1.0 Z M12.0 2.8 C6.9 2.8 2.8 6.9 2.8 12.0 C2.8 17.1 6.9 21.2 12.0 21.2 C17.1 21.2 21.2 17.1 21.2 12.0 C21.2 6.9 17.1 2.8 12.0 2.8 Z",
-        satPath: "M12.0 0.5 A1.5 1.5 0 1 0 12.0 3.5 A1.5 1.5 0 1 0 12.0 0.5 Z M12.0 20.5 A1.5 1.5 0 1 0 12.0 23.5 A1.5 1.5 0 1 0 12.0 20.5 Z",
-        animType: "spin"
-    },
-    "bijli_bolt": {
-        corePath: "M14.8 1.2 L4.2 13.2 L11.2 13.2 L8.8 22.8 L19.8 10.5 L12.8 10.5 Z",
-        haloPath: "M16.0 0.5 L3.0 13.8 L10.5 13.8 L8.0 23.5 L21.0 9.8 L13.5 9.8 Z M14.8 2.2 L12.8 10.5 L19.8 10.5 L8.8 22.8 L11.2 13.2 L4.2 13.2 Z",
-        satPath: "M21.5 3.5 L22.2 4.8 L23.5 5.2 L22.2 5.8 L21.5 7.0 L20.8 5.8 L19.5 5.2 L20.8 4.8 Z M2.5 18.5 L3.0 19.8 L4.2 20.2 L3.0 20.8 L2.5 22.0 L2.0 20.8 L0.8 20.2 L2.0 19.8 Z",
-        animType: "scan"
-    },
-    "rhythm_accent": {
-        corePath: "M9.0 2.0 Q9.0 9.0 16.0 9.0 Q9.0 9.0 9.0 16.0 Q9.0 9.0 2.0 9.0 Q9.0 9.0 9.0 2.0 Z",
-        haloPath: "M9.0 0.5 A8.5 8.5 0 1 0 9.0 17.5 A8.5 8.5 0 1 0 9.0 0.5 Z M9.0 2.2 A6.8 6.8 0 1 1 9.0 15.8 A6.8 6.8 0 1 1 9.0 2.2 Z",
-        satPath: "M17.5 12.5 Q17.5 17.5 22.5 17.5 Q17.5 17.5 17.5 22.5 Q17.5 17.5 12.5 17.5 Q17.5 17.5 17.5 12.5 Z M6.5 16.5 A2.0 2.0 0 1 0 6.5 20.5 A2.0 2.0 0 1 0 6.5 16.5 Z",
-        animType: "orbit"
-    }
+function _createKineticGlyph(motifName, animType, haloPath, corePath, satPath) {
+    var obj = {
+        motif: motifName,
+        animType: animType,
+        haloPath: haloPath,
+        corePath: corePath,
+        satPath: satPath,
+        length: motifName.length,
+        toString: function() { return this.motif; },
+        valueOf: function() { return this.motif; }
+    };
+    return obj;
+}
+
+var KINETIC_GLYPHS = {
+    // 1. ISHQ_HEART — 3D Ribbon Heart + Heartbeat Thump + Orbiting Concave Star
+    ISHQ_HEART: _createKineticGlyph(
+        "ISHQ_HEART",
+        "pulse",
+        "M12 22.4 C12 22.4 1.5 15.6 1.5 8.5 C1.5 4.6 4.5 1.8 8.2 1.8 C10.2 1.8 11.4 2.8 12 3.9 C12.6 2.8 13.8 1.8 15.8 1.8 C19.5 1.8 22.5 4.6 22.5 8.5 C22.5 15.6 12 22.4 12 22.4 Z",
+        "M12 20.8 C12 20.8 3.2 14.8 3.2 8.8 C3.2 5.5 5.6 3.2 8.5 3.2 C10.3 3.2 11.4 4.1 12 5.1 C12.6 4.1 13.7 3.2 15.5 3.2 C18.4 3.2 20.8 5.5 20.8 8.8 C20.8 14.8 12 20.8 12 20.8 Z M13.2 7.4 L9.4 12.4 L12.2 12.4 L10.8 16.5 L14.6 11.5 L11.8 11.5 Z",
+        "M19.5 1.0 Q19.5 4.0 22.5 4.0 Q19.5 4.0 19.5 7.0 Q19.5 4.0 16.5 4.0 Q19.5 4.0 19.5 1.0 Z"
+    ),
+
+    // 2. AAG_FIRE — Dual-Wave Streetwear Flame + Rising Ember Sparks
+    AAG_FIRE: _createKineticGlyph(
+        "AAG_FIRE",
+        "sway",
+        "M11.5 0.8 C15.8 4.5 21.2 8.8 21.2 14.8 C21.2 19.8 17.0 23.2 12.0 23.2 C7.0 23.2 2.8 19.8 2.8 14.8 C2.8 10.5 5.5 7.0 7.5 5.2 C6.8 8.2 8.0 10.2 9.5 10.8 C8.2 6.8 9.5 3.2 11.5 0.8 Z",
+        "M12.8 2.0 C15.2 5.2 19.2 8.5 19.2 14.2 C19.2 18.6 15.8 22.0 11.8 22.0 C7.6 22.0 4.8 18.8 4.8 14.5 C4.8 11.4 6.5 8.6 8.0 7.2 C7.5 9.4 8.4 11.0 9.8 11.5 C9.0 7.8 10.6 4.2 12.8 2.0 Z M12.0 13.5 C10.4 15.0 9.5 16.6 10.0 18.4 C10.4 19.6 11.6 20.2 13.0 19.8 C14.4 19.2 15.0 17.5 14.0 15.6 C13.5 14.6 12.8 14.0 12.0 13.5 Z",
+        "M18.5 2.2 L20.0 4.2 L18.5 6.2 L17.0 4.2 Z M6.0 3.5 L7.2 5.0 L6.0 6.5 L4.8 5.0 Z"
+    ),
+
+    // 3. RAAT_MOON — Razor Crescent + Translucent Eclipse Disc + Orbiting Twinkle Star
+    RAAT_MOON: _createKineticGlyph(
+        "RAAT_MOON",
+        "orbit",
+        "M12.0 2.2 A9.8 9.8 0 1 0 12.0 21.8 A9.8 9.8 0 1 0 12.0 2.2 Z",
+        "M15.0 2.2 C9.4 2.8 5.2 7.5 5.2 13.2 C5.2 17.2 7.4 20.8 10.8 22.4 C5.5 21.9 1.6 17.5 1.6 12.2 C1.6 6.4 6.4 1.8 12.2 1.8 C13.2 1.8 14.2 1.9 15.0 2.2 Z",
+        "M18.0 4.2 Q18.0 8.8 22.6 8.8 Q18.0 8.8 18.0 13.4 Q18.0 8.8 13.4 8.8 Q18.0 8.8 18.0 4.2 Z"
+    ),
+
+    // 4. NAINA_EYE — Curved Almond Lashes + Left/Right Scanning Iris & Glint
+    NAINA_EYE: _createKineticGlyph(
+        "NAINA_EYE",
+        "scan",
+        "M0.8 12.0 C4.2 5.0 8.0 2.8 12.0 2.8 C16.0 2.8 19.8 5.0 23.2 12.0 C19.8 19.0 16.0 21.2 12.0 21.2 C8.0 21.2 4.2 19.0 0.8 12.0 Z",
+        "M1.5 12.0 C4.8 6.2 8.3 4.2 12.0 4.2 C15.7 4.2 19.2 6.2 22.5 12.0 C19.2 17.8 15.7 19.8 12.0 19.8 C8.3 19.8 4.8 17.8 1.5 12.0 Z M12.0 6.8 A5.2 5.2 0 1 0 12.0 17.2 A5.2 5.2 0 1 0 12.0 6.8 Z",
+        "M12.0 8.8 A3.2 3.2 0 1 0 12.0 15.2 A3.2 3.2 0 1 0 12.0 8.8 Z M13.5 9.2 A1.2 1.2 0 1 0 13.5 11.6 A1.2 1.2 0 1 0 13.5 9.2 Z"
+    ),
+
+    // 5. DHUN_VINYL — Spinning Grooved Vinyl Disc + Floating Beam Note
+    DHUN_VINYL: _createKineticGlyph(
+        "DHUN_VINYL",
+        "float",
+        "M12.0 1.8 A10.2 10.2 0 1 0 12.0 22.2 A10.2 10.2 0 1 0 12.0 1.8 Z M12.0 5.0 A7.0 7.0 0 1 0 12.0 19.0 A7.0 7.0 0 1 0 12.0 5.0 Z",
+        "M9.2 17.8 A3.1 3.1 0 1 1 6.1 14.7 C6.8 14.7 7.4 14.9 7.8 15.2 L7.8 5.5 L20.0 3.0 L20.0 15.5 A3.1 3.1 0 1 1 16.9 12.4 C17.6 12.4 18.2 12.6 18.6 12.9 L18.6 7.0 L9.2 8.8 Z",
+        "M4.0 4.5 Q4.0 7.2 6.7 7.2 Q4.0 7.2 4.0 9.9 Q4.0 7.2 1.3 7.2 Q4.0 7.2 4.0 4.5 Z"
+    ),
+
+    // 6. JAAN_SPARKLE — 3-Piece Celestial Astro-Cluster
+    JAAN_SPARKLE: _createKineticGlyph(
+        "JAAN_SPARKLE",
+        "orbit",
+        "M10.5 3.5 A7.0 7.0 0 1 0 10.5 17.5 A7.0 7.0 0 1 0 10.5 3.5 Z",
+        "M10.0 1.0 Q10.0 10.0 19.0 10.0 Q10.0 10.0 10.0 19.0 Q10.0 10.0 1.0 10.0 Q10.0 10.0 10.0 1.0 Z M10.0 7.8 A2.2 2.2 0 1 0 10.0 12.2 A2.2 2.2 0 1 0 10.0 7.8 Z",
+        "M18.5 13.0 Q18.5 18.0 23.5 18.0 Q18.5 18.0 18.5 23.0 Q18.5 18.0 13.5 18.0 Q18.5 18.0 18.5 13.0 Z M4.5 17.5 Q4.5 20.2 7.2 20.2 Q4.5 20.2 4.5 22.9 Q4.5 20.2 1.8 20.2 Q4.5 20.2 4.5 17.5 Z"
+    ),
+
+    // 7. BAARISH_DROP — Sculpted Glossy Raindrop + Expanding Water Ripple Ring
+    BAARISH_DROP: _createKineticGlyph(
+        "BAARISH_DROP",
+        "float",
+        "M12.0 17.5 C17.5 17.5 22.0 19.0 22.0 20.8 C22.0 22.6 17.5 24.0 12.0 24.0 C6.5 24.0 2.0 22.6 2.0 20.8 C2.0 19.0 6.5 17.5 12.0 17.5 Z M12.0 19.0 C8.2 19.0 5.2 19.8 5.2 20.8 C5.2 21.8 8.2 22.6 12.0 22.6 C15.8 22.6 18.8 21.8 18.8 20.8 C18.8 19.8 15.8 19.0 12.0 19.0 Z",
+        "M12.0 1.5 C12.0 1.5 18.8 9.2 18.8 14.2 C18.8 18.0 15.8 21.0 12.0 21.0 C8.2 21.0 5.2 18.0 5.2 14.2 C5.2 9.2 12.0 1.5 12.0 1.5 Z",
+        "M9.2 11.2 C8.2 13.0 8.5 15.5 10.2 16.8 C10.8 17.3 11.6 16.8 11.2 16.0 C10.0 14.8 9.8 13.2 10.6 11.8 C11.0 11.0 9.8 10.4 9.2 11.2 Z M19.2 3.5 A1.5 1.5 0 1 0 19.2 6.5 A1.5 1.5 0 1 0 19.2 3.5 Z"
+    ),
+
+    // 8. GADDI_TURBO — Widebody Aero Coupe + Streaking Slipstream Lines
+    GADDI_TURBO: _createKineticGlyph(
+        "GADDI_TURBO",
+        "scan",
+        "M1.0 3.2 L11.0 3.2 L10.2 4.8 L0.2 4.8 Z M13.5 1.8 L22.5 1.8 L21.8 3.4 L12.8 3.4 Z",
+        "M1.5 14.5 L4.8 7.2 C5.5 5.8 6.8 5.0 8.4 5.0 L15.6 5.0 C17.2 5.0 18.5 5.8 19.2 7.2 L22.5 14.5 L23.4 15.8 L22.8 20.2 L19.4 20.2 L19.4 18.2 L4.6 18.2 L4.6 20.2 L1.2 20.2 L0.6 15.8 Z M6.8 7.0 L5.0 11.2 L19.0 11.2 L17.2 7.0 Z",
+        "M3.0 13.4 L8.4 14.8 L7.9 16.4 L2.5 15.0 Z M21.0 13.4 L15.6 14.8 L16.1 16.4 L21.5 15.0 Z"
+    ),
+
+    // 9. TAJ_CROWN — Curved Royal Crown + Levitating Center Diamond & Pearls
+    TAJ_CROWN: _createKineticGlyph(
+        "TAJ_CROWN",
+        "float",
+        "M3.5 20.5 L20.5 20.5 C21.2 20.5 21.8 21.1 21.8 21.8 C21.8 22.5 21.2 23.0 20.5 23.0 L3.5 23.0 C2.8 23.0 2.2 22.5 2.2 21.8 C2.2 21.1 2.8 20.5 3.5 20.5 Z",
+        "M2.5 18.2 L4.2 7.8 Q8.0 13.2 12.0 4.8 Q16.0 13.2 19.8 7.8 L21.5 18.2 C21.5 19.2 20.6 20.0 19.5 20.0 L4.5 20.0 C3.4 20.0 2.5 19.2 2.5 18.2 Z M12.0 11.5 L14.2 14.2 L12.0 16.8 L9.8 14.2 Z",
+        "M4.0 3.8 A1.5 1.5 0 1 0 4.0 6.8 A1.5 1.5 0 1 0 4.0 3.8 Z M12.0 0.8 L13.8 2.8 L12.0 4.8 L10.2 2.8 Z M20.0 3.8 A1.5 1.5 0 1 0 20.0 6.8 A1.5 1.5 0 1 0 20.0 3.8 Z"
+    ),
+
+    // 10. JAAM_ELIXIR — Tilted Crystal Coupe + Rising Champagne Fizz Bubbles
+    JAAM_ELIXIR: _createKineticGlyph(
+        "JAAM_ELIXIR",
+        "float",
+        "M6.0 1.5 A9.0 9.0 0 0 1 21.0 8.5 L12.0 12.0 Z",
+        "M2.2 4.2 L21.8 4.2 L13.2 14.0 L13.2 19.8 L18.0 19.8 L17.4 22.0 L6.6 22.0 L6.0 19.8 L10.8 19.8 L10.8 14.0 Z M5.6 6.4 L9.8 11.2 L18.4 6.4 Z",
+        "M10.5 1.2 A1.3 1.3 0 1 0 10.5 3.8 A1.3 1.3 0 1 0 10.5 1.2 Z M14.5 2.0 A1.0 1.0 0 1 0 14.5 4.0 A1.0 1.0 0 1 0 14.5 2.0 Z M12.5 7.5 A1.1 1.1 0 1 0 12.5 9.7 A1.1 1.1 0 1 0 12.5 7.5 Z"
+    ),
+
+    // 11. NASHA_PORTAL — Counter-Rotating Sacred Star Rings + Levitating Core
+    NASHA_PORTAL: _createKineticGlyph(
+        "NASHA_PORTAL",
+        "spin",
+        "M12 0.8 L15.2 8.8 L23.2 12.0 L15.2 15.2 L12 23.2 L8.8 15.2 L0.8 12.0 L8.8 8.8 Z",
+        "M12 2.5 L21.5 12.0 L12 21.5 L2.5 12.0 Z M12 5.8 L5.8 12.0 L12 18.2 L18.2 12.0 Z",
+        "M12 8.8 L15.2 12.0 L12 15.2 L8.8 12.0 Z"
+    ),
+
+    // 12. ASLA_RETICLE — Rotating Radar Ring + Recoil-Locking Tactical Crosshair
+    ASLA_RETICLE: _createKineticGlyph(
+        "ASLA_RETICLE",
+        "pulse",
+        "M12 2.2 A9.8 9.8 0 1 0 12 21.8 A9.8 9.8 0 1 0 12 2.2 Z M12 4.2 A7.8 7.8 0 1 0 12 19.8 A7.8 7.8 0 1 0 12 4.2 Z",
+        "M11.0 0.8 L13.0 0.8 L13.0 6.2 L11.0 6.2 Z M11.0 17.8 L13.0 17.8 L13.0 23.2 L11.0 23.2 Z M0.8 11.0 L6.2 11.0 L6.2 13.0 L0.8 13.0 Z M17.8 11.0 L23.2 11.0 L23.2 13.0 L17.8 13.0 Z",
+        "M12 9.2 L14.8 12.0 L12 14.8 L9.2 12.0 Z"
+    ),
+
+    // 13. SHER_CREST — Cyber-Wolf/Lion Crest + Flaring Eyes & Floating Brow Shard
+    SHER_CREST: _createKineticGlyph(
+        "SHER_CREST",
+        "pulse",
+        "M1.5 2.0 L12.0 7.5 L22.5 2.0 L20.5 16.5 L12.0 23.5 L3.5 16.5 Z",
+        "M2.8 3.2 L8.5 8.5 L12.0 5.2 L15.5 8.5 L21.2 3.2 L19.5 15.5 L12.0 22.5 L4.5 15.5 Z M9.8 17.2 L12.0 20.0 L14.2 17.2 Z",
+        "M6.2 10.8 L10.5 13.0 L8.0 15.0 Z M17.8 10.8 L13.5 13.0 L16.0 15.0 Z M12.0 0.8 L13.6 3.2 L12.0 4.8 L10.4 3.2 Z"
+    ),
+
+    // 14. WAQT_CHRONO — Curved Hourglass + Dripping Sand Stream
+    WAQT_CHRONO: _createKineticGlyph(
+        "WAQT_CHRONO",
+        "float",
+        "M12 2.0 A10.0 10.0 0 1 0 12 22.0 A10.0 10.0 0 1 0 12 2.0 Z M12 3.5 A8.5 8.5 0 1 0 12 20.5 A8.5 8.5 0 1 0 12 3.5 Z",
+        "M4.2 2.0 L19.8 2.0 L19.8 4.2 L14.0 12.0 L19.8 19.8 L19.8 22.0 L4.2 22.0 L4.2 19.8 L10.0 12.0 L4.2 4.2 Z M7.2 4.4 L16.8 4.4 L12.0 10.6 Z",
+        "M12.0 12.8 L13.2 15.2 L10.8 15.2 Z M7.5 19.5 L16.5 19.5 L12.0 16.0 Z"
+    ),
+
+    // 15. BASS_WAVE — Harmonic Pumping Pill Spectrum Bars
+    BASS_WAVE: _createKineticGlyph(
+        "BASS_WAVE",
+        "pulse",
+        "M1.5 10.5 L22.5 10.5 L22.5 13.5 L1.5 13.5 Z",
+        "M7.5 4.8 C8.3 4.8 9.0 5.5 9.0 6.3 L9.0 17.7 C9.0 18.5 8.3 19.2 7.5 19.2 C6.7 19.2 6.0 18.5 6.0 17.7 L6.0 6.3 C6.0 5.5 6.7 4.8 7.5 4.8 Z M16.5 4.8 C17.3 4.8 18.0 5.5 18.0 6.3 L18.0 17.7 C18.0 18.5 17.3 19.2 16.5 19.2 C15.7 19.2 15.0 18.5 15.0 17.7 L15.0 6.3 C15.0 5.5 15.7 4.8 16.5 4.8 Z",
+        "M3.0 8.5 C3.8 8.5 4.5 9.2 4.5 10.0 L4.5 14.0 C4.5 14.8 3.8 15.5 3.0 15.5 C2.2 15.5 1.5 14.8 1.5 14.0 L1.5 10.0 C1.5 9.2 2.2 8.5 3.0 8.5 Z M12.0 1.5 C12.8 1.5 13.5 2.2 13.5 3.0 L13.5 21.0 C13.5 21.8 12.8 22.5 12.0 22.5 C11.2 22.5 10.5 21.8 10.5 21.0 L10.5 3.0 C10.5 2.2 11.2 1.5 12.0 1.5 Z M21.0 8.5 C21.8 8.5 22.5 9.2 22.5 10.0 L22.5 14.0 C22.5 14.8 21.8 15.5 21.0 15.5 C20.2 15.5 19.5 14.8 19.5 14.0 L19.5 10.0 C19.5 9.2 20.2 8.5 21.0 8.5 Z"
+    ),
+
+    // 16. NOOR_COMET — Streaking Shooting Star + 3 Tapered Contrails
+    NOOR_COMET: _createKineticGlyph(
+        "NOOR_COMET",
+        "orbit",
+        "M12.5 10.5 L2.2 20.8 L1.0 19.5 L11.2 9.2 Z M15.0 14.2 L6.8 22.4 L5.5 21.0 L13.8 12.8 Z M9.2 7.2 L1.0 15.4 L2.2 16.8 L10.5 8.5 Z",
+        "M17.5 1.5 Q17.5 7.5 23.5 7.5 Q17.5 7.5 17.5 13.5 Q17.5 7.5 11.5 7.5 Q17.5 7.5 17.5 1.5 Z",
+        "M17.5 5.2 A2.3 2.3 0 1 0 17.5 9.8 A2.3 2.3 0 1 0 17.5 5.2 Z M5.5 3.5 A1.4 1.4 0 1 0 5.5 6.3 A1.4 1.4 0 1 0 5.5 3.5 Z"
+    )
 };
 
-// Backward-compatible flat path map
+// Comprehensive Backward-Compatible Map (Supporting both UPPERCASE and lowercase keys)
+var GLYPH_OBJECTS = {};
+for (var key in KINETIC_GLYPHS) {
+    GLYPH_OBJECTS[key] = KINETIC_GLYPHS[key];
+    GLYPH_OBJECTS[key.toLowerCase()] = KINETIC_GLYPHS[key];
+}
+
+// Map legacy / rhythm fallback motifs seamlessly into the 16 kinetic assemblies
+GLYPH_OBJECTS["dhun_play"] = KINETIC_GLYPHS.DHUN_VINYL;
+GLYPH_OBJECTS["dhun_music"] = KINETIC_GLYPHS.DHUN_VINYL;
+GLYPH_OBJECTS["gaddi_car"] = KINETIC_GLYPHS.GADDI_TURBO;
+GLYPH_OBJECTS["jaam_chalice"] = KINETIC_GLYPHS.JAAM_ELIXIR;
+GLYPH_OBJECTS["nasha_vortex"] = KINETIC_GLYPHS.NASHA_PORTAL;
+GLYPH_OBJECTS["bijli_bolt"] = KINETIC_GLYPHS.ASLA_RETICLE;
+GLYPH_OBJECTS["sona_diamond"] = KINETIC_GLYPHS.NOOR_COMET;
+GLYPH_OBJECTS["waqt_time"] = KINETIC_GLYPHS.WAQT_CHRONO;
+GLYPH_OBJECTS["dard_broken"] = KINETIC_GLYPHS.ISHQ_HEART;
+GLYPH_OBJECTS["tanha_solo"] = KINETIC_GLYPHS.RAAT_MOON;
+GLYPH_OBJECTS["khwab_cloud"] = KINETIC_GLYPHS.NOOR_COMET;
+GLYPH_OBJECTS["kismat_dice"] = KINETIC_GLYPHS.ASLA_RETICLE;
+GLYPH_OBJECTS["rhythm_accent"] = KINETIC_GLYPHS.JAAN_SPARKLE;
+
+for (var alias in GLYPH_OBJECTS) {
+    KINETIC_GLYPHS[alias] = GLYPH_OBJECTS[alias];
+}
+
+// Flat path map for single-string backwards compatibility
 var GLYPH_PATHS = {};
-for (var k in GLYPH_OBJECTS) {
-    GLYPH_PATHS[k] = GLYPH_OBJECTS[k].corePath;
+for (var pKey in GLYPH_OBJECTS) {
+    GLYPH_PATHS[pKey] = GLYPH_OBJECTS[pKey].corePath;
 }
 
 function getGlyphObject(motif) {
     if (!motif) return null;
+    var mUpper = String(motif).toUpperCase();
+    var mLower = String(motif).toLowerCase();
+    if (KINETIC_GLYPHS[motif]) return KINETIC_GLYPHS[motif];
+    if (KINETIC_GLYPHS[mUpper]) return KINETIC_GLYPHS[mUpper];
+    if (KINETIC_GLYPHS[mLower]) return KINETIC_GLYPHS[mLower];
     if (GLYPH_OBJECTS[motif]) return GLYPH_OBJECTS[motif];
-    if (GLYPH_PATHS[motif]) {
-        return {
-            corePath: GLYPH_PATHS[motif],
-            haloPath: "",
-            satPath: "",
-            animType: "pulse"
-        };
-    }
+    if (GLYPH_OBJECTS[mUpper]) return GLYPH_OBJECTS[mUpper];
+    if (GLYPH_OBJECTS[mLower]) return GLYPH_OBJECTS[mLower];
     return null;
 }
 
 var RAW_BUCKETS = {
     // 1. ISHQ_HEART
-    "ishq_heart": [
+    "ISHQ_HEART": [
         "love", "loving", "lover", "heart", "hearts", "heartbeat",
         "dil", "dila", "dilda", "pyar", "pyaar", "ishq", "ishqe", "mohabbat",
-        "chahat", "dhadkan", "dilbar", "diljaniya", "premi", "aashiq", "ashiq",
-        "दिल", "प्यार", "इश्क़", "मोहब्बत", "धड़कन", "चाहत"
+        "chahat", "dhadkan", "dilbar", "diljaniya", "premi", "aashiq", "ashiq", "dilbaro",
+        "broken", "break", "hurt", "pain", "bleed", "bleeding", "scar", "scars", "shame", "lie", "lies", "fake",
+        "dard", "zakham", "tuta", "toota", "bewafa", "dhoka", "judai",
+        "दिल", "प्यार", "इश्क़", "मोहब्बत", "धड़कन", "चाहत", "दर्द", "ज़ख़्म", "जुदाई", "टूटा", "बेवफ़ा"
     ],
 
-    // 2. JAAN_SPARKLE (Replaces person/baby icon!)
-    "jaan_sparkle": [
-        "baby", "babe", "darling", "shawty", "honey", "angel", "beautiful", "stunning", "gorgeous",
-        "jaan", "jan", "jaanu", "janu", "jana", "piya", "mahiya", "heeriye", "hiriye",
-        "sohniye", "sohna", "sajna", "sajan", "sanam", "mehboob", "habibi", "kudi", "kudiye", "billo",
-        "हसीन", "जान", "पिया", "सजना", "सनम", "हीरिये"
+    // 2. AAG_FIRE
+    "AAG_FIRE": [
+        "fire", "burn", "burning", "flame", "flames", "smoke", "heat", "hot", "lit", "ashes", "spark", "sparks",
+        "aag", "ag", "jal", "jalna", "jale", "dhuan", "dhua", "shola", "angaare", "garmi", "bhula",
+        "आग", "धुआँ", "शोला", "गर्मी", "अंगारे"
     ],
 
-    // 3. NAINA_EYE
-    "naina_eye": [
-        "eye", "eyes", "look", "looking", "see", "stare", "gaze", "mirror", "mirrors", "vision",
-        "naina", "nain", "naino", "akh", "akhiyan", "aankh", "aankhein", "ankhen",
-        "nazar", "nazrein", "kajal", "surma", "palak", "palkein",
-        "नैना", "आँख", "आँखें", "नज़र", "काजल"
-    ],
-
-    // 4. RAAT_MOON
-    "raat_moon": [
-        "night", "nights", "tonight", "midnight", "moon", "moonlight", "dark", "darkest", "darkness", "shadow",
+    // 3. RAAT_MOON
+    "RAAT_MOON": [
+        "night", "nights", "tonight", "midnight", "moon", "moonlight", "dark", "darkest", "darkness", "shadow", "shadows",
+        "alone", "lonely", "stranger", "tanha", "akela", "akele", "khud", "ajnabi",
         "raat", "rat", "raataan", "ratan", "raatein", "chand", "chaand", "chandni", "andhera",
         "shaam", "sham", "savera",
-        "रात", "चाँद", "चाँदनी", "अंधेरा", "शाम"
+        "रात", "चाँद", "चाँदनी", "अंधेरा", "शाम", "तन्हा", "अकेला", "अजनबी"
     ],
 
-    // 5. GADDI_CAR
-    "gaddi_car": [
-        "car", "cars", "drive", "driving", "ride", "riding", "road", "highway", "speed", "fast", "whip",
-        "gaddi", "gaddiyan", "rasta", "raaste", "safar", "rah", "raah", "manzil",
-        "सफ़र", "रास्ता", "गाड़ी", "मंज़िल"
+    // 4. NAINA_EYE
+    "NAINA_EYE": [
+        "eye", "eyes", "look", "looking", "see", "stare", "gaze", "mirror", "mirrors", "vision", "deed", "sight",
+        "naina", "nain", "naino", "akh", "akhiyan", "aankh", "aankhein", "ankhen",
+        "nazar", "nazrein", "kajal", "surma", "palak", "palkein", "deeda", "dida", "deedar",
+        "नैना", "आँख", "आँखें", "नज़र", "काजल", "दीदार"
     ],
 
-    // 6. AAG_FIRE
-    "aag_fire": [
-        "fire", "burn", "burning", "flame", "flames", "smoke", "heat", "hot", "lit", "ashes",
-        "aag", "ag", "jal", "jalna", "jale", "dhuan", "dhua", "shola", "angaare", "garmi",
-        "आग", "धुआँ", "शोला"
+    // 5. DHUN_VINYL
+    "DHUN_VINYL": [
+        "music", "song", "songs", "beat", "beats", "sound", "sing", "singing", "voice", "dance", "dancing", "move",
+        "start", "play", "vinyl", "record", "track", "melody", "tune", "audio", "mic", "microphone",
+        "dhun", "geet", "gaana", "gana", "aawaz", "awaz", "sur", "saaz", "raag", "sangeet", "dhol",
+        "ताल", "धुन", "गीत", "आवाज़", "संगीत", "राग"
+    ],
+
+    // 6. JAAN_SPARKLE
+    "JAAN_SPARKLE": [
+        "baby", "babe", "darling", "shawty", "honey", "angel", "beautiful", "stunning", "gorgeous", "pretty", "crush",
+        "jaan", "jan", "jaanu", "janu", "jana", "piya", "mahiya", "heeriye", "hiriye",
+        "sohniye", "sohna", "sajna", "sajan", "sanam", "mehboob", "habibi", "kudi", "kudiye", "billo", "raani", "soniyo",
+        "हसीन", "जान", "पिया", "सजना", "सनम", "हीरिये", "कुड़ी", "सोहणी"
     ],
 
     // 7. BAARISH_DROP
-    "baarish_drop": [
-        "rain", "raining", "cry", "crying", "tear", "tears", "water", "ocean", "sea", "drown", "pour",
+    "BAARISH_DROP": [
+        "rain", "raining", "cry", "crying", "tear", "tears", "water", "ocean", "sea", "drown", "pour", "drip", "drops",
         "baarish", "barish", "barsaat", "barsat", "saawan", "sawan", "boondein", "bheega", "bhiga",
         "aansu", "ansu", "samandar", "dariya", "paani", "pani",
         "बारिश", "आँसू", "सावन", "समंदर", "दरिया", "पानी"
     ],
 
-    // 8. KISMAT_DICE
-    "kismat_dice": [
-        "chance", "chances", "luck", "lucky", "dice", "roll", "bet", "gamble", "game", "risk",
-        "kismat", "taqdeer", "naseeb", "bazi", "baazi", "khel",
-        "क़िस्मत", "नसीब", "बाज़ी"
+    // 8. GADDI_TURBO
+    "GADDI_TURBO": [
+        "car", "cars", "drive", "driving", "ride", "riding", "road", "highway", "speed", "fast", "whip", "turbo",
+        "motor", "wheels", "drift", "racer", "track", "lane",
+        "gaddi", "gaddiyan", "rasta", "raaste", "safar", "rah", "raah", "manzil", "musafir",
+        "सफ़र", "रास्ता", "गाड़ी", "मंज़िल", "मुसाफ़िर"
     ],
 
     // 9. TAJ_CROWN
-    "taj_crown": [
-        "king", "queen", "crown", "royal", "throne", "boss", "legend",
-        "taj", "badshah", "rani", "shah", "sultan", "gabru", "jatt", "sardar", "nawab",
-        "ताज", "बादशाह", "रानी"
+    "TAJ_CROWN": [
+        "king", "queen", "crown", "royal", "throne", "boss", "legend", "lord", "empire", "rule", "ruler",
+        "taj", "badshah", "rani", "shah", "sultan", "gabru", "jatt", "sardar", "nawab", "hukam", "raaj",
+        "राज", "ताज", "बादशाह", "रानी", "सरदार", "हुक्म"
     ],
 
-    // 10. DARD_BROKEN
-    "dard_broken": [
-        "broken", "break", "hurt", "pain", "bleed", "bleeding", "scar", "scars", "shame", "lie", "lies", "fake",
-        "dard", "zakham", "tuta", "toota", "bewafa", "dhoka", "judai",
-        "जुदाई", "दर्द", "ज़ख़्म", "बेवफ़ा", "टूटा"
+    // 10. JAAM_ELIXIR
+    "JAAM_ELIXIR": [
+        "drink", "drinking", "sip", "cup", "glass", "wine", "liquor", "bottle", "poison", "taste", "cheers", "toast",
+        "potion", "cocktail", "bar", "beer", "whiskey", "champagne", "vodka", "rum", "tequila", "shots",
+        "sharab", "sharaab", "jaam", "jam", "maikhana", "daaru", "daru", "peg", "zahar", "zeher", "paimana",
+        "शराब", "जाम", "ज़हर", "पैमाना", "दारू"
     ],
 
-    // 11. TANHA_SOLO (Strictly Solitary/Identity words. NEVER baby/boy/girl/you/me)
-    "tanha_solo": [
-        "alone", "lonely", "somebody", "nobody", "stranger", "myself", "yourself",
-        "tanha", "akela", "akele", "khud", "ajnabi",
-        "तन्हा", "अकेला", "अजनबी"
-    ],
-
-    // 12. WAQT_TIME
-    "waqt_time": [
-        "time", "wait", "waiting", "waitin", "forever", "always", "never", "clock", "hour", "hours", "moment", "past", "future",
-        "waqt", "lamha", "lamhe", "pal", "sadiyan", "intezaar", "intezar", "hamesha",
-        "वक़्त", "लम्हा", "पल", "इंतज़ार", "हमेशा"
-    ],
-
-    // 13. KHWAB_CLOUD
-    "khwab_cloud": [
-        "dream", "dreams", "dreaming", "sky", "skies", "cloud", "clouds", "heaven", "fly", "flying", "high", "float",
-        "khwab", "khwaab", "sapna", "sapne", "aasman", "asman", "badal", "baadal", "hawa", "hawaein", "parinde",
-        "ख़्वाब", "सपना", "सपने", "आसमान", "बादल", "हवा"
-    ],
-
-    // 14. SONA_DIAMOND
-    "sona_diamond": [
-        "diamond", "diamonds", "gold", "golden", "money", "cash", "rich", "shine", "shining", "miracle", "priceless", "treasure", "finesse",
-        "sona", "sone", "heera", "hira", "daulat", "paisa", "noor", "nur", "chamak", "taare", "tare", "sitara",
-        "सितारा", "सोना", "हीरा", "नूर"
-    ],
-
-    // 15. DHUN_PLAY
-    "dhun_play": [
-        "start", "play", "music", "song", "beat", "sound", "sing", "voice", "dance", "move",
-        "dhun", "geet", "gaana", "gana", "aawaz", "awaz", "sur", "saaz",
-        "ताल", "धुन", "गीत", "आवाज़"
-    ],
-
-    // 16. JAAM_CHALICE
-    "jaam_chalice": [
-        "drink", "drinking", "sip", "cup", "glass", "wine", "liquor", "bottle", "poison", "taste",
-        "sharab", "sharaab", "jaam", "jam", "maikhana", "daaru", "daru", "peg", "zahar", "zeher",
-        "शराब", "जाम", "ज़हर", "पैमाना"
-    ],
-
-    // 17. NASHA_VORTEX
-    "nasha_vortex": [
+    // 11. NASHA_PORTAL
+    "NASHA_PORTAL": [
         "nasha", "nashe", "madhoshi", "madhosh", "khumar", "fitoor", "fitur", "junoon", "junun",
-        "pagal", "deewana", "diwana", "dizzy", "trance", "crazy", "lose", "lost", "mind", "vibe",
-        "नशा", "नशे", "मदहोशी", "फ़ितूर", "जुनून", "दीवाना"
+        "pagal", "deewana", "diwana", "dizzy", "trance", "crazy", "lose", "lost", "mind", "vibe", "vibes",
+        "portal", "dimension", "magic", "spell", "trip", "tripping", "illusion", "high",
+        "नशा", "नशे", "मदहोशी", "फ़ितूर", "जुनून", "दीवाना", "पागल"
     ],
 
-    // 18. BIJLI_BOLT
-    "bijli_bolt": [
-        "thunder", "lightning", "electric", "electricity", "storm", "shock", "power",
-        "switch", "button", "touch", "swish", "bijli", "toofan", "tufan",
-        "बिजली", "तूफ़ान"
+    // 12. ASLA_RETICLE
+    "ASLA_RETICLE": [
+        "gun", "guns", "shooter", "aim", "crosshair", "bullet", "shot", "target", "trigger", "weapon", "reticle",
+        "lock", "locked", "ammo", "pistol", "rifle", "shoot", "chance", "chances", "luck", "lucky", "dice", "roll", "bet", "gamble", "game", "risk",
+        "asla", "bandook", "goli", "nishana", "shikaar", "kismat", "taqdeer", "naseeb", "bazi", "baazi", "khel",
+        "शिकार", "निशाना", "बंदूक", "गोली", "असली", "क़िस्मत", "नसीब", "बाज़ी"
+    ],
+
+    // 13. SHER_CREST
+    "SHER_CREST": [
+        "lion", "tiger", "wolf", "beast", "predator", "warrior", "brave", "fierce", "roar", "courage", "danger", "dangerous", "wild",
+        "sher", "babbar", "cheetah", "shikari", "jigar", "daleer", "soorma", "anakh",
+        "शेर", "बब्बर", "शिकारी", "दिलेर", "सूरमा"
+    ],
+
+    // 14. WAQT_CHRONO
+    "WAQT_CHRONO": [
+        "time", "wait", "waiting", "waitin", "forever", "always", "never", "clock", "hour", "hours", "moment", "moments",
+        "past", "future", "chrono", "hourglass", "delay", "ticking",
+        "waqt", "lamha", "lamhe", "pal", "sadiyan", "intezaar", "intezar", "hamesha", "zamaana", "zamana",
+        "वक़्त", "लम्हा", "पल", "इंतज़ार", "हमेशा", "ज़माना"
+    ],
+
+    // 15. BASS_WAVE
+    "BASS_WAVE": [
+        "bass", "808", "sub", "drop", "tempo", "groove", "kick", "frequency", "wave", "waves", "rhythm",
+        "speaker", "speakers", "loud", "heavy", "boom", "bounce",
+        "dhak", "thumka", "dhol", "tabla", "beatdrop",
+        "थाप", "धड़क", "ढोल", "धमाका"
+    ],
+
+    // 16. NOOR_COMET
+    "NOOR_COMET": [
+        "star", "stars", "shooting", "comet", "diamond", "diamonds", "shine", "shining", "gold", "golden",
+        "glow", "glowing", "beam", "light", "ray", "rays", "bright", "flash", "sparkle", "riches", "wealth", "finesse",
+        "money", "cash", "rich", "miracle", "priceless", "treasure", "sky", "skies", "cloud", "clouds", "heaven", "fly", "flying",
+        "noor", "nur", "chamak", "roshni", "sitara", "taare", "tare", "heera", "hira", "sona", "sone", "daulat", "paisa",
+        "khwab", "khwaab", "sapna", "sapne", "aasman", "asman", "badal", "baadal", "hawa", "hawaein", "parinde",
+        "चमक", "रौशनी", "सितारा", "नूर", "हीरा", "सोना", "दौलत", "ख़्वाब", "सपना", "सपने", "आसमान", "बादल", "हवा"
     ]
 };
 
@@ -291,10 +346,11 @@ var KEYWORD_MAP = {};
 function initMap() {
     for (var motif in RAW_BUCKETS) {
         var words = RAW_BUCKETS[motif];
+        var glyphObj = KINETIC_GLYPHS[motif];
         for (var i = 0; i < words.length; i++) {
             var raw = words[i].trim().toLowerCase();
             if (raw.length > 0) {
-                KEYWORD_MAP[raw] = motif;
+                KEYWORD_MAP[raw] = glyphObj;
             }
         }
     }
@@ -302,7 +358,7 @@ function initMap() {
 initMap();
 
 /**
- * 1. Convert to lowercase & strip punctuation (/[.,!?;:'"()\[\]\-]/g)
+ * 1. Convert to lowercase & strip punctuation
  */
 function normalizeLyricToken(rawWord) {
     if (!rawWord) return "";
@@ -312,11 +368,7 @@ function normalizeLyricToken(rawWord) {
 }
 
 /**
- * 2. Hinglish Stretched-Vowel Stemmer:
- *    - aa+ -> a
- *    - ee+ -> i
- *    - oo+ -> u
- *    - 3+ identical repeated letter collapse
+ * 2. Hinglish Stretched-Vowel Stemmer
  */
 function stemHinglish(token) {
     if (!token || token.length < 3) return token;
@@ -329,8 +381,7 @@ function stemHinglish(token) {
 }
 
 /**
- * 3. Strip common plural/oblique Hinglish suffixes:
- *    -iyaan, -iyan, -eyan, -aan, -ein, -on, -an
+ * 3. Strip common plural/oblique Hinglish suffixes
  */
 function stripHinglishSuffix(token) {
     if (!token || token.length <= 3) return token;
@@ -365,32 +416,32 @@ function isStopWord(word) {
 /**
  * Lookup glyph by word:
  * Direct -> Stemmed -> Suffix-stripped
- * Blocked immediately if token matches STOP_WORDS.
+ * Returns the multi-layer kinetic object (or null if unmapped / stop word).
  */
 function lookupGlyphSingle(rawWord) {
-    if (!rawWord) return "";
+    if (!rawWord) return null;
     var norm = normalizeLyricToken(rawWord);
-    if (!norm || STOP_WORDS[norm]) return "";
+    if (!norm || STOP_WORDS[norm]) return null;
 
     if (KEYWORD_MAP[norm]) return KEYWORD_MAP[norm];
 
     var stemmed = stemHinglish(norm);
-    if (STOP_WORDS[stemmed]) return "";
+    if (STOP_WORDS[stemmed]) return null;
     if (KEYWORD_MAP[stemmed]) return KEYWORD_MAP[stemmed];
 
     var suffStripped = stripHinglishSuffix(stemmed);
-    if (STOP_WORDS[suffStripped]) return "";
+    if (STOP_WORDS[suffStripped]) return null;
     if (KEYWORD_MAP[suffStripped]) return KEYWORD_MAP[suffStripped];
 
     var directSuff = stripHinglishSuffix(norm);
-    if (STOP_WORDS[directSuff]) return "";
+    if (STOP_WORDS[directSuff]) return null;
     if (KEYWORD_MAP[directSuff]) return KEYWORD_MAP[directSuff];
 
-    return "";
+    return null;
 }
 
 function lookupGlyph(rawWord) {
-    if (!rawWord) return "";
+    if (!rawWord) return null;
     var trimmed = String(rawWord).trim();
     if (/\s+/.test(trimmed)) {
         var parts = trimmed.split(/\s+/);
@@ -398,7 +449,7 @@ function lookupGlyph(rawWord) {
             var g = lookupGlyphSingle(parts[i]);
             if (g) return g;
         }
-        return "";
+        return null;
     }
     return lookupGlyphSingle(trimmed);
 }

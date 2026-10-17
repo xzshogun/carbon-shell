@@ -52,7 +52,7 @@ def get_luminance(hex_str):
 def resolve_source_wallpaper():
     # 1. Command-line argument
     if len(sys.argv) > 1 and os.path.isfile(sys.argv[1]):
-        return os.path.abspath(sys.argv[1])
+        return os.path.realpath(os.path.abspath(sys.argv[1]))
 
     # 2. current_wallpaper_path file
     for p_dir in [CARBON_CONFIG_DIR, os.path.expanduser("~/.config/carbon"), os.path.expanduser("~/.config/hypr")]:
@@ -61,18 +61,51 @@ def resolve_source_wallpaper():
             try:
                 with open(path_file, "r", encoding="utf-8") as f:
                     p = f.read().strip()
-                if os.path.isfile(p):
-                    return p
+                if p and os.path.isfile(p):
+                    return os.path.realpath(p)
             except Exception:
                 pass
 
-    # 3. current_wallpaper file/copy
+    # 3. current_wallpaper symlink or copy
     for p_dir in [CARBON_CONFIG_DIR, os.path.expanduser("~/.config/carbon"), os.path.expanduser("~/.config/hypr")]:
         c_wall = os.path.join(p_dir, "current_wallpaper")
-        if os.path.isfile(c_wall):
-            return c_wall
+        if os.path.exists(c_wall):
+            real_p = os.path.realpath(c_wall)
+            if os.path.isfile(real_p):
+                return real_p
 
-    # 4. Cached scaled wallpaper
+    # 4. Check active external wallpaper daemons (swww, awww, hyprpaper)
+    try:
+        r = subprocess.run(["swww", "query"], capture_output=True, text=True, timeout=1.0)
+        if r.returncode == 0 and r.stdout:
+            m = re.search(r"image:\s*(.+)$", r.stdout.strip(), re.MULTILINE)
+            if m:
+                cand = m.group(1).strip()
+                if os.path.isfile(cand):
+                    return os.path.realpath(cand)
+    except Exception:
+        pass
+
+    try:
+        r = subprocess.run(["awww", "query"], capture_output=True, text=True, timeout=1.0)
+        if r.returncode == 0 and r.stdout:
+            for line in r.stdout.splitlines():
+                parts = line.strip().split()
+                if parts and os.path.isfile(parts[-1]):
+                    return os.path.realpath(parts[-1])
+    except Exception:
+        pass
+
+    try:
+        r = subprocess.run(["hyprctl", "hyprpaper", "listloaded"], capture_output=True, text=True, timeout=1.0)
+        if r.returncode == 0 and r.stdout:
+            lines = [l.strip() for l in r.stdout.splitlines() if l.strip()]
+            if lines and os.path.isfile(lines[-1]):
+                return os.path.realpath(lines[-1])
+    except Exception:
+        pass
+
+    # 5. Cached scaled wallpaper
     scaled = os.path.expanduser("~/.cache/carbon/wallpaper_scaled.jpg")
     if os.path.isfile(scaled):
         return scaled
@@ -315,7 +348,7 @@ def extract_matugen_palette(img_path):
     """Run matugen to extract authentic Google Material 3 tokens non-interactively."""
     try:
         res = subprocess.run(
-            ["matugen", "image", "--prefer", "saturation", "-j", "hex", "-m", "dark", img_path],
+            ["matugen", "image", "--source-color-index", "0", "-t", "scheme-fidelity", "--prefer", "saturation", "-j", "hex", "-m", "dark", img_path],
             capture_output=True, text=True, timeout=5.0
         )
         if res.returncode == 0 and res.stdout.strip():
@@ -404,7 +437,7 @@ def main():
             outline_hex = m3["outline"]
             try:
                 subprocess.run(
-                    ["matugen", "image", "--prefer", "saturation", "-m", "dark", src_wp],
+                    ["matugen", "image", "--source-color-index", "0", "-t", "scheme-fidelity", "--prefer", "saturation", "-m", "dark", src_wp],
                     capture_output=True, timeout=4.0
                 )
             except Exception:

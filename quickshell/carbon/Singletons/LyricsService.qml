@@ -72,6 +72,13 @@ Singleton {
 
     property var lines: []
     property bool hasLyrics: lines.length > 0
+    readonly property bool hasRichWords: {
+        if (!lines || lines.length === 0) return false
+        for (var i = 0; i < lines.length; i++) {
+            if (lines[i].words && lines[i].words.length > 0) return true
+        }
+        return false
+    }
     property int currentIndex: -1
     property string currentLine: ""
     property string nextLine: ""
@@ -103,6 +110,12 @@ Singleton {
 
     onTrackTitleChanged: fetchLyrics()
     onTrackArtistChanged: fetchLyrics()
+    onTotalLengthChanged: {
+        if (root.totalLength > 10 && (!root.hasLyrics || !root.hasRichWords)) {
+            root.lastFetchedKey = ""
+            root.fetchLyrics()
+        }
+    }
     onCurrentPositionChanged: updateSync()
     onIsPlayingChanged: updateSync()
 

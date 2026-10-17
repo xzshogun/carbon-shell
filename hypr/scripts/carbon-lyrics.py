@@ -368,8 +368,22 @@ def fetch_from_lrclib(title, artist, duration=None):
                 if results and isinstance(results, list):
                     synced_items = [it for it in results if it.get("syncedLyrics")]
                     if synced_items:
-                        if target_dur > 0:
-                            synced_items.sort(key=lambda x: abs(float(x.get("duration", 0)) - target_dur))
+                        def score_lrclib_item(it):
+                            s = 0.0
+                            d = float(it.get("duration", 0))
+                            t_name = (it.get("trackName") or it.get("name") or "").lower()
+                            if target_dur > 0 and d > 0:
+                                diff = abs(d - target_dur)
+                                s += diff * 3.0
+                                if diff > 15:
+                                    s += 500.0
+                            if "video" not in title.lower() and ("video" in t_name or "mv" in t_name):
+                                s += 100.0
+                            if "remix" not in title.lower() and "remix" in t_name:
+                                s += 200.0
+                            return s
+
+                        synced_items.sort(key=score_lrclib_item)
                         return parse_lrc(synced_items[0]["syncedLyrics"])
         except Exception:
             pass
@@ -438,7 +452,7 @@ def fetch_from_kugou(title, artist, duration=None):
         try:
             url = f"http://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword={urllib.parse.quote(q)}&page=1&pagesize=5"
             req = urllib.request.Request(url, headers={"User-Agent": "Android712-AndroidPhone-8983-18-0-Search-wifi"})
-            with urllib.request.urlopen(req, timeout=3.0) as resp:
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 items = data.get("data", {}).get("info", [])
                 if not items:
@@ -460,7 +474,7 @@ def fetch_from_kugou(title, artist, duration=None):
 
                     lrc_search_url = f"http://lyrics.kugou.com/search?ver=1&man=yes&client=pc&keyword=&duration={song_dur_ms}&hash={fhash}"
                     req_lrc = urllib.request.Request(lrc_search_url, headers={"User-Agent": "Mozilla/5.0"})
-                    with urllib.request.urlopen(req_lrc, timeout=3.0) as resp_lrc:
+                    with urllib.request.urlopen(req_lrc, timeout=5.0) as resp_lrc:
                         cands = json.loads(resp_lrc.read().decode("utf-8")).get("candidates", [])
                         if not cands:
                             continue
@@ -471,7 +485,7 @@ def fetch_from_kugou(title, artist, duration=None):
 
                         dl_url = f"http://lyrics.kugou.com/download?ver=1&client=pc&id={lid}&accesskey={akey}&fmt=krc&charset=utf8"
                         req_dl = urllib.request.Request(dl_url, headers={"User-Agent": "Mozilla/5.0"})
-                        with urllib.request.urlopen(req_dl, timeout=3.0) as resp_dl:
+                        with urllib.request.urlopen(req_dl, timeout=5.0) as resp_dl:
                             b64 = json.loads(resp_dl.read().decode("utf-8")).get("content")
                             if not b64:
                                 continue

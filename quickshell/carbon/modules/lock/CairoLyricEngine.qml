@@ -26,7 +26,7 @@ Item {
     // ── 1. 60fps Interpolated Audio Clock ──────────────────────────────────
     property real livePositionMs: 0
     property real lastFrameMs: 0
-    property int syncOffsetMs: -120 // -120ms lead compensation for instantaneous visual perception
+    property int syncOffsetMs: -140 // -140ms lead compensation for instantaneous visual perception
 
     readonly property real effectivePositionMs: Math.max(0, root.livePositionMs - root.syncOffsetMs)
     readonly property real effectivePositionSec: root.effectivePositionMs / 1000.0

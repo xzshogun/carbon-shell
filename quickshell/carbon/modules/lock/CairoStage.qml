@@ -74,6 +74,7 @@ Item {
     CairoAmbientBorder {
         id: ambientBorder
         anchors.fill: parent
+        anchors.margins: 2
         z: 999
     }
 
@@ -239,14 +240,14 @@ Item {
                 // Stage -1 (Pre-Entry Spawn: 0ms teleport without downward animation)
                 enableAnim = false
                 stageOpacity = 0.0
-                stageY = root.cy + 195
+                stageY = root.cy + 210
                 stageScaleX = 0.88
                 stageScaleY = 0.50
                 stageRotX = 8.0
                 z = 1
                 enableAnim = true
             } else if (newStage === 0) {
-                // Stage 0 (Bottom Active Spoken Row: glides up from +195 to +105)
+                // Stage 0 (Bottom Active Spoken Row: glides up from +210 to +105)
                 stageY = root.cy + 105
                 stageOpacity = 1.0
                 stageScaleX = 1.0
@@ -256,22 +257,22 @@ Item {
             } else if (newStage === 1) {
                 // Stage 1 (Middle Row — Just Passed)
                 stageY = root.cy - 35
-                stageOpacity = 0.92
-                stageScaleX = 0.86
-                stageScaleY = 0.74
+                stageOpacity = 0.85
+                stageScaleX = 0.82
+                stageScaleY = 0.68
                 stageRotX = 20.0
                 z = 20
             } else if (newStage === 2) {
                 // Stage 2 (Top Row — Receding Barrel Edge)
                 stageY = root.cy - 135
-                stageOpacity = 0.70
-                stageScaleX = 0.72
-                stageScaleY = 0.54
+                stageOpacity = 0.42
+                stageScaleX = 0.66
+                stageScaleY = 0.44
                 stageRotX = 38.0
                 z = 10
             } else if (newStage === 3) {
                 // Stage 3 (Exiting Top — Crushing Flat)
-                stageY = root.cy - 182
+                stageY = root.cy - 195
                 stageOpacity = 0.0
                 stageScaleX = 0.54
                 stageScaleY = 0.12
@@ -322,8 +323,10 @@ Item {
                     anchors.centerIn: parent
                     width: wordText.contentWidth + 36
                     height: wordText.contentHeight + 12
-                    radius: 8
-                    color: Qt.rgba(root.highlightColor.r, root.highlightColor.g, root.highlightColor.b, 0.45)
+                    radius: 10
+                    color: Qt.rgba(root.vibrantPrimary.r, root.vibrantPrimary.g, root.vibrantPrimary.b, 0.45)
+                    border.width: 1.5
+                    border.color: Qt.rgba(root.vibrantPrimary.r, root.vibrantPrimary.g, root.vibrantPrimary.b, 0.82)
                     opacity: (delegateRoot.stage === 0) ? 1.0 : 0.0
                     visible: opacity > 0.01
 

@@ -73,21 +73,21 @@ Item {
             var mprisMs = (rawPos > 1000000) ? (rawPos / 1000) : (rawPos < 36000 ? rawPos * 1000 : rawPos)
 
             // When music is playing, smoothly advance livePositionMs by elapsed time (+dt ~50ms):
-            var isPlaying = root.isPlaying || (activePlayer && activePlayer.playbackState === MprisPlaybackState.Playing)
+            var isPlaying = root.isPlaying || !activePlayer || activePlayer.playbackState === MprisPlaybackState.Playing || activePlayer.isPlaying !== false
             if (isPlaying) {
                 root.livePositionMs += dt
             }
 
             // ONLY react when MPRIS actually emits a fresh position update:
-            if (mprisMs > 0 && Math.abs(mprisMs - root.lastRawMprisPosMs) > 40) {
+            if (mprisMs > 0 && Math.abs(mprisMs - root.lastRawMprisPosMs) > 50) {
                 var mprisDrift = Math.abs(mprisMs - root.livePositionMs)
                 root.lastRawMprisPosMs = mprisMs
                 // If it's a real user seek / scrub / skip (> 800ms drift) or initial sync, snap:
                 if (mprisDrift > 800 || root.livePositionMs <= 0) {
                     root.livePositionMs = mprisMs
-                } else if (mprisDrift > 30) {
-                    // Align tightly with true player position
-                    root.livePositionMs = (root.livePositionMs * 0.50) + (mprisMs * 0.50)
+                } else if (mprisDrift > 120) {
+                    // Small drift nudge: gently align with player clock
+                    root.livePositionMs = (root.livePositionMs * 0.75) + (mprisMs * 0.25)
                 }
             }
 
@@ -156,9 +156,8 @@ Item {
         if (rawTokens.length === 0) return [];
 
         var rawGapMs = Math.max(350, nextLineStartMs - lineStartMs);
-        // Distribute words naturally across 90% of the line gap so vocals match actual singing tempo
-        var maxAllowedMs = Math.max(2800, rawTokens.length * 700);
-        var activeWindowMs = Math.min(rawGapMs * 0.90, maxAllowedMs);
+        // Spread the words across 92% of the line gap (up to 460ms per word) for a relaxed, natural pace
+        var activeWindowMs = Math.min(rawGapMs * 0.92, rawTokens.length * 460);
 
         var weights = [];
         var totalWeight = 0;

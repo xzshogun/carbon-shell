@@ -36,22 +36,11 @@ Item {
     readonly property real cy: root.height / 2
 
     // ── Palette Tokens ─────────────────────────────────────────────────────
-    readonly property color vibrantPrimary: {
-        var base = Theme.m3primary || Theme.accent || Qt.rgba(0.46, 0.82, 0.98, 1.0)
-        var h = base.hslHue
-        var s = base.hslSaturation
-        var v = base.hslLightness
-
-        if (h < 0) return Qt.rgba(0.46, 0.82, 0.98, 1.0)
-
-        var boostS = Math.max(0.65, Math.min(s * 1.30, 0.95))
-        var boostV = Math.max(0.75, Math.min(v, 0.95))
-        return Qt.hsva(h, boostS, boostV, 1.0)
-    }
-    readonly property color highlightColor: Qt.darker(root.vibrantPrimary, 1.18)
+    readonly property color vibrantPrimary: Theme.m3primary || Theme.accent || Qt.rgba(0.46, 0.82, 0.98, 1.0)
+    readonly property color highlightColor: root.vibrantPrimary
 
     readonly property real highlightLuminance: 0.299 * highlightColor.r + 0.587 * highlightColor.g + 0.114 * highlightColor.b
-    readonly property color highlightedTextColor: "#f7ebed"
+    readonly property color highlightedTextColor: Theme.m3onPrimary || ((highlightLuminance > 0.6) ? "#111418" : "#f7ebed")
 
     readonly property color bronzeColor: {
         var sec = Theme.m3secondary || Qt.rgba(0.77, 0.77, 0.87, 1.0)

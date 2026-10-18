@@ -25,6 +25,13 @@ Item {
 
     focus: true
 
+    onVisibleChanged: {
+        if (visible && lyricEngine) {
+            lyricEngine.lastTickWallMs = Date.now()
+            lyricEngine.resetPlaybackClock()
+        }
+    }
+
     // Center coordinates on screen
     readonly property real cx: root.width / 2
     readonly property real cy: root.height / 2
@@ -67,6 +74,7 @@ Item {
         id: pitchBlackBg
         anchors.fill: parent
         color: "#000000"
+        border.width: 0
         z: 0
     }
 
@@ -162,9 +170,12 @@ Item {
                 var tailX = headX + m.len * 0.78;
                 var tailY = headY - m.len;
 
+                var mr = Math.round(meteorAccent.r * 255);
+                var mg = Math.round(meteorAccent.g * 255);
+                var mb = Math.round(meteorAccent.b * 255);
                 var grad = ctx.createLinearGradient(headX, headY, tailX, tailY);
                 grad.addColorStop(0.0, "rgba(255, 255, 255, " + m.alpha.toFixed(3) + ")");
-                grad.addColorStop(0.25, Qt.rgba(meteorAccent.r, meteorAccent.g, meteorAccent.b, m.alpha * 0.75));
+                grad.addColorStop(0.25, "rgba(" + mr + ", " + mg + ", " + mb + ", " + (m.alpha * 0.75).toFixed(3) + ")");
                 grad.addColorStop(1.0, "rgba(0, 0, 0, 0.0)");
 
                 ctx.strokeStyle = grad;
@@ -184,57 +195,91 @@ Item {
         }
     }
 
-    // ── 1b. Self-Contained Audio-Reactive Ambient Border ─────────────────
+    // ── 1b. 100% Native QML Hardware-Accelerated Ambient Edge Glow ──────
     Item {
         id: cairoAmbientBorder
         anchors.fill: parent
-        anchors.margins: 3
         z: 999
 
-        // Read live audio energy if available, plus a rhythmic beat pulse whenever music is playing so it NEVER looks dead:
-        property real beatPulse: 0.35
+        property color glowColor: root.highlightColor
+        property real beatPulse: 0.4
+        property real orbitPhase: 0.0
+
         Timer {
-            interval: 32
-            running: cairoAmbientBorder.visible
+            interval: 16
+            running: true
             repeat: true
             property real t: 0
             onTriggered: {
-                t += 0.14;
-                // Combine synthetic dual-frequency bass beat envelope with any live cava/audio peak if present in scope:
-                var synthBeat = Math.pow(Math.max(0, Math.sin(t) * 0.65 + Math.sin(t * 2.3) * 0.35), 2.2);
-                cairoAmbientBorder.beatPulse = 0.28 + 0.72 * synthBeat;
+                t += 0.09;
+                cairoAmbientBorder.orbitPhase = (cairoAmbientBorder.orbitPhase + 0.0045) % 1.0;
+                var synth = Math.pow(Math.max(0, Math.sin(t) * 0.65 + Math.sin(t * 2.2) * 0.35), 2.0);
+                cairoAmbientBorder.beatPulse = 0.25 + 0.75 * synth;
             }
         }
 
-        // Outer Soft Neon Bloom Halo (Expands & brightens on every beat)
+        // 1. TOP INWARD AMBIENT NEON BLOOM (Fades smoothly from edge into the black void)
         Rectangle {
-            anchors.fill: parent
-            radius: 16
-            color: "transparent"
-            border.width: 2 + Math.round(cairoAmbientBorder.beatPulse * 6)
-            border.color: Qt.rgba(root.highlightColor.r, root.highlightColor.g, root.highlightColor.b, 0.18 + cairoAmbientBorder.beatPulse * 0.38)
-            Behavior on border.width { NumberAnimation { duration: 65; easing.type: Easing.OutQuad } }
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 36 + cairoAmbientBorder.beatPulse * 48
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Qt.rgba(cairoAmbientBorder.glowColor.r, cairoAmbientBorder.glowColor.g, cairoAmbientBorder.glowColor.b, 0.28 + cairoAmbientBorder.beatPulse * 0.38) }
+                GradientStop { position: 0.45; color: Qt.rgba(cairoAmbientBorder.glowColor.r, cairoAmbientBorder.glowColor.g, cairoAmbientBorder.glowColor.b, 0.08 + cairoAmbientBorder.beatPulse * 0.14) }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
         }
 
-        // Mid Glow Frame
+        // 2. BOTTOM INWARD AMBIENT NEON BLOOM
         Rectangle {
-            anchors.fill: parent
-            anchors.margins: 2
-            radius: 14
-            color: "transparent"
-            border.width: 2.5
-            border.color: Qt.rgba(root.highlightColor.r, root.highlightColor.g, root.highlightColor.b, 0.42 + cairoAmbientBorder.beatPulse * 0.48)
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 36 + cairoAmbientBorder.beatPulse * 48
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "transparent" }
+                GradientStop { position: 0.55; color: Qt.rgba(cairoAmbientBorder.glowColor.r, cairoAmbientBorder.glowColor.g, cairoAmbientBorder.glowColor.b, 0.08 + cairoAmbientBorder.beatPulse * 0.14) }
+                GradientStop { position: 1.0; color: Qt.rgba(cairoAmbientBorder.glowColor.r, cairoAmbientBorder.glowColor.g, cairoAmbientBorder.glowColor.b, 0.28 + cairoAmbientBorder.beatPulse * 0.38) }
+            }
         }
 
-        // Crisp Inner Specular Core Rim
+        // 3. LEFT INWARD AMBIENT NEON BLOOM
+        Rectangle {
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            width: 36 + cairoAmbientBorder.beatPulse * 48
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: Qt.rgba(cairoAmbientBorder.glowColor.r, cairoAmbientBorder.glowColor.g, cairoAmbientBorder.glowColor.b, 0.28 + cairoAmbientBorder.beatPulse * 0.38) }
+                GradientStop { position: 0.45; color: Qt.rgba(cairoAmbientBorder.glowColor.r, cairoAmbientBorder.glowColor.g, cairoAmbientBorder.glowColor.b, 0.08 + cairoAmbientBorder.beatPulse * 0.14) }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
+        }
+
+        // 4. RIGHT INWARD AMBIENT NEON BLOOM
+        Rectangle {
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.right: parent.right
+            width: 36 + cairoAmbientBorder.beatPulse * 48
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: "transparent" }
+                GradientStop { position: 0.55; color: Qt.rgba(cairoAmbientBorder.glowColor.r, cairoAmbientBorder.glowColor.g, cairoAmbientBorder.glowColor.b, 0.08 + cairoAmbientBorder.beatPulse * 0.14) }
+                GradientStop { position: 1.0; color: Qt.rgba(cairoAmbientBorder.glowColor.r, cairoAmbientBorder.glowColor.g, cairoAmbientBorder.glowColor.b, 0.28 + cairoAmbientBorder.beatPulse * 0.38) }
+            }
+        }
+
+        // 5. SUBTLE BREATHING INNER GLASS RIM (Replaces the ugly static blue box)
         Rectangle {
             anchors.fill: parent
-            anchors.margins: 3
-            radius: 13
+            anchors.margins: 4
+            radius: 18
             color: "transparent"
-            border.width: 1.2
-            border.color: Qt.lighter(root.highlightColor, 1.35 + cairoAmbientBorder.beatPulse * 0.35)
-            opacity: 0.65 + cairoAmbientBorder.beatPulse * 0.35
+            border.width: 1.5 + cairoAmbientBorder.beatPulse * 1.5
+            border.color: Qt.rgba(cairoAmbientBorder.glowColor.r, cairoAmbientBorder.glowColor.g, cairoAmbientBorder.glowColor.b, 0.22 + cairoAmbientBorder.beatPulse * 0.45)
         }
     }
 
@@ -316,6 +361,10 @@ Item {
 
     Component.onCompleted: {
         root.forceActiveFocus()
+        if (lyricEngine) {
+            lyricEngine.lastTickWallMs = Date.now()
+            lyricEngine.resetPlaybackClock()
+        }
         root.syncInitialCluster()
     }
 

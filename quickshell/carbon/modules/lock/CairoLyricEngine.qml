@@ -23,53 +23,66 @@ Item {
     readonly property bool hasTrack: LyricsService.hasTrack
     readonly property real currentPosition: LyricsService.currentPosition
 
-    // ── 1. 60fps Interpolated Audio Clock ──────────────────────────────────
+    // ── 1. Live Wall-Clock + MPRIS Sync Engine ──────────────────────────────
     property real livePositionMs: 0
-    property real lastFrameMs: 0
+    property double lastTickWallMs: 0
+    property real lastRawMprisPosMs: -1
+    property int _pollCounter: 0
     property int syncOffsetMs: (LyricsService.hasRichWords ? -140 : -35) // -140ms lead for word-synced, -35ms for line-synced
 
     readonly property real effectivePositionMs: Math.max(0, root.livePositionMs - root.syncOffsetMs)
     readonly property real effectivePositionSec: root.effectivePositionMs / 1000.0
 
-    // Smooth drift nudging & seek snapping on MPRIS D-Bus position updates
-    onCurrentPositionChanged: {
-        var mprisPosMs = Math.round(root.currentPosition * 1000)
-        var diff = Math.abs(mprisPosMs - root.livePositionMs)
-        if (diff > 160 || root.livePositionMs === 0) {
-            root.livePositionMs = mprisPosMs
-        } else {
-            root.livePositionMs += (mprisPosMs - root.livePositionMs) * 0.15
-        }
+    function resetPlaybackClock() {
+        root.lastTickWallMs = Date.now()
+        var activePlayer = LyricsService.activePlayer
+        var rawPos = activePlayer ? activePlayer.position : 0
+        var mprisMs = (rawPos > 1000000) ? (rawPos / 1000) : (rawPos < 36000 ? rawPos * 1000 : rawPos)
+        root.lastRawMprisPosMs = mprisMs
+        root.livePositionMs = mprisMs
         root.updateSync()
     }
 
-    // High-precision 60fps clock driver (16ms)
-    Timer {
-        id: clock60fps
-        interval: 16
-        repeat: true
-        running: root.hasTrack
-        onTriggered: {
-            var now = Date.now()
-            var delta = root.lastFrameMs > 0 ? Math.min(60, now - root.lastFrameMs) : 16
-            root.lastFrameMs = now
-
-            if (root.isPlaying) {
-                root.livePositionMs += delta
-            }
-            root.updateSync()
+    onIsPlayingChanged: {
+        if (root.isPlaying) {
+            root.lastTickWallMs = Date.now()
         }
     }
 
-    // MPRIS position refresh pinger (250ms) to ensure D-Bus position ticks arrive
+    // 50ms Live Playback Timer: interpolates livePositionMs via Date.now() so lyrics NEVER freeze
     Timer {
-        interval: 250
+        id: playbackTimer
+        interval: 50
         repeat: true
-        running: root.hasTrack
+        running: true
         onTriggered: {
-            if (LyricsService.activePlayer && LyricsService.activePlayer.positionSupported) {
-                LyricsService.activePlayer.positionChanged()
+            var nowWall = Date.now()
+            var dt = (root.lastTickWallMs > 0) ? Math.min(200, nowWall - root.lastTickWallMs) : 50
+            root.lastTickWallMs = nowWall
+
+            // Force Quickshell MprisPlayer to refresh its D-Bus position every ~10 ticks (500ms)
+            var activePlayer = LyricsService.activePlayer
+            if (activePlayer && typeof activePlayer.positionChanged === "function") {
+                root._pollCounter = (root._pollCounter + 1) % 10
+                if (root._pollCounter === 0) {
+                    activePlayer.positionChanged()
+                }
             }
+
+            // Read raw MPRIS position (handle seconds vs microseconds/milliseconds automatically):
+            var rawPos = activePlayer ? activePlayer.position : 0
+            var mprisMs = (rawPos > 1000000) ? (rawPos / 1000) : (rawPos < 36000 ? rawPos * 1000 : rawPos)
+
+            if (Math.abs(mprisMs - root.lastRawMprisPosMs) > 10) {
+                // Fresh MPRIS position: snap our clock to it
+                root.lastRawMprisPosMs = mprisMs
+                root.livePositionMs = mprisMs
+            } else if (!activePlayer || activePlayer.playbackState === MprisPlaybackState.Playing || activePlayer.isPlaying !== false) {
+                // When MPRIS caches player.position between D-Bus signals, advance livePositionMs by dt
+                root.livePositionMs += dt
+            }
+
+            root.updateSync()
         }
     }
 
@@ -411,7 +424,7 @@ Item {
         }
 
         var livePosMs = root.livePositionMs
-        var effectivePos = livePosMs + 140
+        var effectivePos = root.effectivePositionMs
 
         if (effectivePos < root.allWords[0].startMs) {
             root.row0Word = null
@@ -529,6 +542,7 @@ Item {
     }
 
     Component.onCompleted: {
+        root.resetPlaybackClock()
         root.processLyrics()
     }
 }

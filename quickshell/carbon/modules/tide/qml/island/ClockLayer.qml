@@ -1,5 +1,6 @@
 import QtQuick
 import IslandBackend
+import "../../../../Singletons"
 
 Item {
     id: root
@@ -33,7 +34,7 @@ Item {
         Text {
             anchors.centerIn: parent
             text: currentTime
-            color: "white"
+            color: Theme.fg
             font.pixelSize: textPixelSize
             font.family: heroFontFamily
             font.weight: Font.Bold

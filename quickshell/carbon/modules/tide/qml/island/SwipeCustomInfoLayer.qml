@@ -1,6 +1,7 @@
 import QtQuick
 import IslandBackend
 import Quickshell.Widgets
+import "../../../../Singletons"
 
 Item {
     id: root
@@ -190,7 +191,7 @@ Item {
                         anchors.verticalCenterOffset: root.iconVerticalOffset
                         visible: parent.parent.hasIcon && !parent.parent.isBattery
                         text: modelData.icon || ""
-                        color: "white"
+                        color: Theme.fg
                         font.pixelSize: root.iconPixelSize
                         font.family: root.iconFontFamily
                     }
@@ -315,7 +316,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.boundedTextWidth
                     text: modelData.text || ""
-                    color: "white"
+                    color: Theme.fg
                     font.pixelSize: root.textPixelSize
                     font.family: root.textFontFamily
                     font.weight: Font.Bold
@@ -344,7 +345,7 @@ Item {
         width: textWidth
         anchors.verticalCenter: parent.verticalCenter
         text: timeText
-        color: "white"
+        color: Theme.fg
         opacity: 1 - clampedProgress
         font.pixelSize: root.textPixelSize + 1
         font.family: timeFontFamily

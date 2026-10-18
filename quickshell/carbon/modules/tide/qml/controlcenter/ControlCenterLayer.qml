@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Bluetooth
 import Quickshell.Io
 import IslandBackend
+import "../../../../Singletons"
 import "../common/BluetoothFormatting.js" as BluetoothFormatting
 
 Item {
@@ -142,19 +143,21 @@ Item {
     readonly property var wifiNetworks: wifiController ? wifiController.networks : null
 
     readonly property real sliderKnobSize: 24
-    readonly property color panelColor: StyleTokens.panel
-    readonly property color moduleColor: StyleTokens.module
-    readonly property color moduleHover: StyleTokens.moduleHover
-    readonly property color trackColor: StyleTokens.track
-    readonly property color textPrimary: StyleTokens.textPrimary
-    readonly property color textSecondary: StyleTokens.textSecondary
-    readonly property color cardAccent: StyleTokens.accent
-    readonly property color cardAccentPressed: StyleTokens.accentPressed
-    readonly property color cardFillActive: StyleTokens.cardFillActive
-    readonly property color cardFillHover: StyleTokens.cardFillHover
-    readonly property color buttonFill: StyleTokens.buttonFill
-    readonly property color buttonFillHover: StyleTokens.buttonFillHover
-    readonly property color buttonFillPressed: StyleTokens.buttonFillPressed
+    readonly property color panelColor: Theme.isDark ? StyleTokens.panel : Theme.bg
+    readonly property color moduleColor: Theme.isDark ? StyleTokens.module : "#ffffff"
+    readonly property color moduleHover: Theme.isDark ? StyleTokens.moduleHover : Theme.bgHover
+    readonly property color trackColor: Theme.isDark ? StyleTokens.track : Qt.rgba(0, 0, 0, 0.08)
+    readonly property color textPrimary: Theme.isDark ? StyleTokens.textPrimary : "#111418"
+    readonly property color textPrimaryBright: Theme.isDark ? StyleTokens.textPrimaryBright : "#111418"
+    readonly property color textSecondary: Theme.isDark ? StyleTokens.textSecondary : "#44474f"
+    readonly property color textMuted: Theme.isDark ? StyleTokens.textMuted : "#60646c"
+    readonly property color cardAccent: Theme.accent
+    readonly property color cardAccentPressed: Qt.darker(Theme.accent, 1.15)
+    readonly property color cardFillActive: Theme.accent
+    readonly property color cardFillHover: Theme.isDark ? StyleTokens.cardFillHover : Theme.bgHover
+    readonly property color buttonFill: Theme.isDark ? StyleTokens.buttonFill : Qt.rgba(0, 0, 0, 0.06)
+    readonly property color buttonFillHover: Theme.isDark ? StyleTokens.buttonFillHover : Qt.rgba(0, 0, 0, 0.10)
+    readonly property color buttonFillPressed: Theme.isDark ? StyleTokens.buttonFillPressed : Qt.rgba(0, 0, 0, 0.16)
     readonly property string wifiGlyph: ""
     readonly property string bluetoothGlyph: ""
     readonly property string chargingIconGlyph: "\uf0e7"
@@ -1523,7 +1526,7 @@ Item {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     text: currentTime
-                    color: StyleTokens.textPrimaryBright
+                    color: controlCenter.textPrimaryBright
                     font.pixelSize: 19
                     font.family: heroFontFamily
                     font.weight: Font.Bold
@@ -1535,7 +1538,7 @@ Item {
                     anchors.leftMargin: 10
                     anchors.baseline: timeLabel.baseline
                     text: currentDateLabel
-                    color: textSecondary
+                    color: controlCenter.textSecondary
                     font.pixelSize: 12
                     font.family: textFontFamily
                     font.weight: Font.Medium
@@ -1550,7 +1553,7 @@ Item {
 
                 Text {
                     text: controlCenter.chargingIconGlyph
-                    color: StyleTokens.white
+                    color: controlCenter.textPrimary
                     font.pixelSize: 13
                     font.family: iconFontFamily
                     visible: isCharging
@@ -1559,7 +1562,7 @@ Item {
 
                 Text {
                     text: batteryCapacity + "%"
-                    color: StyleTokens.white
+                    color: controlCenter.textPrimary
                     font.pixelSize: 13
                     font.family: textFontFamily
                     font.weight: Font.DemiBold
@@ -1576,7 +1579,7 @@ Item {
                         anchors.rightMargin: 2
                         radius: 4
                         color: StyleTokens.transparent
-                        border.color: StyleTokens.textSecondary
+                        border.color: controlCenter.textSecondary
                         border.width: 1
 
                         Rectangle {
@@ -1605,7 +1608,7 @@ Item {
                         width: 2
                         height: 6
                         radius: 1
-                        color: StyleTokens.textSecondary
+                        color: controlCenter.textSecondary
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -1648,7 +1651,7 @@ Item {
                         anchors.top: parent.top
                         anchors.topMargin: 12
                         text: wifiGlyph
-                        color: wifiEnabled ? cardAccent : StyleTokens.textDisabled
+                        color: wifiEnabled ? cardAccent : (Theme.isDark ? StyleTokens.textDisabled : "#8c9099")
                         font.pixelSize: 18
                         font.family: iconFontFamily
                     }
@@ -1662,7 +1665,7 @@ Item {
                         width: 34
                         height: 20
                         radius: 10
-                        color: wifiEnabled ? StyleTokens.success : StyleTokens.switchOff
+                        color: wifiEnabled ? cardAccent : (Theme.isDark ? StyleTokens.switchOff : "#d0d4dc")
 
                         Behavior on color {
                             ColorAnimation {
@@ -1723,7 +1726,7 @@ Item {
                             anchors.rightMargin: 8
                             anchors.bottom: parent.bottom
                             text: wifiStatusText
-                            color: StyleTokens.textMuted
+                            color: textMuted
                             font.pixelSize: 10
                             font.family: textFontFamily
                             font.weight: Font.Medium
@@ -1735,7 +1738,7 @@ Item {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             text: "›"
-                            color: wifiPanelOpen ? "#c7c9cf" : StyleTokens.textSubtle
+                            color: wifiPanelOpen ? cardAccent : (Theme.isDark ? StyleTokens.textSubtle : "#72767e")
                             font.pixelSize: 17
                             font.family: textFontFamily
                             font.weight: Font.DemiBold
@@ -1774,7 +1777,7 @@ Item {
                         anchors.top: parent.top
                         anchors.topMargin: 12
                         text: bluetoothGlyph
-                        color: bluetoothEnabled ? cardAccent : StyleTokens.textDisabled
+                        color: bluetoothEnabled ? cardAccent : (Theme.isDark ? StyleTokens.textDisabled : "#8c9099")
                         font.pixelSize: 18
                         font.family: iconFontFamily
                     }
@@ -1788,7 +1791,7 @@ Item {
                         width: 34
                         height: 20
                         radius: 10
-                        color: bluetoothEnabled ? StyleTokens.success : StyleTokens.switchOff
+                        color: bluetoothEnabled ? cardAccent : (Theme.isDark ? StyleTokens.switchOff : "#d0d4dc")
 
                         Behavior on color {
                             ColorAnimation {
@@ -1849,7 +1852,7 @@ Item {
                             anchors.rightMargin: 8
                             anchors.bottom: parent.bottom
                             text: bluetoothStatusText
-                            color: StyleTokens.textMuted
+                            color: textMuted
                             font.pixelSize: 10
                             font.family: textFontFamily
                             font.weight: Font.Medium
@@ -1861,7 +1864,7 @@ Item {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             text: "›"
-                            color: bluetoothPanelOpen ? "#c7c9cf" : StyleTokens.textSubtle
+                            color: bluetoothPanelOpen ? cardAccent : (Theme.isDark ? StyleTokens.textSubtle : "#72767e")
                             font.pixelSize: 17
                             font.family: textFontFamily
                             font.weight: Font.DemiBold
@@ -1911,7 +1914,7 @@ Item {
                     anchors.top: parent.top
                     anchors.topMargin: 11
                     text: "Power Profile"
-                    color: StyleTokens.textPrimary
+                    color: textPrimary
                     font.pixelSize: 13
                     font.family: textFontFamily
                     font.weight: Font.DemiBold
@@ -1924,7 +1927,7 @@ Item {
                     anchors.topMargin: 12
                     width: Math.max(0, parent.width - 100)
                     text: controlCenter.powerProfileLabel(controlCenter.currentPowerProfile)
-                    color: StyleTokens.accent
+                    color: cardAccent
                     horizontalAlignment: Text.AlignRight
                     font.pixelSize: 10
                     font.family: textFontFamily
@@ -1956,9 +1959,9 @@ Item {
                             width: Math.floor((batteryModeCard.width - 20 - 12) / 4)
                             height: 34
                             radius: 10
-                            color: isActive ? StyleTokens.accent : (modeBtnMouse.containsMouse ? "#20ffffff" : "#0dffffff")
+                            color: isActive ? cardAccent : (modeBtnMouse.containsMouse ? (Theme.isDark ? "#20ffffff" : "#14000000") : (Theme.isDark ? "#0dffffff" : "#08000000"))
                             border.width: 1
-                            border.color: isActive ? StyleTokens.accent : "#1affffff"
+                            border.color: isActive ? cardAccent : (Theme.isDark ? "#1affffff" : "#1a000000")
 
                             Behavior on color {
                                 ColorAnimation { duration: 150 }
@@ -1973,7 +1976,7 @@ Item {
                                     text: modelData.glyph
                                     font.pixelSize: 13
                                     font.family: iconFontFamily
-                                    color: isActive ? StyleTokens.white : StyleTokens.textPrimary
+                                    color: isActive ? StyleTokens.white : textPrimary
                                 }
 
                                 Text {
@@ -1982,7 +1985,7 @@ Item {
                                     font.pixelSize: 8
                                     font.family: textFontFamily
                                     font.weight: Font.Medium
-                                    color: isActive ? StyleTokens.white : StyleTokens.textMuted
+                                    color: isActive ? StyleTokens.white : textMuted
                                 }
                             }
 
@@ -2044,7 +2047,7 @@ Item {
                     anchors.bottom: parent.bottom
                     width: parent.width / 2
                     property real slashProgress: controlCenter.focusEnabled ? 1 : 0
-                    property color iconColor: controlCenter.focusEnabled ? StyleTokens.textPrimaryBright : "#c8cad1"
+                    property color iconColor: controlCenter.focusEnabled ? cardAccent : (Theme.isDark ? "#c8cad1" : "#50545c")
 
                     Behavior on slashProgress {
                         NumberAnimation {
@@ -2057,7 +2060,7 @@ Item {
                         anchors.fill: parent
                         anchors.margins: 4
                         radius: 16
-                        color: focusButtonMouse.containsMouse ? "#08ffffff" : StyleTokens.clearBlack
+                        color: focusButtonMouse.containsMouse ? (Theme.isDark ? "#08ffffff" : "#0c000000") : StyleTokens.clearBlack
 
                         Behavior on color {
                             ColorAnimation {
@@ -2134,7 +2137,7 @@ Item {
                         y: quickTogglesCard.toggleLabelTop
                         width: parent.width
                         text: "Silent"
-                        color: controlCenter.focusEnabled ? StyleTokens.textPrimaryBright : StyleTokens.textMuted
+                        color: controlCenter.focusEnabled ? cardAccent : textMuted
                         horizontalAlignment: Text.AlignHCenter
                         font.pixelSize: 10
                         font.family: textFontFamily
@@ -2163,7 +2166,7 @@ Item {
                         anchors.fill: parent
                         anchors.margins: 4
                         radius: 16
-                        color: nightLightButtonMouse.containsMouse ? "#08ffffff" : StyleTokens.clearBlack
+                        color: nightLightButtonMouse.containsMouse ? (Theme.isDark ? "#08ffffff" : "#0c000000") : StyleTokens.clearBlack
 
                         Behavior on color {
                             ColorAnimation {
@@ -2194,7 +2197,7 @@ Item {
                             id: nightLightIcon
                             anchors.centerIn: parent
                             text: controlCenter.nightLightGlyph
-                            color: controlCenter.nightLightEnabled ? StyleTokens.textPrimaryBright : "#c8cad1"
+                            color: controlCenter.nightLightEnabled ? cardAccent : (Theme.isDark ? "#c8cad1" : "#50545c")
                             font.pixelSize: 29
                             font.family: iconFontFamily
                             scale: nightLightButtonMouse.pressed ? 0.94 : 1.0
@@ -2214,7 +2217,7 @@ Item {
                         y: quickTogglesCard.toggleLabelTop
                         width: parent.width
                         text: "Night mode"
-                        color: controlCenter.nightLightEnabled ? StyleTokens.textPrimaryBright : StyleTokens.textMuted
+                        color: controlCenter.nightLightEnabled ? cardAccent : textMuted
                         horizontalAlignment: Text.AlignHCenter
                         font.pixelSize: 10
                         font.family: textFontFamily

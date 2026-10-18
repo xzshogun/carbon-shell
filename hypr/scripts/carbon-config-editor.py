@@ -65,6 +65,7 @@ BLUR_EXCEPTIONS_CONF = os.path.join(CONFIG_DIR, "blur-exceptions.conf")
 POWER_CONFIG_PATH = os.path.join(CONFIG_DIR, "carbon-power.json")
 POWER_CONF_PATH = os.path.join(CONFIG_DIR, "power.conf")
 HYPRIDLE_CONF_PATH = os.path.join(CONFIG_DIR, "hypridle.conf")
+TIDE_USERCONFIG_PATH = os.path.expanduser("~/.config/tide-island/userconfig.json")
 
 DEFAULT_POWER_CONFIG = {
     "profile": "balanced",
@@ -899,11 +900,13 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         theme = read_json(THEME_PATH, {})
         self.accent_hex = theme.get("accent", "#f4a7b5")
         self.accent_lit = theme.get("accentLit", "#fcd5dc")
-        self.is_dark = theme.get("isDark", True)
+        self.theme_mode = theme.get("mode", "dark" if theme.get("isDark", True) else "light")
+        self.is_dark = (self.theme_mode == "dark")
 
         # Loaded Configs
         self.bar_mode = read_json(BAR_MODE_PATH, {"mode": "notch", "islandStyle": "notch"})
         self.bar_pos = read_json(BAR_POS_PATH, {})
+        self.tide_config = read_json(TIDE_USERCONFIG_PATH, {})
         self.clock_cfg = read_json(CLOCK_STYLE_PATH, {"style": "titan", "format": "12"})
         self.motion_cfg = read_json(MOTION_CONFIG_PATH, {
             "reduceMotion": False,
@@ -1031,27 +1034,39 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         self.apply_btn.add_css_class("suggested-action")
 
     def apply_css(self):
+        is_light = getattr(self, "theme_mode", "dark") == "light"
+        win_bg = "#f6f7fa" if is_light else "#0c0c10"
+        win_fg = "#191c20" if is_light else "#e2e2e9"
+        sidebar_bg = "#eeeff4" if is_light else "#08080c"
+        card_bg = "#ffffff" if is_light else "#131318"
+        border_col = "rgba(0, 0, 0, 0.08)" if is_light else "rgba(255, 255, 255, 0.07)"
+        row_border = "rgba(0, 0, 0, 0.05)" if is_light else "rgba(255, 255, 255, 0.04)"
+        sub_fg = "rgba(0, 0, 0, 0.55)" if is_light else "rgba(255, 255, 255, 0.45)"
+        title_fg = "#111418" if is_light else "#f0f0f5"
+        search_bg = "rgba(0, 0, 0, 0.04)" if is_light else "rgba(255, 255, 255, 0.05)"
+        search_fg = "#111418" if is_light else "#ffffff"
+
         css = f"""
         window {{
-            background-color: #0c0c10;
-            color: #e2e2e9;
+            background-color: {win_bg};
+            color: {win_fg};
         }}
         .sidebar-container {{
-            background-color: #08080c;
-            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            background-color: {sidebar_bg};
+            border-right: 1px solid {border_col};
             padding: 12px 8px;
         }}
         .search-entry {{
-            background-color: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background-color: {search_bg};
+            border: 1px solid {border_col};
             border-radius: 12px;
-            color: #ffffff;
+            color: {search_fg};
             padding: 6px 10px;
             margin-bottom: 8px;
         }}
         .search-entry:focus {{
             border-color: {self.accent_hex};
-            background-color: rgba(255, 255, 255, 0.08);
+            background-color: {search_bg};
         }}
         .nav-item-row {{
             border-radius: 12px;
@@ -1060,10 +1075,10 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             transition: all 120ms ease;
         }}
         .nav-item-row:hover {{
-            background-color: rgba(255, 255, 255, 0.04);
+            background-color: {border_col};
         }}
         .nav-item-row:selected {{
-            background-color: rgba(255, 255, 255, 0.08);
+            background-color: {self.accent_rgba(0.12)};
             color: {self.accent_hex};
         }}
         .nav-item-row:selected label {{
@@ -1071,50 +1086,50 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             font-weight: 600;
         }}
         .nav-icon-badge {{
-            background-color: rgba(255, 255, 255, 0.05);
+            background-color: {border_col};
             border-radius: 16px;
             min-width: 28px;
             min-height: 28px;
         }}
         .hero-card {{
-            background-color: #131318;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 18px;
-            padding: 14px 18px;
-            margin-bottom: 12px;
+            background-color: {card_bg};
+            border: 1px solid {border_col};
+            border-radius: 14px;
+            padding: 12px 18px;
+            margin-bottom: 10px;
             min-width: 0;
         }}
         .hero-icon-circle {{
             background-color: {self.accent_rgba(0.14)};
-            border-radius: 20px;
-            min-width: 40px;
-            min-height: 40px;
+            border-radius: 18px;
+            min-width: 38px;
+            min-height: 38px;
         }}
         .hero-title {{
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 700;
-            color: #ffffff;
-            margin-top: 6px;
+            color: {title_fg};
+            margin-top: 4px;
         }}
         .hero-subtitle {{
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.55);
+            color: {sub_fg};
             margin-top: 2px;
         }}
         .settings-card {{
-            background-color: #131318;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 18px;
-            padding: 12px 18px;
-            margin-bottom: 12px;
+            background-color: {card_bg};
+            border: 1px solid {border_col};
+            border-radius: 14px;
+            padding: 10px 18px;
+            margin-bottom: 10px;
             min-width: 0;
         }}
         .settings-row {{
-            padding: 6px 0px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 5px 0px;
+            border-bottom: 1px solid {row_border};
             min-width: 0;
-            border-radius: 12px;
-            transition: all 250ms ease;
+            border-radius: 10px;
+            transition: all 200ms ease;
         }}
         .settings-row:last-child {{
             border-bottom: none;
@@ -1122,7 +1137,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         .highlight-setting-row {{
             background-color: {self.accent_rgba(0.20)};
             border: 1.5px solid {self.accent_hex};
-            padding: 8px 12px;
+            padding: 6px 12px;
         }}
         .search-sub-item-btn {{
             background-color: transparent;
@@ -1133,7 +1148,7 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             transition: all 120ms ease;
         }}
         .search-sub-item-btn:hover {{
-            background-color: rgba(255, 255, 255, 0.08);
+            background-color: {border_col};
         }}
         .sub-arrow-lbl {{
             font-size: 11px;
@@ -1141,24 +1156,25 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         }}
         .sub-title-lbl {{
             font-size: 11px;
-            color: rgba(255, 255, 255, 0.75);
+            color: {sub_fg};
         }}
         .match-count-badge {{
-            background-color: {self.accent_rgba(0.20)};
+            background-color: {self.accent_rgba(0.15)};
             color: {self.accent_hex};
+            border: 1px solid {self.accent_rgba(0.3)};
             font-size: 10px;
             font-weight: 700;
             border-radius: 10px;
-            padding: 2px 6px;
+            padding: 2px 7px;
         }}
         .row-title {{
             font-size: 13px;
-            font-weight: 500;
-            color: #f0f0f5;
+            font-weight: 600;
+            color: {title_fg};
         }}
         .row-subtitle {{
             font-size: 11px;
-            color: rgba(255, 255, 255, 0.45);
+            color: {sub_fg};
         }}
         .value-label {{
             font-size: 12px;
@@ -1167,23 +1183,23 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             min-width: 60px;
         }}
         .nav-circle-btn {{
-            background-color: rgba(255, 255, 255, 0.06);
+            background-color: {border_col};
             border-radius: 16px;
             min-width: 32px;
             min-height: 32px;
             padding: 0;
             border: none;
-            color: #ffffff;
+            color: {win_fg};
         }}
         .nav-circle-btn:hover {{
-            background-color: rgba(255, 255, 255, 0.12);
+            background-color: {self.accent_rgba(0.20)};
         }}
         .nav-circle-btn:disabled {{
             opacity: 0.35;
         }}
         .bottom-action-bar {{
-            background-color: #08080c;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            background-color: {sidebar_bg};
+            border-top: 1px solid {border_col};
             padding: 10px 24px;
         }}
         .apply-btn {{
@@ -1194,14 +1210,46 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         }}
         .status-label {{
             font-size: 13px;
-            color: rgba(255, 255, 255, 0.55);
+            color: {sub_fg};
+        }}
+        .segmented-group {{
+            background-color: {sidebar_bg};
+            border: 1px solid {border_col};
+            border-radius: 12px;
+            padding: 3px;
+        }}
+        .mode-tab-btn {{
+            background-color: transparent;
+            border: none;
+            border-radius: 9px;
+            padding: 5px 12px;
+            font-size: 11px;
+            font-weight: 500;
+            color: {sub_fg};
+            transition: all 120ms ease;
+        }}
+        .mode-tab-btn:hover {{
+            color: {title_fg};
+            background-color: {border_col};
+        }}
+        .mode-tab-btn.active {{
+            background-color: {self.accent_hex};
+            color: #ffffff;
+            font-weight: 700;
+        }}
+        combobox button {{
+            border-radius: 10px;
+            padding: 4px 10px;
+            border: 1px solid {border_col};
+            background-color: {sidebar_bg};
+            color: {win_fg};
         }}
         scale highlight {{
             background-color: {self.accent_hex};
             border-radius: 3px;
         }}
         scale trough {{
-            background-color: rgba(255, 255, 255, 0.10);
+            background-color: {border_col};
             border-radius: 3px;
             min-height: 5px;
         }}
@@ -1216,8 +1264,8 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             background-color: {self.accent_hex};
         }}
         .blank-tile-preview {{
-            background-color: #111116;
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            background-color: {sidebar_bg};
+            border: 1px solid {border_col};
             border-radius: 14px;
         }}
         .blank-tile-preview picture, .blank-tile-preview image {{
@@ -1228,10 +1276,15 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             font-weight: 600;
         }}
         """
-        provider = Gtk.CssProvider()
-        provider.load_from_data(css.encode("utf-8"))
+        if hasattr(self, "_css_provider") and self._css_provider:
+            try:
+                Gtk.StyleContext.remove_provider_for_display(Gdk.Display.get_default(), self._css_provider)
+            except Exception:
+                pass
+        self._css_provider = Gtk.CssProvider()
+        self._css_provider.load_from_data(css.encode("utf-8"))
         Gtk.StyleContext.add_provider_for_display(
-            Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_USER + 50
+            Gdk.Display.get_default(), self._css_provider, Gtk.STYLE_PROVIDER_PRIORITY_USER + 50
         )
 
     def build_ui(self):
@@ -1842,156 +1895,367 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         return entry
 
     # ── Category 1: Bar & Island ───────────────────────────────────────────
+    def on_theme_mode_clicked(self, target_mode):
+        if self.theme_mode == target_mode:
+            return
+        self.theme_mode = target_mode
+        self.is_dark = (target_mode == "dark")
+
+        if hasattr(self, "btn_dark_mode") and hasattr(self, "btn_light_mode"):
+            if self.is_dark:
+                self.btn_dark_mode.add_css_class("active")
+                self.btn_light_mode.remove_css_class("active")
+            else:
+                self.btn_light_mode.add_css_class("active")
+                self.btn_dark_mode.remove_css_class("active")
+
+        self.lbl_status.set_text(f"Applying Material You {target_mode.capitalize()} mode...")
+
+        def run_theme_switch():
+            script_path = os.path.join(CONFIG_DIR, "scripts/theme-mk.py")
+            if not os.path.exists(script_path):
+                script_path = os.path.expanduser("~/.config/hypr/scripts/theme-mk.py")
+            cmd = ["python3", script_path, "--mode", target_mode]
+            subprocess.run(cmd, check=False)
+            GLib.idle_add(self._on_theme_switched, target_mode)
+
+        threading.Thread(target=run_theme_switch, daemon=True).start()
+
+    def _on_theme_switched(self, mode):
+        theme = read_json(THEME_PATH, {})
+        self.accent_hex = theme.get("accent", "#f4a7b5")
+        self.accent_lit = theme.get("accentLit", "#fcd5dc")
+        self.apply_css()
+        self.lbl_status.set_text(f"Material You {mode.capitalize()} mode applied.")
+
     def build_bar_page(self, icon, title, subtitle):
         page = self.create_page_container(icon, title, subtitle)
-        card = self.create_settings_card()
 
-        modes = ["Notch Mode", "Pill Mode", "Minimal Island", "Vanish Mode (Nucleus)"]
+        # ── 1. Color Scheme & Dynamic Material You Card ──
+        card_theme = self.create_settings_card()
+
+        row_theme = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        row_theme.add_css_class("settings-row")
+        row_theme.set_hexpand(True)
+
+        theme_lbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        theme_lbox.set_hexpand(True)
+        lbl_th_t = Gtk.Label(label="Color Scheme")
+        lbl_th_t.set_halign(Gtk.Align.START)
+        lbl_th_t.add_css_class("row-title")
+        theme_lbox.append(lbl_th_t)
+
+        lbl_th_s = Gtk.Label(label="Dynamic palette from wallpaper (Notch, Pill, Minimal Island)")
+        lbl_th_s.set_halign(Gtk.Align.START)
+        lbl_th_s.set_wrap(True)
+        lbl_th_s.set_wrap_mode(Pango.WrapMode.WORD)
+        lbl_th_s.set_max_width_chars(28)
+        lbl_th_s.add_css_class("row-subtitle")
+        theme_lbox.append(lbl_th_s)
+        row_theme.append(theme_lbox)
+
+        seg_theme = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+        seg_theme.add_css_class("segmented-group")
+        seg_theme.set_valign(Gtk.Align.CENTER)
+        seg_theme.set_halign(Gtk.Align.END)
+
+        self.btn_dark_mode = Gtk.Button(label="Dark")
+        self.btn_dark_mode.add_css_class("mode-tab-btn")
+        self.btn_light_mode = Gtk.Button(label="Light")
+        self.btn_light_mode.add_css_class("mode-tab-btn")
+
+        if self.is_dark:
+            self.btn_dark_mode.add_css_class("active")
+        else:
+            self.btn_light_mode.add_css_class("active")
+
+        self.btn_dark_mode.connect("clicked", lambda b: self.on_theme_mode_clicked("dark"))
+        self.btn_light_mode.connect("clicked", lambda b: self.on_theme_mode_clicked("light"))
+
+        seg_theme.append(self.btn_dark_mode)
+        seg_theme.append(self.btn_light_mode)
+        row_theme.append(seg_theme)
+        card_theme.append(row_theme)
+        self.register_search_item(self.current_cat_id, "Color Scheme", "Toggle dynamic Light or Dark Material You theme", row_theme)
+        page.append(card_theme)
+
+        # Shell Mode Selection
+        card_selector = self.create_settings_card()
+
+        modes = ["Screen Notch", "Floating Pill", "Minimal Island", "Vanish"]
         mode_ids = ["notch", "pill", "minimal", "nucleus"]
         cur_mode = self.bar_mode.get("mode", "notch")
         cur_mode_norm = "minimal" if cur_mode in ("minimal", "minimal_notch") else cur_mode
         cur_idx = mode_ids.index(cur_mode_norm) if cur_mode_norm in mode_ids else 0
 
-        # Bar Style Combobox (Always visible)
-        dd_mode = self.add_combo_row(card, "Bar Style", "Choose screen notch, floating pill, or single dynamic island", modes, cur_idx, lambda idx: on_mode_selected(idx))
+        mode_stack = Gtk.Stack()
+        mode_stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        mode_stack.set_transition_duration(160)
 
-        # Screen Position (Top / Bottom) - Notch & Pill
+        def show_mode_settings(target_mode):
+            mode_stack.set_visible_child_name(target_mode)
+
+        def on_active_mode_changed(idx):
+            mode_id = mode_ids[idx]
+            stored_mode = "minimal_notch" if mode_id == "minimal" else mode_id
+            self.bar_mode["mode"] = stored_mode
+            self.bar_mode["islandStyle"] = stored_mode
+            self.mark_dirty()
+            show_mode_settings(mode_id)
+
+        dd_mode = self.add_combo_row(
+            card_selector,
+            "Shell Mode",
+            "Choose active bar experience (Screen Notch, Floating Pill, Minimal Island, or Vanish)",
+            modes,
+            cur_idx,
+            on_active_mode_changed
+        )
+
+        page.append(card_selector)
+
+        # ── 3. Tab 1: Notch Mode ──
+        card_notch = self.create_settings_card()
+
         edges = ["Top", "Bottom"]
         cur_edge = self.bar_pos.get("mainBarEdge", "top")
         edge_idx = 1 if cur_edge == "bottom" else 0
         def on_edge_selected(idx):
             self.bar_pos["mainBarEdge"] = "bottom" if idx == 1 else "top"
             self.mark_dirty()
-        dd_edge = self.add_combo_row(card, "Screen Position", "Anchor bar to top or bottom edge", edges, edge_idx, on_edge_selected)
-        row_pos = dd_edge.get_parent()
+        self.add_combo_row(card_notch, "Screen Position", "Anchor notch bar to top or bottom edge", edges, edge_idx, on_edge_selected)
 
-        # Battery Layout (Horizontal / Vertical)
+        cur_h = int(self.bar_pos.get("notchHeight", 32))
+        def on_notch_h_changed(v):
+            self.bar_pos["notchHeight"] = v
+            self.bar_pos["barHeight"] = v
+            self.mark_dirty()
+        self.add_slider_row(card_notch, "Notch Height", "Vertical height of the screen notch", 24, 48, 1, cur_h, "px", on_notch_h_changed)
+
+        cur_ear = int(self.bar_pos.get("notchEarRadius", 10))
+        def on_notch_ear_changed(v):
+            self.bar_pos["notchEarRadius"] = v
+            self.mark_dirty()
+        self.add_slider_row(card_notch, "Notch Ear Radius", "SaneAspect top concave fillet curve", 0, 16, 1, cur_ear, "px", on_notch_ear_changed)
+
+        cur_bot = int(self.bar_pos.get("notchBottomRadius", 14))
+        def on_notch_bot_changed(v):
+            self.bar_pos["notchBottomRadius"] = v
+            self.mark_dirty()
+        self.add_slider_row(card_notch, "Notch Corner Radius", "Convex rounded bottom corners", 8, 24, 1, cur_bot, "px", on_notch_bot_changed)
+
+        cur_o_notch = int(float(self.bar_pos.get("notchOpacity", 0.96)) * 100)
+        def on_notch_o_changed(v):
+            val = round(v / 100.0, 2)
+            self.bar_pos["notchOpacity"] = val
+            self.mark_dirty()
+        self.add_slider_row(card_notch, "Background Opacity", "Surface darkness / transparency", 20, 100, 5, cur_o_notch, "%", on_notch_o_changed)
+
+        cur_blur_notch = bool(self.bar_pos.get("notchBlur", True))
+        def on_notch_blur_toggle(act):
+            self.bar_pos["notchBlur"] = act
+            self.pending_layer_blur = act
+            self.mark_dirty()
+        self.add_switch_row(card_notch, "Frosted Glass Blur", "Enable backdrop blur behind the notch", cur_blur_notch, on_notch_blur_toggle)
+
+        cur_bls = int(self.looknfeel_cfg.get("blur_size", 3))
+        def on_notch_bls_changed(v):
+            self.looknfeel_cfg["blur_size"] = int(v)
+            self.mark_dirty()
+        self.add_slider_row(card_notch, "Blur Radius Size", "Backdrop blur radius (lower = smoother)", 1, 16, 1, cur_bls, "px", on_notch_bls_changed)
+
+        cur_blp = int(self.looknfeel_cfg.get("blur_passes", 1))
+        def on_notch_blp_changed(v):
+            self.looknfeel_cfg["blur_passes"] = int(v)
+            self.mark_dirty()
+        self.add_slider_row(card_notch, "Blur Passes", "Sampling passes (1 = fast/smooth, 2+ = heavy GPU)", 1, 4, 1, cur_blp, "passes", on_notch_blp_changed)
+
         bat_layouts = ["Horizontal", "Vertical"]
         cur_bat_layout = str(self.bar_mode.get("batteryLayout", "horizontal")).capitalize()
         bat_idx = 1 if cur_bat_layout == "Vertical" else 0
         def on_bat_layout_selected(idx):
             self.bar_mode["batteryLayout"] = "vertical" if idx == 1 else "horizontal"
             self.mark_dirty()
-        dd_bat = self.add_combo_row(card, "Battery Layout", "Control Center fluid battery layout orientation", bat_layouts, bat_idx, on_bat_layout_selected)
-        row_bat = dd_bat.get_parent()
+        self.add_combo_row(card_notch, "Battery Layout", "Control Center fluid battery layout orientation", bat_layouts, bat_idx, on_bat_layout_selected)
 
-        # Bar Height - Notch & Pill
-        cur_h = int(self.bar_pos.get("notchHeight", 32))
-        def on_h_changed(v):
-            self.bar_pos["notchHeight"] = v
-            self.bar_pos["barHeight"] = v
+        mode_stack.add_named(card_notch, "notch")
+
+        # ── 4. Tab 2: Pill Mode ──
+        card_pill = self.create_settings_card()
+
+        def on_pill_edge_selected(idx):
+            self.bar_pos["mainBarEdge"] = "bottom" if idx == 1 else "top"
+            self.mark_dirty()
+        self.add_combo_row(card_pill, "Screen Position", "Anchor pill bar to top or bottom edge", edges, edge_idx, on_pill_edge_selected)
+
+        cur_pill_h = int(self.bar_pos.get("pillHeight", 32))
+        def on_pill_h_changed(v):
             self.bar_pos["pillHeight"] = v
             self.mark_dirty()
-        sl_h = self.add_slider_row(card, "Bar Height", "Vertical height of the notch / bar", 24, 48, 1, cur_h, "px", on_h_changed)
-        row_h = sl_h.get_parent()
+        self.add_slider_row(card_pill, "Pill Bar Height", "Vertical height of the floating pill", 24, 48, 1, cur_pill_h, "px", on_pill_h_changed)
 
-        # Notch Ear Radius - Notch Only
-        cur_ear = int(self.bar_pos.get("notchEarRadius", 10))
-        def on_ear_changed(v):
-            self.bar_pos["notchEarRadius"] = v
-            self.mark_dirty()
-        sl_ear = self.add_slider_row(card, "Notch Ear Radius", "SaneAspect top concave fillet curve", 0, 16, 1, cur_ear, "px", on_ear_changed)
-        row_ear = sl_ear.get_parent()
-
-        # Notch Corner Radius - Notch Only
-        cur_bot = int(self.bar_pos.get("notchBottomRadius", 14))
-        def on_bot_changed(v):
-            self.bar_pos["notchBottomRadius"] = v
-            self.mark_dirty()
-        sl_bot = self.add_slider_row(card, "Notch Corner Radius", "Convex rounded bottom corners", 8, 24, 1, cur_bot, "px", on_bot_changed)
-        row_bot = sl_bot.get_parent()
-
-        # Background Opacity - Notch, Pill, Minimal
-        cur_o = int(float(self.bar_pos.get("notchOpacity", 0.96)) * 100)
-        def on_o_changed(v):
+        cur_o_pill = int(float(self.bar_pos.get("pillOpacity", 0.96)) * 100)
+        def on_pill_o_changed(v):
             val = round(v / 100.0, 2)
-            self.bar_pos["notchOpacity"] = val
-            self.bar_pos["shellOpacity"] = val
             self.bar_pos["pillOpacity"] = val
-            self.bar_pos["minimalOpacity"] = val
             self.mark_dirty()
-        sl_o = self.add_slider_row(card, "Background Opacity", "Surface darkness / transparency", 20, 100, 5, cur_o, "%", on_o_changed)
-        row_op = sl_o.get_parent()
+        self.add_slider_row(card_pill, "Background Opacity", "Surface darkness / transparency", 20, 100, 5, cur_o_pill, "%", on_pill_o_changed)
 
-        # Frosted Glass Blur - Notch, Pill, Minimal
-        cur_blur = is_layer_blur_enabled()
-        def on_blur_toggle(act):
-            nonlocal cur_blur
-            cur_blur = act
-            self.bar_pos["notchBlur"] = act
-            self.bar_pos["shellBlur"] = act
+        cur_blur_pill = bool(self.bar_pos.get("pillBlur", True))
+        def on_pill_blur_toggle(act):
             self.bar_pos["pillBlur"] = act
             self.pending_layer_blur = act
             self.mark_dirty()
-        sw_blur = self.add_switch_row(card, "Frosted Glass Blur", "Enable backdrop blur behind the bar", cur_blur, on_blur_toggle)
-        row_blur = sw_blur.get_parent()
+        self.add_switch_row(card_pill, "Frosted Glass Blur", "Enable backdrop blur behind the floating pill", cur_blur_pill, on_pill_blur_toggle)
 
-        # Blur Radius Size - Notch, Pill, Minimal
-        cur_bls = int(self.looknfeel_cfg.get("blur_size", 3))
-        def on_bls_bar_changed(v):
+        def on_pill_bls_changed(v):
             self.looknfeel_cfg["blur_size"] = int(v)
             self.mark_dirty()
-        sl_bls = self.add_slider_row(card, "Blur Radius Size", "Backdrop blur radius (lower = smoother, less lag)", 1, 16, 1, cur_bls, "px", on_bls_bar_changed)
-        row_bls = sl_bls.get_parent()
+        self.add_slider_row(card_pill, "Blur Radius Size", "Backdrop blur radius", 1, 16, 1, cur_bls, "px", on_pill_bls_changed)
 
-        # Blur Passes - Notch, Pill, Minimal
-        cur_blp = int(self.looknfeel_cfg.get("blur_passes", 1))
-        def on_blp_bar_changed(v):
+        def on_pill_blp_changed(v):
             self.looknfeel_cfg["blur_passes"] = int(v)
             self.mark_dirty()
-        sl_blp = self.add_slider_row(card, "Blur Passes", "Sampling passes (1 = ultra-fast / low lag, 2+ = heavy GPU load)", 1, 4, 1, cur_blp, "passes", on_blp_bar_changed)
-        row_blp = sl_blp.get_parent()
+        self.add_slider_row(card_pill, "Blur Passes", "Sampling passes (1 = ultra-fast / low lag)", 1, 4, 1, cur_blp, "passes", on_pill_blp_changed)
 
-        # X-Ray Blur Mode - Notch, Pill, Minimal
-        cur_blxr = bool(self.looknfeel_cfg.get("blur_xray", False))
-        def on_blxr_bar_toggle(act):
-            self.looknfeel_cfg["blur_xray"] = act
+        self.add_combo_row(card_pill, "Battery Layout", "Control Center fluid battery layout orientation", bat_layouts, bat_idx, on_bat_layout_selected)
+
+        mode_stack.add_named(card_pill, "pill")
+
+        # ── 5. Tab 3: Minimal Island Mode (Tide Island) ──
+        card_minimal = self.create_settings_card()
+
+        cur_isl_h = int(self.tide_config.get("islandHeight", self.bar_pos.get("islandHeight", 24)))
+        def on_isl_h_changed(v):
+            self.tide_config["islandHeight"] = int(v)
+            self.bar_pos["islandHeight"] = int(v)
+            write_json(TIDE_USERCONFIG_PATH, self.tide_config)
             self.mark_dirty()
-        sw_blxr = self.add_switch_row(card, "Blur X-Ray Mode", "Blur directly through to wallpaper (disable for max performance)", cur_blxr, on_blxr_bar_toggle)
-        row_blxr = sw_blxr.get_parent()
+        self.add_slider_row(card_minimal, "Island Resting Height", "Height of the minimal island capsule when idle", 20, 50, 1, cur_isl_h, "px", on_isl_h_changed)
 
-        def update_visibility(selected_mode):
-            is_notch = (selected_mode == "notch")
-            is_pill = (selected_mode == "pill")
-            is_minimal = (selected_mode == "minimal")
-            is_nucleus = (selected_mode == "nucleus")
-
-            # Screen Position: Notch and Pill
-            row_pos.set_visible(is_notch or is_pill)
-
-            # Bar Height: Notch and Pill
-            row_h.set_visible(is_notch or is_pill)
-
-            # Notch Ear Radius: strictly Notch
-            row_ear.set_visible(is_notch)
-
-            # Notch Corner Radius: strictly Notch
-            row_bot.set_visible(is_notch)
-
-            # Background Opacity: Notch, Pill, and Minimal
-            row_op.set_visible(is_notch or is_pill or is_minimal)
-
-            # Frosted Glass Blur & Parameters: Notch, Pill, and Minimal
-            row_blur.set_visible(is_notch or is_pill or is_minimal)
-            row_bls.set_visible(is_notch or is_pill or is_minimal)
-            row_blp.set_visible(is_notch or is_pill or is_minimal)
-            row_blxr.set_visible(is_notch or is_pill or is_minimal)
-
-            # Battery Layout: Notch, Pill, Minimal (hidden in Vanish Mode)
-            row_bat.set_visible(is_notch or is_pill or is_minimal)
-
-        def on_mode_selected(idx):
-            mode_id = mode_ids[idx]
-            stored_mode = "minimal_notch" if mode_id == "minimal" else mode_id
-            self.bar_mode["mode"] = stored_mode
-            self.bar_mode["islandStyle"] = stored_mode
+        cur_isl_w = int(self.tide_config.get("islandWidth", self.bar_pos.get("islandWidth", 100)))
+        def on_isl_w_changed(v):
+            self.tide_config["islandWidth"] = int(v)
+            self.bar_pos["islandWidth"] = int(v)
+            write_json(TIDE_USERCONFIG_PATH, self.tide_config)
             self.mark_dirty()
-            update_visibility(mode_id)
+        self.add_slider_row(card_minimal, "Island Resting Width", "Resting width before expanding for media/status", 80, 400, 5, cur_isl_w, "px", on_isl_w_changed)
 
-        update_visibility(cur_mode_norm)
+        cur_isl_margin = int(self.tide_config.get("islandTopMargin", self.bar_pos.get("islandTopMargin", 3)))
+        def on_isl_margin_changed(v):
+            self.tide_config["islandTopMargin"] = int(v)
+            self.bar_pos["islandTopMargin"] = int(v)
+            write_json(TIDE_USERCONFIG_PATH, self.tide_config)
+            self.mark_dirty()
+        self.add_slider_row(card_minimal, "Top Margin (Floating Distance)", "Distance between screen top bezel and island", 0, 24, 1, cur_isl_margin, "px", on_isl_margin_changed)
 
+        cur_isl_notchmode = bool(self.tide_config.get("notchMode", True))
+        def on_isl_notchmode_toggle(act):
+            self.tide_config["notchMode"] = act
+            write_json(TIDE_USERCONFIG_PATH, self.tide_config)
+            self.mark_dirty()
+        self.add_switch_row(card_minimal, "Dock to Top Bezel (Notch Style)", "Attach to screen top bezel with optional ear curves", cur_isl_notchmode, on_isl_notchmode_toggle)
 
-        page.append(card)
+        cur_isl_ear = int(self.tide_config.get("notchEarRadius", self.bar_pos.get("notchEarRadius", 0)))
+        def on_isl_ear_changed(v):
+            self.tide_config["notchEarRadius"] = int(v)
+            self.bar_pos["notchEarRadius"] = int(v)
+            write_json(TIDE_USERCONFIG_PATH, self.tide_config)
+            self.mark_dirty()
+        self.add_slider_row(card_minimal, "Dock Ear Fillet Radius", "Concave curve connecting island to screen bezel", 0, 16, 1, cur_isl_ear, "px", on_isl_ear_changed)
+
+        cur_isl_op = int(self.tide_config.get("islandBackgroundOpacity", int(float(self.bar_pos.get("minimalOpacity", 0.6)) * 100)))
+        def on_isl_op_changed(v):
+            self.tide_config["islandBackgroundOpacity"] = int(v)
+            self.bar_pos["minimalOpacity"] = round(v / 100.0, 2)
+            write_json(TIDE_USERCONFIG_PATH, self.tide_config)
+            self.mark_dirty()
+        self.add_slider_row(card_minimal, "Island Surface Opacity", "Surface opacity (adapts to light/dark Material You)", 20, 100, 5, cur_isl_op, "%", on_isl_op_changed)
+
+        cur_isl_blur = bool(self.tide_config.get("shellBlurEnabled", False))
+        def on_isl_blur_toggle(act):
+            self.tide_config["shellBlurEnabled"] = act
+            self.bar_pos["minimalBlur"] = act
+            self.pending_layer_blur = act
+            self.mark_dirty()
+        self.add_switch_row(card_minimal, "Frosted Glass Blur", "Enable backdrop blur behind the minimal island", cur_isl_blur, on_isl_blur_toggle)
+
+        cur_isl_bls = int(self.tide_config.get("shellBlurSize", 3))
+        def on_isl_bls_changed(v):
+            self.tide_config["shellBlurSize"] = int(v)
+            self.looknfeel_cfg["blur_size"] = int(v)
+            self.mark_dirty()
+        self.add_slider_row(card_minimal, "Blur Radius Size", "Backdrop blur radius", 1, 16, 1, cur_isl_bls, "px", on_isl_bls_changed)
+
+        cur_isl_blp = int(self.tide_config.get("shellBlurPasses", 1))
+        def on_isl_blp_changed(v):
+            self.tide_config["shellBlurPasses"] = int(v)
+            self.looknfeel_cfg["blur_passes"] = int(v)
+            self.mark_dirty()
+        self.add_slider_row(card_minimal, "Blur Passes", "Sampling passes (1 = ultra-fast / low lag)", 1, 4, 1, cur_isl_blp, "passes", on_isl_blp_changed)
+
+        self.add_combo_row(card_minimal, "Battery Layout", "Control Center fluid battery layout orientation", bat_layouts, bat_idx, on_bat_layout_selected)
+
+        mode_stack.add_named(card_minimal, "minimal")
+
+        # ── 6. Tab 4: Vanish Mode (Nucleus) ──
+        card_vanish = self.create_settings_card()
+
+        row_vstatus = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        row_vstatus.add_css_class("settings-row")
+        vstatus_lbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        vstatus_lbox.set_hexpand(True)
+        lbl_vst_t = Gtk.Label(label="Vanish Mode (Orbital Nucleus)")
+        lbl_vst_t.set_halign(Gtk.Align.START)
+        lbl_vst_t.add_css_class("row-title")
+        vstatus_lbox.append(lbl_vst_t)
+        lbl_vst_s = Gtk.Label(label="Completely hides persistent top bar for pure full-screen workflow")
+        lbl_vst_s.set_halign(Gtk.Align.START)
+        lbl_vst_s.add_css_class("row-subtitle")
+        vstatus_lbox.append(lbl_vst_s)
+        row_vstatus.append(vstatus_lbox)
+
+        btn_act_vanish = Gtk.Button(label="Activate Vanish Mode")
+        btn_act_vanish.add_css_class("suggested-action")
+        btn_act_vanish.set_valign(Gtk.Align.CENTER)
+        def on_quick_vanish(b):
+            self.bar_mode["mode"] = "nucleus"
+            self.bar_mode["islandStyle"] = "nucleus"
+            self.mark_dirty()
+            dd_mode.set_selected(3)
+            self.save_and_apply()
+        btn_act_vanish.connect("clicked", on_quick_vanish)
+        row_vstatus.append(btn_act_vanish)
+        card_vanish.append(row_vstatus)
+
+        cur_trans = bool(self.bar_mode.get("nucleus", {}).get("transition", True))
+        def on_trans_toggle(act):
+            if "nucleus" not in self.bar_mode:
+                self.bar_mode["nucleus"] = {}
+            self.bar_mode["nucleus"]["transition"] = act
+            self.mark_dirty()
+        self.add_switch_row(card_vanish, "Orbital Transition Animation", "Play dynamic satellite expansion animation when opening", cur_trans, on_trans_toggle)
+
+        row_vinfo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        row_vinfo.add_css_class("settings-row")
+        lbl_vinfo_t = Gtk.Label(label="Cyberpunk Aesthetic & Shortcuts")
+        lbl_vinfo_t.set_halign(Gtk.Align.START)
+        lbl_vinfo_t.add_css_class("row-title")
+        row_vinfo.append(lbl_vinfo_t)
+        lbl_vinfo_s = Gtk.Label(label="• Vanish Mode retains its dark cyberpunk atomic theme and is exempt from light mode.\n• Summon Orbital Hub with SUPER+SPACE; dismiss with ESC or clicking background.\n• Fullscreen media and orbital satellites animate seamlessly without top-bar occlusion.")
+        lbl_vinfo_s.set_halign(Gtk.Align.START)
+        lbl_vinfo_s.set_wrap(True)
+        lbl_vinfo_s.set_wrap_mode(Pango.WrapMode.WORD)
+        lbl_vinfo_s.add_css_class("row-subtitle")
+        row_vinfo.append(lbl_vinfo_s)
+        card_vanish.append(row_vinfo)
+
+        mode_stack.add_named(card_vanish, "nucleus")
+
+        page.append(mode_stack)
+
+        show_mode_settings(cur_mode_norm)
+
         return page
 
     # ── Category 2: Vanish Mode ─────────────────────────────────────────────
@@ -3655,6 +3919,12 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         hypr_bar_pos = os.path.expanduser("~/.config/hypr/carbon-bar-position.json")
         if hypr_bar_pos != BAR_POS_PATH:
             write_json(hypr_bar_pos, self.bar_pos)
+
+        if hasattr(self, "tide_config") and self.tide_config:
+            write_json(TIDE_USERCONFIG_PATH, self.tide_config)
+            hypr_tide = os.path.expanduser("~/.config/hypr/tide-island-userconfig.json")
+            if hypr_tide != TIDE_USERCONFIG_PATH:
+                write_json(hypr_tide, self.tide_config)
 
         write_json(CLOCK_STYLE_PATH, self.clock_cfg)
         hypr_clock = os.path.expanduser("~/.config/hypr/carbon-clock-style.json")

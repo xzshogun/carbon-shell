@@ -1,5 +1,6 @@
 import QtQuick
 import IslandBackend
+import "../../../../Singletons"
 
 Rectangle {
     id: root
@@ -15,11 +16,11 @@ Rectangle {
     property string textFontFamily: ""
     property real value: 0
     property real knobSize: 24
-    property color moduleColor: StyleTokens.module
-    property color moduleHover: StyleTokens.moduleHover
-    property color trackColor: StyleTokens.track
-    property color textPrimary: StyleTokens.textPrimary
-    property color textSecondary: StyleTokens.textSecondary
+    property color moduleColor: Theme.bgAlt
+    property color moduleHover: Theme.bgHover
+    property color trackColor: Theme.bgAlt
+    property color textPrimary: Theme.fg
+    property color textSecondary: Theme.fgDim
     readonly property bool pressed: sliderArea.pressed
 
     function clamp01(nextValue) {
@@ -58,9 +59,9 @@ Rectangle {
             anchors.bottom: parent.bottom
             height: 22
             radius: 11
-            color: "#1d1f24"
+            color: Theme.bgAlt
             border.width: 1
-            border.color: "#30333a"
+            border.color: Theme.outline
             clip: true
 
             Rectangle {
@@ -87,7 +88,7 @@ Rectangle {
                     : Math.max(34, Math.min(sliderTrack.width, sliderTrack.width * root.value + 1))
                 height: parent.height
                 radius: parent.radius
-                color: "#eceef2"
+                color: Theme.accent
             }
 
             Rectangle {
@@ -97,8 +98,8 @@ Rectangle {
                 height: root.knobSize
                 radius: root.knobSize / 2
                 border.width: 1
-                border.color: "#b8ffffff"
-                color: "#f4f5f7"
+                border.color: Theme.outline
+                color: Theme.accentLit
             }
 
             MouseArea {

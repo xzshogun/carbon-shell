@@ -223,13 +223,8 @@ FocusScope {
             return;
         releasingResources = true;
         acceptingScanResults = false;
-        closeAfterApply = false;
         if (scanProcess.running)
             scanProcess.running = false;
-        if (applyProcess.running)
-            applyProcess.running = false;
-        if (customApplyProcess.running)
-            customApplyProcess.running = false;
         pendingThumbnails = [];
         pendingThumbnailKeys = ({});
         thumbnailInFlight = false;
@@ -427,22 +422,7 @@ FocusScope {
             return;
         latestAppliedWallpaper = filePath;
         wallpaperApplied(filePath);
-        closeAfterApply = true;
-        if (applyProcess.running)
-            applyProcess.running = false;
-        if (customApplyProcess.running)
-            customApplyProcess.running = false;
-        if (useCustomCommand) {
-            customApplyProcess.wallpaperPath = filePath;
-            customApplyProcess.targetPath = targetPath;
-            customApplyProcess.commandText = root.customCommand;
-            customApplyProcess.running = true;
-            return;
-        }
-        applyProcess.wallpaperPath = filePath;
-        applyProcess.targetPath = targetPath;
-        applyProcess.transitionType = configuredTransitionType;
-        applyProcess.running = true;
+        root.closeRequested();
     }
 
     Process {
@@ -502,59 +482,7 @@ FocusScope {
         }
     }
 
-    Process {
-        id: applyProcess
-        property string wallpaperPath: ""
-        property string targetPath: ""
-        property string transitionType: "center"
-        command: [
-            "bash", "-c",
-            "WP=\"$1\"\n" +
-            "if [ -z \"$WP\" ]; then exit 1; fi\n" +
-            "APPLY_SCRIPT=\"$HOME/.config/carbon/scripts/wp-apply.sh\"\n" +
-            "[ -f \"$APPLY_SCRIPT\" ] || APPLY_SCRIPT=\"$HOME/.config/hypr/scripts/wp-apply.sh\"\n" +
-            "[ -f \"$APPLY_SCRIPT\" ] || APPLY_SCRIPT=\"/home/reduct/carbon-shell/hypr/scripts/wp-apply.sh\"\n" +
-            "if [ -f \"$APPLY_SCRIPT\" ]; then\n" +
-            "    exec bash \"$APPLY_SCRIPT\" \"$WP\"\n" +
-            "else\n" +
-            "    echo \"wp-apply.sh not found\" >&2\n" +
-            "    exit 1\n" +
-            "fi\n",
-            "wp-apply-runner",
-            wallpaperPath
-        ]
-        onExited: function(exitCode) {
-            running = false;
-            if (exitCode === 0)
-                root.wallpaperApplySucceeded(wallpaperPath);
-            if (root.closeAfterApply) {
-                root.closeAfterApply = false;
-                root.closeRequested();
-            }
-        }
-    }
 
-    Process {
-        id: customApplyProcess
-        property string wallpaperPath: ""
-        property string targetPath: ""
-        property string commandText: ""
-        command: [
-            "bash", "-c", commandText,
-            "tide-island-wallpaper",
-            wallpaperPath,
-            targetPath
-        ]
-        onExited: function(exitCode) {
-            running = false;
-            if (exitCode === 0)
-                root.wallpaperApplySucceeded(wallpaperPath);
-            if (root.closeAfterApply) {
-                root.closeAfterApply = false;
-                root.closeRequested();
-            }
-        }
-    }
 
     readonly property real topPad: 14
     readonly property real botPad: 8
@@ -851,10 +779,8 @@ FocusScope {
                             height: root.cardH
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                if (del.isCurrent)
-                                    root.applyWallpaper(model.filePath);
-                                else
-                                    pathView.currentIndex = index;
+                                pathView.currentIndex = index;
+                                root.applyWallpaper(model.filePath);
                             }
                         }
 

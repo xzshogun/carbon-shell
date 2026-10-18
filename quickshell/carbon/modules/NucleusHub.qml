@@ -1001,9 +1001,9 @@ Item {
     readonly property color colPurple: Theme.m3tertiary || "#c084fc"
     readonly property color colCoral: Theme.err || "#f87171"
     readonly property color colAmber: Theme.warn || "#fbbf24"
-    readonly property color colBgDark: Theme.bg || "#0e0e14"
-    readonly property color colFg: Theme.fg || "#e6e4f0"
-    readonly property color colFgDim: Theme.fgDim || "#94a3b8"
+    readonly property color colBgDark: (Theme.isDark ? Theme.bg : "#0e0e14") || "#0e0e14"
+    readonly property color colFg: (Theme.isDark ? Theme.fg : "#e6e4f0") || "#e6e4f0"
+    readonly property color colFgDim: (Theme.isDark ? Theme.fgDim : "#94a3b8") || "#94a3b8"
 
     /* ── Time & Date ── */
     property var currentTime: new Date()

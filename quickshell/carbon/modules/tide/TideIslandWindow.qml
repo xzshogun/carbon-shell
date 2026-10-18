@@ -65,17 +65,27 @@ PanelWindow {
     property string autoHideRevealSource: "none"
 
     readonly property var userConfig: UserConfig
-    readonly property color baseCapsuleColor: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.shellOpacity)
+    property real customIslandOpacity: -1
+    readonly property real effectiveIslandOpacity: customIslandOpacity >= 0 ? customIslandOpacity : (userConfig && userConfig.islandBackgroundOpacity !== undefined ? userConfig.islandBackgroundOpacity / 100.0 : Theme.shellOpacity)
+    readonly property color baseCapsuleColor: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, effectiveIslandOpacity)
 
-    property bool isNotchMode: shellRootController ? (shellRootController.barMode === "minimal_notch" || shellRootController.barMode === "minimal" || shellRootController.barMode === "notch") : true
+    property var customNotchMode: null
+    readonly property bool isNotchMode: customNotchMode !== null
+        ? !!customNotchMode
+        : (shellRootController ? (shellRootController.barMode === "minimal_notch" || shellRootController.barMode === "notch") : true)
     property real notchEarRadius: shellRootController ? shellRootController.notchEarRadius : 0
     property int notchBackgroundOpacity: 100
     property bool shellBlurEnabled: false
     property int shellBlurSize: 3
     property int shellBlurPasses: 1
 
-
-    readonly property real effectiveTopMargin: isNotchMode ? 0 : userConfig.islandTopMargin
+    property real customIslandHeight: -1
+    property real customIslandWidth: -1
+    property real customIslandTopMargin: -1
+    readonly property real effectiveIslandHeight: customIslandHeight > 0 ? customIslandHeight : userConfig.islandHeight
+    readonly property real effectiveIslandWidth: customIslandWidth > 0 ? customIslandWidth : userConfig.islandWidth
+    readonly property real effectiveIslandTopMargin: customIslandTopMargin >= 0 ? customIslandTopMargin : userConfig.islandTopMargin
+    readonly property real effectiveTopMargin: isNotchMode ? 0 : effectiveIslandTopMargin
 
     Process {
         id: configReaderProcess
@@ -94,10 +104,19 @@ PanelWindow {
         id: extraConfigFileWatcher
         path: userConfig.userConfigPath
         watchChanges: true
-        onTextChanged: root.reloadExtraConfig()
+        blockLoading: true
+        printErrors: false
+        onLoaded: root.reloadExtraConfig()
+        onFileChanged: {
+            reload();
+            root.reloadExtraConfig();
+        }
     }
 
     function reloadExtraConfig() {
+        if (extraConfigFileWatcher && extraConfigFileWatcher.text && extraConfigFileWatcher.text().trim().length > 0) {
+            root.parseConfigJson(extraConfigFileWatcher.text());
+        }
         if (configReaderProcess.running)
             configReaderProcess.running = false;
         configReaderProcess.running = true;
@@ -108,9 +127,17 @@ PanelWindow {
             if (raw && raw.trim().length > 0) {
                 const data = JSON.parse(raw);
                 if (data.notchMode !== undefined)
-                    root.isNotchMode = !!data.notchMode;
+                    root.customNotchMode = !!data.notchMode;
                 if (data.notchEarRadius !== undefined)
                     root.notchEarRadius = Number(data.notchEarRadius);
+                if (data.islandHeight !== undefined)
+                    root.customIslandHeight = Number(data.islandHeight);
+                if (data.islandWidth !== undefined)
+                    root.customIslandWidth = Number(data.islandWidth);
+                if (data.islandTopMargin !== undefined)
+                    root.customIslandTopMargin = Number(data.islandTopMargin);
+                if (data.islandBackgroundOpacity !== undefined)
+                    root.customIslandOpacity = Number(data.islandBackgroundOpacity) / (Number(data.islandBackgroundOpacity) > 1 ? 100.0 : 1.0);
                 if (data.shellBlurEnabled !== undefined)
                     root.shellBlurEnabled = !!data.shellBlurEnabled;
                 if (data.shellBlurSize !== undefined)
@@ -172,7 +199,7 @@ PanelWindow {
     }
 
     function setNotchMode(enabled) {
-        root.isNotchMode = enabled;
+        root.customNotchMode = enabled;
         if (enabled)
             notchEnableProcess.running = true;
         else
@@ -663,6 +690,51 @@ PanelWindow {
 
     function prewarmWallpaperCache() {
         overviewWallpaperCache.prewarm();
+    }
+
+    Process {
+        id: islandWallpaperApplyProcess
+        property string wallpaperPath: ""
+        command: [
+            "bash", "-c",
+            "WP=\"$1\"\n" +
+            "if [ -z \"$WP\" ]; then exit 1; fi\n" +
+            "APPLY_SCRIPT=\"$HOME/.config/carbon/scripts/wp-apply.sh\"\n" +
+            "[ -f \"$APPLY_SCRIPT\" ] || APPLY_SCRIPT=\"$HOME/.config/hypr/scripts/wp-apply.sh\"\n" +
+            "[ -f \"$APPLY_SCRIPT\" ] || APPLY_SCRIPT=\"/home/reduct/carbon-shell/hypr/scripts/wp-apply.sh\"\n" +
+            "if [ -f \"$APPLY_SCRIPT\" ]; then\n" +
+            "    exec bash \"$APPLY_SCRIPT\" \"$WP\"\n" +
+            "else\n" +
+            "    echo \"wp-apply.sh not found\" >&2\n" +
+            "    exit 1\n" +
+            "fi\n",
+            "wp-apply-runner",
+            wallpaperPath
+        ]
+        stdout: StdioCollector {
+            onTextChanged: if (text.trim().length > 0) console.log("[IslandWallpaper] stdout:", text.trim())
+        }
+        stderr: StdioCollector {
+            onTextChanged: if (text.trim().length > 0) console.error("[IslandWallpaper] stderr:", text.trim())
+        }
+        onExited: function(exitCode) {
+            running = false;
+            if (exitCode === 0) {
+                console.log("[IslandWallpaper] Successfully applied wallpaper:", wallpaperPath);
+                root.handleWallpaperApplySucceeded(wallpaperPath);
+            } else {
+                console.error("[IslandWallpaper] wp-apply failed with exitCode:", exitCode);
+            }
+        }
+    }
+
+    function applyWallpaperGlobally(filePath) {
+        if (!filePath) return;
+        console.log("[IslandWallpaper] applyWallpaperGlobally requested for:", filePath);
+        if (islandWallpaperApplyProcess.running)
+            islandWallpaperApplyProcess.running = false;
+        islandWallpaperApplyProcess.wallpaperPath = filePath;
+        islandWallpaperApplyProcess.running = true;
     }
 
     function handleWallpaperApplySucceeded(filePath) {
@@ -1916,10 +1988,10 @@ PanelWindow {
             z: 5
             property int morphDuration: 400
             readonly property bool notificationHistorySurface: islandContainer.islandState === "notification_center"
-            property real outlineWidth: root.overviewContentVisible || notificationHistorySurface ? 1 : 0
+            property real outlineWidth: (root.overviewContentVisible || notificationHistorySurface || !Theme.isDark) ? 1 : 0
             property color outlineColor: root.overviewContentVisible
                 ? root.overviewCapsuleBorderColor
-                : (notificationHistorySurface ? "#1affffff" : StyleTokens.clearBlack)
+                : (notificationHistorySurface ? "#1affffff" : (!Theme.isDark ? Theme.outline : StyleTokens.clearBlack))
             property real displayedWidth: baseTargetWidth
             readonly property real baseTargetWidth: {
                 if (root.overviewVisible) return root.overviewCapsuleWidth;
@@ -1964,7 +2036,7 @@ PanelWindow {
                         Math.min(root.width - 48, notificationLoader.item.maximumWidth, notificationLoader.item.preferredWidth)
                     );
                 default:
-                    return userConfig.islandWidth;
+                    return root.effectiveIslandWidth;
                 }
             }
             readonly property real targetHeight: {
@@ -1989,7 +2061,7 @@ PanelWindow {
                         ? Math.max(56, notificationLoader.item.preferredHeight)
                         : 56;
                 default:
-                    return userConfig.islandHeight;
+                    return root.effectiveIslandHeight;
                 }
             }
             readonly property real targetRadius: {
@@ -2010,17 +2082,17 @@ PanelWindow {
                 case "notification":
                     return islandContainer.notificationExpanded ? 28 : mainCapsule.targetHeight / 2;
                 default:
-                    return userConfig.islandHeight / 2;
+                    return root.effectiveIslandHeight / 2;
                 }
             }
             function sideSwipeWidthForProgress(progressValue) {
                 if (progressValue < 0)
-                    return userConfig.islandWidth + (islandContainer.customCapsuleWidth - userConfig.islandWidth)
+                    return root.effectiveIslandWidth + (islandContainer.customCapsuleWidth - root.effectiveIslandWidth)
                         * islandContainer.clamp01(-progressValue);
                 if (progressValue > 0)
-                    return userConfig.islandWidth + (islandContainer.lyricsCapsuleWidth - userConfig.islandWidth)
+                    return root.effectiveIslandWidth + (islandContainer.lyricsCapsuleWidth - root.effectiveIslandWidth)
                         * islandContainer.clamp01(progressValue);
-                return userConfig.islandWidth;
+                return root.effectiveIslandWidth;
             }
             readonly property real sideSwipePreviewWidth: mainCapsule.sideSwipeWidthForProgress(
                 islandContainer.swipeTransitionProgress
@@ -2066,8 +2138,8 @@ PanelWindow {
             Behavior on color { ColorAnimation { duration: 280; easing.type: Easing.InOutQuad } }
             Behavior on outlineWidth { NumberAnimation { duration: 260; easing.type: Easing.InOutQuad } }
             Behavior on outlineColor { ColorAnimation { duration: 260; easing.type: Easing.InOutQuad } }
-            border.width: outlineWidth
-            border.color: outlineColor
+            border.width: root.isNotchMode ? 0 : outlineWidth
+            border.color: root.isNotchMode ? "transparent" : outlineColor
 
             // Notch background: top corners outside clip (square), bottom corners rounded in lockstep with mainCapsule.radius
             Rectangle {
@@ -2079,7 +2151,7 @@ PanelWindow {
                 anchors.top: parent.top
                 anchors.topMargin: -mainCapsule.radius
                 radius: mainCapsule.radius
-                color: root.baseCapsuleColor
+                color: mainCapsule.baseCapsuleColor
                 z: -0.5
 
                 Behavior on color { ColorAnimation { duration: 280; easing.type: Easing.InOutQuad } }
@@ -2661,7 +2733,10 @@ PanelWindow {
                         textFontFamily: root.textFontFamily
                         activeWallpaper: root.wallpaperPickerActiveWallpaper
                         showCondition: islandContainer.wallpaperPickerLayerVisible
-                        onWallpaperApplied: filePath => root.wallpaperPickerActiveWallpaper = filePath
+                        onWallpaperApplied: filePath => {
+                            root.wallpaperPickerActiveWallpaper = filePath;
+                            root.applyWallpaperGlobally(filePath);
+                        }
                         onWallpaperApplySucceeded: filePath => root.handleWallpaperApplySucceeded(filePath)
                         onCloseRequested: islandContainer.smartRestoreState()
                     }
@@ -2729,7 +2804,7 @@ PanelWindow {
             opacity: mainCapsule.opacity
             scale: mainCapsule.scale
             transformOrigin: Item.Top
-            preferredRendererType: Shape.GeometryRenderer
+            preferredRendererType: Shape.CurveRenderer
             antialiasing: true
 
             ShapePath {
@@ -2740,6 +2815,22 @@ PanelWindow {
                 startY: 0
                 PathLine { x: leftNotchEar.width; y: 0 }
                 PathLine { x: leftNotchEar.width; y: leftNotchEar.height }
+                PathArc {
+                    x: 0
+                    y: 0
+                    radiusX: leftNotchEar.width
+                    radiusY: leftNotchEar.height
+                    direction: PathArc.Counterclockwise
+                }
+            }
+
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: mainCapsule.outlineWidth > 0 ? mainCapsule.outlineColor : "transparent"
+                strokeWidth: mainCapsule.outlineWidth
+                capStyle: ShapePath.FlatCap
+                startX: leftNotchEar.width
+                startY: leftNotchEar.height
                 PathArc {
                     x: 0
                     y: 0
@@ -2762,7 +2853,7 @@ PanelWindow {
             opacity: mainCapsule.opacity
             scale: mainCapsule.scale
             transformOrigin: Item.Top
-            preferredRendererType: Shape.GeometryRenderer
+            preferredRendererType: Shape.CurveRenderer
             antialiasing: true
 
             ShapePath {
@@ -2773,6 +2864,22 @@ PanelWindow {
                 startY: rightNotchEar.height
                 PathLine { x: 0; y: 0 }
                 PathLine { x: rightNotchEar.width; y: 0 }
+                PathArc {
+                    x: 0
+                    y: rightNotchEar.height
+                    radiusX: rightNotchEar.width
+                    radiusY: rightNotchEar.height
+                    direction: PathArc.Counterclockwise
+                }
+            }
+
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: mainCapsule.outlineWidth > 0 ? mainCapsule.outlineColor : "transparent"
+                strokeWidth: mainCapsule.outlineWidth
+                capStyle: ShapePath.FlatCap
+                startX: rightNotchEar.width
+                startY: 0
                 PathArc {
                     x: 0
                     y: rightNotchEar.height

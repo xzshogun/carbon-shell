@@ -1,5 +1,6 @@
 import QtQuick
 import IslandBackend
+import "../../../../Singletons"
 
 Item {
     id: root
@@ -45,7 +46,7 @@ Item {
         width: parent.width
         anchors.verticalCenter: parent.verticalCenter
         text: iconText
-        color: "white"
+        color: Theme.fg
         font.pixelSize: userConfig.iconFontSize
         font.family: iconFontFamily
         horizontalAlignment: Text.AlignHCenter

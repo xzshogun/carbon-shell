@@ -2230,10 +2230,8 @@ ShellRoot {
 
     /* ── Dynamic Edge Reservation Windows (Prevents App Overlap) ────────── */
     readonly property bool hasTopReserve: false
-    readonly property bool hasBottomReserve: (root.barMode === "atomic" || root.barMode === "shard" || root.barMode === "bloom" || root.barMode === "nucleus") ? false :
-        ((root.barMode === "pill" || (root.barMode === "minimal" && root.islandPersistent))
-        ? (root.mainBarEdge === "bottom")
-        : (root.barMode === "minimal" ? false : (root.mainBarEdge === "bottom" || root.musicBarEdge === "bottom")))
+    readonly property bool hasBottomReserve: (root.barMode === "atomic" || root.barMode === "shard" || root.barMode === "bloom" || root.barMode === "nucleus" || root.barMode === "minimal" || root.barMode === "minimal_notch") ? false :
+        (root.barMode === "pill" ? (root.mainBarEdge === "bottom") : (root.mainBarEdge === "bottom" || root.musicBarEdge === "bottom"))
     readonly property bool hasLeftReserve: false
     readonly property bool hasRightReserve: false
 
@@ -4618,7 +4616,7 @@ ShellRoot {
             }
 
             implicitHeight: osdItem.implicitHeight
-            visible: false // Replaced by Dynamic Island in-place morphing HUD
+            visible: (root.barMode !== "minimal" && root.barMode !== "minimal_notch") && (osdItem.active || osdItem.opacity > 0.001)
 
             NotchOsd {
                 id: osdItem
@@ -4667,7 +4665,7 @@ ShellRoot {
 
     /* ── Notification Toast Overlay Window (Top-Right) ───────────────── */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: toastWindow

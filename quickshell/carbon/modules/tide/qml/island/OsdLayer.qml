@@ -1,5 +1,6 @@
 import QtQuick
 import IslandBackend
+import "../../../../Singletons"
 
 Item {
     id: root
@@ -60,7 +61,7 @@ Item {
 
             Text {
                 text: iconText
-                color: "white"
+                color: Theme.fg
                 font.pixelSize: userConfig.iconFontSize
                 font.family: iconFontFamily
                 anchors.verticalCenter: parent.verticalCenter
@@ -68,7 +69,7 @@ Item {
 
             Text {
                 text: Math.round(progress * 100) + "%"
-                color: "white"
+                color: Theme.fg
                 font.pixelSize: userConfig.titleFontSize
                 font.family: heroFontFamily
                 font.weight: Font.Bold
@@ -89,8 +90,8 @@ Item {
                 width: 16
                 height: 16
                 radius: 8
-                color: "#111111"
-                border.color: "#1f1f1f"
+                color: Theme.bgAlt
+                border.color: Theme.outline
                 border.width: 1
             }
 
@@ -116,12 +117,12 @@ Item {
                     ctx.lineCap = "round";
                     ctx.lineWidth = lineWidth;
 
-                    ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
+                    ctx.strokeStyle = Theme.outline;
                     ctx.beginPath();
                     ctx.arc(center, center, radius, 0, Math.PI * 2, false);
                     ctx.stroke();
 
-                    ctx.strokeStyle = "#ffffff";
+                    ctx.strokeStyle = Theme.accent;
                     ctx.beginPath();
                     ctx.arc(center, center, radius, startAngle, endAngle, false);
                     ctx.stroke();
@@ -142,7 +143,7 @@ Item {
 
             Text {
                 text: iconText
-                color: "white"
+                color: Theme.fg
                 font.pixelSize: userConfig.iconFontSize
                 font.family: iconFontFamily
                 anchors.verticalCenter: parent.verticalCenter
@@ -150,7 +151,7 @@ Item {
 
             Text {
                 text: customText
-                color: "white"
+                color: Theme.fg
                 font.pixelSize: userConfig.bodyFontSize
                 font.family: textFontFamily
                 font.weight: Font.DemiBold

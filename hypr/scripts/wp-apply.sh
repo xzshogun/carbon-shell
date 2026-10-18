@@ -78,14 +78,21 @@ mkdir -p "$CONFIG_DIR"
 ln -sfn "$WALL" "$CONFIG_DIR/current_wallpaper"
 echo "$WALL" > "$CONFIG_DIR/current_wallpaper_path"
 
-# Rebuild the shell theme from the new palette (updates theme.json, GTK, Fuzzel, and Hyprland dynamically).
+# Paint wallpaper to monitor via awww daemon
+if command -v awww &>/dev/null; then
+    awww img "$WALL" --transition-type random --transition-duration 1.5 --transition-fps 60 2>/dev/null || true
+fi
+
+# Update tide-island userconfig
+TIDE_CFG="$HOME/.config/tide-island/userconfig.json"
+if [ -f "$TIDE_CFG" ]; then
+    python3 -c "import json, sys; p=sys.argv[1]; w=sys.argv[2]; d=json.load(open(p)); d['wallpaperPath']=w; json.dump(d, open(p, 'w'), indent=4)" "$TIDE_CFG" "$WALL" 2>/dev/null || true
+fi
+
+# Rebuild theme from palette
 THEME_SCRIPT="$CONFIG_DIR/scripts/theme-mk.py"
-if [ ! -f "$THEME_SCRIPT" ]; then
-    THEME_SCRIPT="$HOME/.config/hypr/scripts/theme-mk.py"
-fi
-if [ ! -f "$THEME_SCRIPT" ]; then
-    THEME_SCRIPT="$(dirname "$(readlink -f "$0")")/theme-mk.py"
-fi
+[ -f "$THEME_SCRIPT" ] || THEME_SCRIPT="$HOME/.config/hypr/scripts/theme-mk.py"
+[ -f "$THEME_SCRIPT" ] || THEME_SCRIPT="$(dirname "$(readlink -f "$0")")/theme-mk.py"
 if [ -f "$THEME_SCRIPT" ]; then
     python3 "$THEME_SCRIPT" "$WALL" 2>/dev/null || true
 fi

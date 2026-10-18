@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Widgets
 import "../common/ApplicationSearch.js" as ApplicationSearch
+import "../../../../Singletons"
 
 FocusScope {
     id: root
@@ -492,9 +493,9 @@ FocusScope {
                 width: Math.min(650, parent.width - 120)
                 height: parent.height
                 radius: 17
-                color: searchInput.activeFocus ? "#17181c" : "#111216"
+                color: searchInput.activeFocus ? Theme.bgAlt : Theme.bg
                 border.width: 1
-                border.color: searchInput.activeFocus ? "#3d3f47" : "#292a30"
+                border.color: searchInput.activeFocus ? Theme.accent : Theme.outline
 
                 Behavior on color { ColorAnimation { duration: 140 } }
                 Behavior on border.color { ColorAnimation { duration: 140 } }
@@ -504,7 +505,7 @@ FocusScope {
                     anchors.leftMargin: 16
                     anchors.verticalCenter: parent.verticalCenter
                     text: "\uf002"
-                    color: searchInput.activeFocus ? "#d1d1d6" : "#8e8e93"
+                    color: searchInput.activeFocus ? Theme.accent : Theme.fgDim
                     font.family: root.iconFontFamily
                     font.pixelSize: 15
                 }
@@ -516,9 +517,9 @@ FocusScope {
                     anchors.right: parent.right
                     anchors.rightMargin: root.query === "" ? 16 : 42
                     anchors.verticalCenter: parent.verticalCenter
-                    color: "#f5f5f7"
-                    selectionColor: "#0a84ff"
-                    selectedTextColor: "#ffffff"
+                    color: Theme.fg
+                    selectionColor: Theme.accent
+                    selectedTextColor: Theme.accentFg
                     font.family: root.textFontFamily
                     font.pixelSize: 15
                     clip: true
@@ -707,7 +708,7 @@ FocusScope {
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: parent.width - 8
                         text: appDelegate.entry.name
-                        color: appDelegate.selected ? "#f5f5f7" : "#d0d1d5"
+                        color: appDelegate.selected ? Theme.accent : Theme.fg
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
                         font.family: root.textFontFamily
@@ -786,7 +787,7 @@ FocusScope {
                 anchors.centerIn: parent
                 visible: root.visibleApplicationCount === 0
                 text: root.query === "" ? "没有找到可启动的应用" : "没有找到“" + root.query + "”"
-                color: "#696b72"
+                color: Theme.fgDim
                 font.family: root.textFontFamily
                 font.pixelSize: 13
             }

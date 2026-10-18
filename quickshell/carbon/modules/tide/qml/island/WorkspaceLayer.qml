@@ -1,5 +1,6 @@
 import QtQuick
 import IslandBackend
+import "../../../../Singletons"
 
 Item {
     id: root
@@ -54,7 +55,7 @@ Item {
         width: textWidth
         anchors.verticalCenter: parent.verticalCenter
         text: displayText
-        color: "white"
+        color: Theme.fg
         opacity: revealProgress
         font.pixelSize: textPixelSize
         font.family: textFontFamily

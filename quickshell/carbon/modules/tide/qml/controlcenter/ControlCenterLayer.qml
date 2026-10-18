@@ -3,7 +3,7 @@ import QtQuick.Shapes
 import Quickshell
 import Quickshell.Bluetooth
 import Quickshell.Io
-import IslandBackend
+import Quickshell.Widgets
 import "../../../../Singletons"
 import "../common/BluetoothFormatting.js" as BluetoothFormatting
 

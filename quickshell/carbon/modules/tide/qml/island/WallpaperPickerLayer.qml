@@ -2,7 +2,7 @@ import QtCore
 import QtQuick
 import Quickshell.Io
 import Quickshell.Widgets
-import IslandBackend
+import Quickshell.Widgets
 
 FocusScope {
     id: root

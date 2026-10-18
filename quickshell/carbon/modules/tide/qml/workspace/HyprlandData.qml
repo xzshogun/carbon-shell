@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
-import IslandBackend
+import Quickshell.Widgets
 
 Item {
     id: root

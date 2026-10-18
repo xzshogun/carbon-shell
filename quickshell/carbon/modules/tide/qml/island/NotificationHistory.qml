@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Shapes
-import IslandBackend
+import Quickshell.Widgets
 import "../controlcenter"
 import "../../../../Singletons"
 

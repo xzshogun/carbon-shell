@@ -1,6 +1,6 @@
 import QtQuick
 import Qt5Compat.GraphicalEffects
-import IslandBackend
+import Quickshell.Widgets
 import "../../../../Singletons"
 
 Item {

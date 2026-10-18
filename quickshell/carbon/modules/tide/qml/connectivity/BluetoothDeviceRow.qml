@@ -1,6 +1,6 @@
 import QtQuick
 import Quickshell.Bluetooth
-import IslandBackend
+import Quickshell.Widgets
 
 Rectangle {
     id: root

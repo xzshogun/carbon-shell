@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import IslandBackend
+import Quickshell.Widgets
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland

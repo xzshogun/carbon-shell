@@ -1,7 +1,7 @@
 import QtCore
 import QtQuick
 import Quickshell.Io
-import IslandBackend
+import Quickshell.Widgets
 
 Item {
     id: root

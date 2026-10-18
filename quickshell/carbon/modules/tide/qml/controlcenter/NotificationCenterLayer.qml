@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import IslandBackend
+import Quickshell.Widgets
 import "../island"
 
 Item {

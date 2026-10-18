@@ -15,7 +15,7 @@ import "components"
 import "modules"
 import "modules/lock"
 import "modules/tide"
-import IslandBackend
+import Quickshell.Widgets
 
 /**
  * Carbon — a full Quickshell shell with a single left vertical bar.

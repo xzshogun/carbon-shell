@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Mpris
-import IslandBackend
+import Quickshell.Widgets
 import QtQuick.Effects
 import QtQuick.Shapes
 import Quickshell.Io

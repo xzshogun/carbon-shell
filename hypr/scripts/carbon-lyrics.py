@@ -22,6 +22,12 @@ except ImportError:
 KRC_KEY = [0x40, 0x47, 0x61, 0x77, 0x5E, 0x32, 0x74, 0x47, 0x51, 0x36, 0x31, 0x2D, 0xCE, 0xD2, 0x6E, 0x69]
 CACHE_DIR = "/tmp/carbon-lyrics-cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
+CUSTOM_LYRICS_DIRS = [
+    os.path.expanduser("~/.local/share/carbon/lyrics"),
+    os.path.expanduser("~/.config/carbon/lyrics")
+]
+for _cdir in CUSTOM_LYRICS_DIRS:
+    os.makedirs(_cdir, exist_ok=True)
 
 # ── Indic & Foreign Script Romanization Engine ───────────────────────────────
 GUR_MAP = {
@@ -312,6 +318,68 @@ def get_candidates(title, artist):
         add("", core_title or clean_t)
 
     return cands
+
+def load_custom_lyrics(title, artist):
+    candidates = get_candidates(title, artist)
+    cand_names = set()
+    for a, t in candidates:
+        if t:
+            cand_names.add(t.lower().strip())
+            if a:
+                cand_names.add(f"{a} - {t}".lower().strip())
+                cand_names.add(f"{t} - {a}".lower().strip())
+    if title:
+        cand_names.add(title.lower().strip())
+    if artist and title:
+        cand_names.add(f"{artist} - {title}".lower().strip())
+
+    cand_slugs = {re.sub(r'[^a-z0-9]', '', n) for n in cand_names if n}
+
+    for c_dir in CUSTOM_LYRICS_DIRS:
+        if not os.path.isdir(c_dir):
+            continue
+        try:
+            entries = os.listdir(c_dir)
+        except Exception:
+            continue
+
+        matched_file = None
+        # 1. Exact match (stem)
+        for entry in entries:
+            stem, ext = os.path.splitext(entry)
+            stem_l = stem.lower().strip()
+            if ext.lower() in [".json", ".lrc"]:
+                if stem_l in cand_names:
+                    matched_file = os.path.join(c_dir, entry)
+                    break
+
+        # 2. Slug match (ignoring spaces, punctuation, case)
+        if not matched_file:
+            for entry in entries:
+                stem, ext = os.path.splitext(entry)
+                if ext.lower() in [".json", ".lrc"]:
+                    stem_slug = re.sub(r'[^a-z0-9]', '', stem.lower())
+                    if stem_slug in cand_slugs or any(s in stem_slug or stem_slug in s for s in cand_slugs if len(s) > 4):
+                        matched_file = os.path.join(c_dir, entry)
+                        break
+
+        if matched_file and os.path.isfile(matched_file):
+            try:
+                _, ext = os.path.splitext(matched_file)
+                if ext.lower() == ".json":
+                    with open(matched_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if isinstance(data, dict):
+                            return data.get("lines", [])
+                        elif isinstance(data, list):
+                            return data
+                elif ext.lower() == ".lrc":
+                    with open(matched_file, "r", encoding="utf-8") as f:
+                        lrc_text = f.read()
+                        return parse_lrc(lrc_text)
+            except Exception:
+                pass
+    return None
 
 def fetch_from_lrclib(title, artist, duration=None):
     candidates = get_candidates(title, artist)
@@ -739,34 +807,40 @@ def main():
         return
 
     cache_file = get_cache_path(title, artist, romanize)
-    cached_fallback = None
-    if os.path.isfile(cache_file):
-        try:
-            with open(cache_file, "r", encoding="utf-8") as f:
-                cached_data = json.load(f)
-                if cached_data.get("found"):
-                    cached_lines = cached_data.get("lines", [])
-                    has_rich_words = any("words" in l and l["words"] for l in cached_lines)
-                    if has_rich_words:
-                        print(json.dumps(cached_data))
-                        return
-                    cached_fallback = cached_data
-        except Exception:
-            pass
 
-    # 1. Primary: Kugou syllable-level Richsync
-    lines = fetch_from_kugou(title, artist, duration)
+    # 0. Primary Priority: Local Custom Curated / AI Synced Lyrics
+    custom_lines = load_custom_lyrics(title, artist)
+    if custom_lines:
+        lines = custom_lines
+    else:
+        cached_fallback = None
+        if os.path.isfile(cache_file):
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    cached_data = json.load(f)
+                    if cached_data.get("found"):
+                        cached_lines = cached_data.get("lines", [])
+                        has_rich_words = any("words" in l and l["words"] for l in cached_lines)
+                        if has_rich_words:
+                            print(json.dumps(cached_data))
+                            return
+                        cached_fallback = cached_data
+            except Exception:
+                pass
 
-    # 2. Secondary fallback: NetEase YRC word-sync
-    if not lines or is_placeholder_lyrics(lines):
-        lines = fetch_from_netease(title, artist, duration)
+        # 1. Secondary: Kugou syllable-level Richsync
+        lines = fetch_from_kugou(title, artist, duration)
 
-    # 3. Tertiary fallback: LRCLIB standard sync
-    if not lines or is_placeholder_lyrics(lines):
-        if cached_fallback:
-            lines = cached_fallback.get("lines", [])
-        else:
-            lines = fetch_from_lrclib(title, artist, duration)
+        # 2. Tertiary fallback: NetEase YRC word-sync
+        if not lines or is_placeholder_lyrics(lines):
+            lines = fetch_from_netease(title, artist, duration)
+
+        # 3. Quaternary fallback: LRCLIB standard sync
+        if not lines or is_placeholder_lyrics(lines):
+            if cached_fallback:
+                lines = cached_fallback.get("lines", [])
+            else:
+                lines = fetch_from_lrclib(title, artist, duration)
 
     # 3. Apply Romanization if enabled
     if romanize and lines:

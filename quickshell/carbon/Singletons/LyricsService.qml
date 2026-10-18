@@ -162,16 +162,21 @@ Singleton {
                 if (buffer.trim().length > 0) {
                     try {
                         const res = JSON.parse(buffer)
-                        if (res && res.found && Array.isArray(res.lines)) {
+                        if (res && res.found && Array.isArray(res.lines) && res.lines.length > 0) {
                             root.lines = res.lines
                             root.updateSync()
                             console.log("[LyricsService] Loaded " + root.lines.length + " synced lyric lines for:", root.trackTitle)
                         } else {
                             root.lines = []
+                            root.lastFetchedKey = ""
                         }
                     } catch (e) {
                         root.lines = []
+                        root.lastFetchedKey = ""
                     }
+                } else {
+                    root.lines = []
+                    root.lastFetchedKey = ""
                 }
             }
         }

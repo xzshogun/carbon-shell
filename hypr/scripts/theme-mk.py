@@ -12,6 +12,7 @@ Usage: theme-mk.py [/path/to/wallpaper]
 import colorsys
 import json
 import os
+import re
 import subprocess
 import sys
 from PIL import Image
@@ -149,16 +150,50 @@ def is_monochrome_image(img_path):
         for r, g, b in px:
             mx = max(r, g, b)
             mn = min(r, g, b)
-            if 25 < mx < 230:
-                sat = (mx - mn) / float(mx)
+            if 20 < mx < 235:
+                sat = (mx - mn) / float(mx) if mx > 0 else 0
                 mid_sats.append(sat)
         if mid_sats:
             mean_sat = sum(mid_sats) / len(mid_sats)
-            return mean_sat < 0.08
-        return False
+            return mean_sat < 0.14
+        return True
     except Exception:
         pass
     return False
+
+
+def find_vibrant_accent(img_path):
+    """Scan the wallpaper for a concentrated secondary vibrant accent (calipers, decal, trim)."""
+    try:
+        im = Image.open(img_path).convert("RGB")
+        small = im.resize((160, 90), Image.LANCZOS)
+        try:
+            px = list(small.get_flattened_data()) if hasattr(small, "get_flattened_data") else list(small.getdata())
+        except Exception:
+            return None
+
+        accent_bins = {}
+        for r, g, b in px:
+            h, l, s = colorsys.rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
+            if s > 0.32 and 0.18 < l < 0.82:
+                hb = round(h * 36) % 36
+                if hb not in accent_bins:
+                    accent_bins[hb] = []
+                accent_bins[hb].append((r, g, b, h, l, s))
+
+        if not accent_bins:
+            return None
+
+        sorted_bins = sorted(accent_bins.values(), key=len, reverse=True)
+        top_cluster = sorted_bins[0]
+        if len(top_cluster) >= 8:
+            avg_r = int(sum(x[0] for x in top_cluster) / len(top_cluster))
+            avg_g = int(sum(x[1] for x in top_cluster) / len(top_cluster))
+            avg_b = int(sum(x[2] for x in top_cluster) / len(top_cluster))
+            return f"#{avg_r:02x}{avg_g:02x}{avg_b:02x}"
+        return None
+    except Exception:
+        return None
 
 
 def extract_wallpaper_palette(img_path):
@@ -184,12 +219,23 @@ def extract_wallpaper_palette(img_path):
                 bins[hb][2].append((h, s, l))
 
     if not bins:
-        h_pri, s_pri = 0.58, 0.65
-    else:
-        top_bucket = sorted(bins.values(), key=lambda x: x[1], reverse=True)[0]
-        samples = top_bucket[2]
-        h_pri = sum(x[0] for x in samples) / len(samples)
-        s_pri = sum(x[1] for x in samples) / len(samples)
+        return {
+            "accent": "#BFC7D5",
+            "accentLit": "#D7E3F8",
+            "tertiary": "#BBC7DB",
+            "onAccent": "#29313C",
+            "bg": "#131314",
+            "bgAlt": "#1B1B1D",
+            "fg": "#E1E2E8",
+            "outline": "#43474E",
+            "isDark": True,
+            "h_pri": 0.0
+        }
+
+    top_bucket = sorted(bins.values(), key=lambda x: x[1], reverse=True)[0]
+    samples = top_bucket[2]
+    h_pri = sum(x[0] for x in samples) / len(samples)
+    s_pri = sum(x[1] for x in samples) / len(samples)
 
     # Accent (primary): High-legibility, vibrant dark mode color (L: 0.72)
     sat = min(0.92, max(0.58, s_pri * 1.25))
@@ -352,55 +398,151 @@ def update_waybar_theme(accent_hex, accent_lit_hex, on_accent_hex, bg_hex, bg_al
     subprocess.run(["pkill", "-SIGUSR2", "-x", "waybar"], capture_output=True)
 
 
-def extract_matugen_palette(img_path):
-    """Run matugen to extract authentic Google Material 3 tokens non-interactively."""
+def inspect_source_colors(img_path):
+    """Query matugen for available source colors."""
     try:
-        env = {**os.environ, "MATUGEN_NO_HOOK": "1"}
         res = subprocess.run(
-            ["matugen", "image", "--source-color-index", "0", "-t", "scheme-tonal-spot", "--prefer", "saturation", "-j", "hex", "-m", "dark", img_path],
-            capture_output=True, text=True, timeout=5.0, env=env
+            ["matugen", "image", "--show-source-colors", img_path],
+            capture_output=True, text=True, timeout=4.0
         )
         if res.returncode == 0 and res.stdout.strip():
-            data = json.loads(res.stdout)
-            colors = data.get("colors", {})
-            def get_c(key, fallback):
-                node = colors.get(key, {})
-                return node.get("dark", {}).get("color") or node.get("default", {}).get("color") or fallback
-
-            primary = get_c("primary", None)
-            if primary:
-                return {
-                    "primary": primary,
-                    "onPrimary": get_c("on_primary", "#00325a"),
-                    "primaryContainer": get_c("primary_container", "#1a4874"),
-                    "onPrimaryContainer": get_c("on_primary_container", "#d2e4ff"),
-                    "secondary": get_c("secondary", "#bbc7db"),
-                    "onSecondary": get_c("on_secondary", "#253141"),
-                    "secondaryContainer": get_c("secondary_container", "#3c4858"),
-                    "onSecondaryContainer": get_c("on_secondary_container", "#d7e3f8"),
-                    "tertiary": get_c("tertiary", "#d7bde4"),
-                    "onTertiary": get_c("on_tertiary", "#3b2947"),
-                    "tertiaryContainer": get_c("tertiary_container", "#533f5f"),
-                    "onTertiaryContainer": get_c("on_tertiary_container", "#f3daff"),
-                    "surface": get_c("surface", "#111418"),
-                    "surfaceDim": get_c("surface_dim", "#111418"),
-                    "surfaceBright": get_c("surface_bright", "#37393e"),
-                    "surfaceContainerLowest": get_c("surface_container_lowest", "#0b0e13"),
-                    "surfaceContainerLow": get_c("surface_container_low", "#191c20"),
-                    "surfaceContainer": get_c("surface_container", "#1d2024"),
-                    "surfaceContainerHigh": get_c("surface_container_high", "#272a2f"),
-                    "surfaceContainerHighest": get_c("surface_container_highest", "#32353a"),
-                    "onSurface": get_c("on_surface", "#e1e2e8"),
-                    "surfaceVariant": get_c("surface_variant", "#43474e"),
-                    "onSurfaceVariant": get_c("on_surface_variant", "#c3c6cf"),
-                    "outline": get_c("outline", "#8d9199"),
-                    "outlineVariant": get_c("outline_variant", "#43474e"),
-                    "error": get_c("error", "#ffb4ab"),
-                    "onError": get_c("on_error", "#690005"),
-                    "errorContainer": get_c("error_container", "#93000a"),
-                }
+            colors = [l.strip() for l in res.stdout.splitlines() if l.strip().startswith("#")]
+            if colors:
+                return colors
     except Exception:
         pass
+    return []
+
+
+def parse_matugen_json(data):
+    colors = data.get("colors", {})
+    def get_c(key, fallback):
+        node = colors.get(key, {})
+        return node.get("dark", {}).get("color") or node.get("default", {}).get("color") or fallback
+
+    primary = get_c("primary", None)
+    if primary:
+        return {
+            "primary": primary,
+            "onPrimary": get_c("on_primary", "#29313c"),
+            "primaryContainer": get_c("primary_container", "#3f4753"),
+            "onPrimaryContainer": get_c("on_primary_container", "#d7e3f8"),
+            "secondary": get_c("secondary", "#bbc7db"),
+            "onSecondary": get_c("on_secondary", "#253141"),
+            "secondaryContainer": get_c("secondary_container", "#3c4858"),
+            "onSecondaryContainer": get_c("on_secondary_container", "#d7e3f8"),
+            "tertiary": get_c("tertiary", "#bbc7db"),
+            "onTertiary": get_c("on_tertiary", "#253141"),
+            "tertiaryContainer": get_c("tertiary_container", "#3c4858"),
+            "onTertiaryContainer": get_c("on_tertiary_container", "#d7e3f8"),
+            "surface": get_c("surface", "#131314"),
+            "surfaceDim": get_c("surface_dim", "#131314"),
+            "surfaceBright": get_c("surface_bright", "#36393e"),
+            "surfaceContainerLowest": get_c("surface_container_lowest", "#0e0e0f"),
+            "surfaceContainerLow": get_c("surface_container_low", "#1b1b1d"),
+            "surfaceContainer": get_c("surface_container", "#1f1f21"),
+            "surfaceContainerHigh": get_c("surface_container_high", "#2a2a2b"),
+            "surfaceContainerHighest": get_c("surface_container_highest", "#353536"),
+            "onSurface": get_c("on_surface", "#e1e2e8"),
+            "surfaceVariant": get_c("surface_variant", "#474648"),
+            "onSurfaceVariant": get_c("on_surface_variant", "#c3c6cf"),
+            "outline": get_c("outline", "#8d9199"),
+            "outlineVariant": get_c("outline_variant", "#43474e"),
+            "error": get_c("error", "#ffb4ab"),
+            "onError": get_c("on_error", "#690005"),
+            "errorContainer": get_c("error_container", "#93000a"),
+        }
+    return None
+
+
+def extract_matugen_palette(img_path, is_mono=False, accent_override=None):
+    """Run matugen with smart scheme and color index adaptation."""
+    try:
+        env = {**os.environ, "MATUGEN_NO_HOOK": "1"}
+
+        # 1. Accent override (e.g. vibrant caliper/decal)
+        if accent_override:
+            clean_hex = accent_override.lstrip("#")
+            res = subprocess.run(
+                ["matugen", "color", "hex", clean_hex, "-t", "scheme-vibrant", "-j", "hex", "-m", "dark"],
+                capture_output=True, text=True, timeout=5.0, env=env
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                data = json.loads(res.stdout)
+                m = parse_matugen_json(data)
+                if m:
+                    subprocess.run(
+                        ["matugen", "color", "hex", clean_hex, "-t", "scheme-vibrant", "-m", "dark"],
+                        capture_output=True, timeout=4.0, env=env
+                    )
+                    return m
+
+        # 2. Inspect available source colors
+        src_colors = inspect_source_colors(img_path)
+        chosen_idx = 0
+        scheme_type = "scheme-tonal-spot"
+
+        def get_hls(hex_str):
+            h = hex_str.lstrip("#")
+            r, g, b = int(h[0:2], 16) / 255.0, int(h[2:4], 16) / 255.0, int(h[4:6], 16) / 255.0
+            return colorsys.rgb_to_hls(r, g, b)
+
+        if src_colors:
+            cand_info = []
+            for i, c in enumerate(src_colors):
+                h, l, s = get_hls(c)
+                cand_info.append((i, c, h, l, s))
+
+            # Pick secondary accent if index 0 is a dull reflection
+            best_idx = 0
+            best_sat = cand_info[0][4]
+            for idx, col, h, l, s in cand_info[1:3]:
+                if s > best_sat + 0.10:
+                    best_sat = s
+                    best_idx = idx
+
+            chosen_idx = best_idx
+            chosen_hls = cand_info[chosen_idx]
+            chosen_sat = chosen_hls[4]
+            chosen_lum = chosen_hls[3]
+
+            if is_mono or (chosen_sat < 0.20 and chosen_lum < 0.35):
+                scheme_type = "scheme-neutral"
+            elif chosen_sat > 0.40:
+                scheme_type = "scheme-vibrant"
+            else:
+                scheme_type = "scheme-tonal-spot"
+        else:
+            chosen_idx = 0
+            scheme_type = "scheme-neutral" if is_mono else "scheme-tonal-spot"
+
+        # Safe in-bounds command
+        cmd_json = [
+            "matugen", "image",
+            "--source-color-index", str(chosen_idx),
+            "-t", scheme_type,
+            "--prefer", "saturation",
+            "-j", "hex",
+            "-m", "dark",
+            img_path
+        ]
+        res = subprocess.run(cmd_json, capture_output=True, text=True, timeout=5.0, env=env)
+        if res.returncode == 0 and res.stdout.strip():
+            data = json.loads(res.stdout)
+            m = parse_matugen_json(data)
+            if m:
+                cmd_apply = [
+                    "matugen", "image",
+                    "--source-color-index", str(chosen_idx),
+                    "-t", scheme_type,
+                    "--prefer", "saturation",
+                    "-m", "dark",
+                    img_path
+                ]
+                subprocess.run(cmd_apply, capture_output=True, timeout=4.0, env=env)
+                return m
+    except Exception as e:
+        print(f"theme-mk: matugen error: {e}", file=sys.stderr)
     return None
 
 
@@ -413,55 +555,32 @@ def main():
     analysis_img = get_image_frame_for_analysis(src_wp)
     is_mono = is_monochrome_image(analysis_img)
     wp_lower = os.path.basename(src_wp).lower()
-    if "carbon" in wp_lower or "black" in wp_lower or "mono" in wp_lower:
+    if any(k in wp_lower for k in ("carbon", "black", "mono", "dark", "gt3", "porsche", "grey", "gray")):
         is_mono = True
 
-    m3 = None
-    if is_mono:
-        accent_hex = "#E2E2E8"
-        accent_lit_hex = "#FFFFFF"
-        tertiary_hex = "#D4D4DC"
-        on_accent_hex = "#141418"
-        bg_hex = "#121215"
-        bg_alt_hex = "#1A1A1F"
-        fg_hex = "#E4E4E8"
-        outline_hex = "#484852"
-        try:
-            subprocess.run(
-                ["matugen", "color", "hex", "ffffff", "-t", "scheme-monochrome", "-m", "dark"],
-                capture_output=True, timeout=4.0
-            )
-        except Exception:
-            pass
+    # Check for concentrated vibrant secondary accents (brake calipers, decals, trim)
+    vibrant_accent = find_vibrant_accent(analysis_img)
+
+    m3 = extract_matugen_palette(analysis_img, is_mono=is_mono, accent_override=vibrant_accent)
+    if m3:
+        accent_hex = m3["primary"]
+        accent_lit_hex = m3["primaryContainer"]
+        tertiary_hex = m3["tertiary"]
+        on_accent_hex = m3["onPrimary"]
+        bg_hex = m3["surface"]
+        bg_alt_hex = m3["surfaceContainerHigh"]
+        fg_hex = m3["onSurface"]
+        outline_hex = m3["outline"]
     else:
-        m3 = extract_matugen_palette(analysis_img)
-        if m3:
-            accent_hex = m3["primary"]
-            accent_lit_hex = m3["primaryContainer"]
-            tertiary_hex = m3["tertiary"]
-            on_accent_hex = m3["onPrimary"]
-            bg_hex = m3["surface"]
-            bg_alt_hex = m3["surfaceContainerHigh"]
-            fg_hex = m3["onSurface"]
-            outline_hex = m3["outline"]
-            try:
-                env = {**os.environ, "MATUGEN_NO_HOOK": "1"}
-                subprocess.run(
-                    ["matugen", "image", "--source-color-index", "0", "-t", "scheme-tonal-spot", "--prefer", "saturation", "-m", "dark", src_wp],
-                    capture_output=True, timeout=4.0, env=env
-                )
-            except Exception:
-                pass
-        else:
-            pal = extract_wallpaper_palette(analysis_img)
-            accent_hex = pal["accent"]
-            accent_lit_hex = pal["accentLit"]
-            tertiary_hex = pal["tertiary"]
-            on_accent_hex = pal["onAccent"]
-            bg_hex = pal["bg"]
-            bg_alt_hex = pal["bgAlt"]
-            fg_hex = pal["fg"]
-            outline_hex = pal["outline"]
+        pal = extract_wallpaper_palette(analysis_img)
+        accent_hex = pal["accent"]
+        accent_lit_hex = pal["accentLit"]
+        tertiary_hex = pal["tertiary"]
+        on_accent_hex = pal["onAccent"]
+        bg_hex = pal["bg"]
+        bg_alt_hex = pal["bgAlt"]
+        fg_hex = pal["fg"]
+        outline_hex = pal["outline"]
 
     palette_dict = {
         "bg": alpha(bg_hex, 0.92),
@@ -572,7 +691,8 @@ def main():
         if not os.path.isfile(ipc_path):
             ipc_path = os.path.expanduser("~/.config/hypr/scripts/carbon-ipc.sh")
         if os.path.isfile(ipc_path):
-            subprocess.run(["sh", ipc_path, "theme-reload"], capture_output=True, timeout=1.5)
+            env_ipc = {**os.environ, "CARBON_IPC_NO_REBUILD": "1"}
+            subprocess.run(["sh", ipc_path, "theme-reload"], capture_output=True, timeout=1.5, env=env_ipc)
     except Exception:
         pass
 

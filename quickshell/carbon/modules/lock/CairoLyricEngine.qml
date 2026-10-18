@@ -27,8 +27,7 @@ Item {
     property real livePositionMs: 0
     property double lastTickWallMs: 0
     property real lastRawMprisPosMs: -1
-    property int _pollCounter: 0
-    property int syncOffsetMs: (LyricsService.hasRichWords ? -140 : -35) // -140ms lead for word-synced, -35ms for line-synced
+    property int syncOffsetMs: 0 // Neutral 0ms sync so lyrics land precisely on the beat without rushing ahead
 
     readonly property real effectivePositionMs: Math.max(0, root.livePositionMs - root.syncOffsetMs)
     readonly property real effectivePositionSec: root.effectivePositionMs / 1000.0
@@ -74,21 +73,21 @@ Item {
             var mprisMs = (rawPos > 1000000) ? (rawPos / 1000) : (rawPos < 36000 ? rawPos * 1000 : rawPos)
 
             // When music is playing, smoothly advance livePositionMs by elapsed time (+dt ~50ms):
-            var isPlaying = root.isPlaying || !activePlayer || activePlayer.playbackState === MprisPlaybackState.Playing || activePlayer.isPlaying !== false
+            var isPlaying = root.isPlaying || (activePlayer && activePlayer.playbackState === MprisPlaybackState.Playing)
             if (isPlaying) {
                 root.livePositionMs += dt
             }
 
             // ONLY react when MPRIS actually emits a fresh position update:
-            if (mprisMs > 0 && Math.abs(mprisMs - root.lastRawMprisPosMs) > 50) {
+            if (mprisMs > 0 && Math.abs(mprisMs - root.lastRawMprisPosMs) > 40) {
                 var mprisDrift = Math.abs(mprisMs - root.livePositionMs)
                 root.lastRawMprisPosMs = mprisMs
                 // If it's a real user seek / scrub / skip (> 800ms drift) or initial sync, snap:
                 if (mprisDrift > 800 || root.livePositionMs <= 0) {
                     root.livePositionMs = mprisMs
-                } else if (mprisDrift > 120) {
-                    // Small drift nudge: gently align with player clock
-                    root.livePositionMs = (root.livePositionMs * 0.75) + (mprisMs * 0.25)
+                } else if (mprisDrift > 30) {
+                    // Align tightly with true player position
+                    root.livePositionMs = (root.livePositionMs * 0.50) + (mprisMs * 0.50)
                 }
             }
 
@@ -157,9 +156,9 @@ Item {
         if (rawTokens.length === 0) return [];
 
         var rawGapMs = Math.max(350, nextLineStartMs - lineStartMs);
-        // Use 88% of the line gap and up to 420ms per word so stretched Hindi/Punjabi vocals
-        // ("kaaa-li", "raaa-taan", "tenu suit karda") pace naturally across the entire bar without rushing!
-        var activeWindowMs = Math.min(rawGapMs * 0.88, rawTokens.length * 420);
+        // Distribute words naturally across 90% of the line gap so vocals match actual singing tempo
+        var maxAllowedMs = Math.max(2800, rawTokens.length * 700);
+        var activeWindowMs = Math.min(rawGapMs * 0.90, maxAllowedMs);
 
         var weights = [];
         var totalWeight = 0;
@@ -414,11 +413,9 @@ Item {
     Connections {
         target: LyricsService
         function onLinesChanged() {
-            root.syncOffsetMs = LyricsService.hasRichWords ? -140 : -35
             root.processLyrics()
         }
         function onTrackTitleChanged() {
-            root.syncOffsetMs = LyricsService.hasRichWords ? -140 : -35
             root.processLyrics()
         }
     }

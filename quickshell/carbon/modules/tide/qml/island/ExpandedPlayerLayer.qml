@@ -3,6 +3,7 @@ import Quickshell.Widgets
 import Quickshell.Services.Mpris
 import Quickshell.Widgets
 import "../controlcenter"
+import "../../../../Singletons"
 
 Item {
     id: root

@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Services.Mpris
 import Quickshell.Widgets
+import "../../../../Singletons"
 
 Item {
     id: root

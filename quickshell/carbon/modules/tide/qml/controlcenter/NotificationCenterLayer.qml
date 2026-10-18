@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell.Widgets
 import "../island"
+import "../../../../Singletons"
 
 Item {
     id: notificationCenter

@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell.Bluetooth
+import "../../../../Singletons"
 
 Item {
     id: root

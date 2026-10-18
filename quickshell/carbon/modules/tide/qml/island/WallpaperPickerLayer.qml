@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell.Io
 import Quickshell.Widgets
 import Quickshell.Widgets
+import "../../../../Singletons"
 
 FocusScope {
     id: root

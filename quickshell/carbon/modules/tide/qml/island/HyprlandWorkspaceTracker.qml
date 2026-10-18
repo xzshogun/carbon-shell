@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell.Hyprland
+import "../../../../Singletons"
 
 Item {
     id: root

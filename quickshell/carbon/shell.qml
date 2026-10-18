@@ -907,7 +907,7 @@ ShellRoot {
                     if (target === "three_islands") target = "pill"
                     if (target === "vanish") target = "nucleus"
                     if (target === "island") target = "notch"
-                    if (target === "minimal") target = "minimal_notch"
+                    if (target === "minimal_notch") target = "minimal"
                     if (root.barMode !== target) {
                         console.log("[BAR-MODE] Switching mode from", root.barMode, "to", target)
                         root.barMode = target
@@ -942,7 +942,7 @@ ShellRoot {
         if (m === "three_islands") m = "pill"
         if (m === "vanish") m = "nucleus"
         if (m === "island") m = "notch"
-        if (m === "minimal") m = "minimal_notch"
+        if (m === "minimal_notch") m = "minimal"
         if (m === "nucleus" && root.barMode !== "nucleus" && root.nucleusTransitionEnabled) {
             root.startNucleusTransition(false)
             return
@@ -1870,7 +1870,7 @@ ShellRoot {
                     }
                     else if (cmd === "notch" || cmd === "pill" || cmd === "minimal" || cmd === "minimal_notch" || cmd === "vanish" || cmd === "mode-notch" || cmd === "mode-pill" || cmd === "mode-minimal" || cmd === "mode-minimal_notch") {
                         var m = cmd.replace(/^mode-/, "")
-                        if (m === "minimal") m = "minimal_notch"
+                        if (m === "minimal_notch") m = "minimal"
                         root.switchBarMode(m)
                     }
                     else if (cmd.startsWith("island-style ")) {
@@ -2635,158 +2635,6 @@ ShellRoot {
                         onOpenPower: root.openPower()
                     }
                 }
-            }
-        }
-    }
-
-    /* ── Minimal Mode: Ultra-Lightweight Single Floating Dynamic Island ── */
-    Variants {
-        model: root.barMode === "minimal_old" ? Quickshell.screens : []
-
-        PanelWindow {
-            id: minimalIslandWindow
-            required property var modelData
-
-            screen: modelData
-            color: "transparent"
-            WlrLayershell.namespace: "carbon-bar-minimal"
-            WlrLayershell.layer: WlrLayer.Top
-            exclusionMode: root.islandPersistent ? ExclusionMode.Normal : ExclusionMode.Ignore
-            exclusiveZone: root.islandPersistent ? Math.max(0, (root.islandStyle === "notch" ? (root.notchHeight + root.notchAppGap) : (root.pillHeight + (root.mainBarEdge !== "bottom" ? 8 : 0) + root.pillAppGap))) : 0
-            WlrLayershell.keyboardFocus: (root.islandHovered || islandHov.hovered) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-            Keys.forwardTo: [minimalIslandItem]
-            aboveWindows: true
-            anchors {
-                top: root.mainBarEdge !== "bottom"
-                bottom: root.mainBarEdge === "bottom"
-            }
-            margins {
-                top: 0
-                bottom: 0
-            }
-
-            implicitHeight: Math.max(root.barHeight + 28, minimalIslandItem.height + 16)
-            implicitWidth: 600
-            visible: root.barMode === "minimal_old"
-
-            mask: Region {
-                item: root.islandRevealed ? minimalIslandItem : edgeTrigger
-            }
-
-            Item {
-                id: edgeTrigger
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: root.mainBarEdge !== "bottom" ? parent.top : undefined
-                anchors.bottom: root.mainBarEdge === "bottom" ? parent.bottom : undefined
-                width: Math.max(minimalIslandItem.width, 360)
-                height: 8
-                visible: !root.islandPersistent
-
-                HoverHandler {
-                    id: edgeHov
-                    onHoveredChanged: {
-                        if (edgeHov.hovered) {
-                            islandHoverLeaveTimer.stop()
-                            root.islandHovered = true
-                        }
-                    }
-                }
-            }
-
-            Timer {
-                id: islandHoverLeaveTimer
-                interval: 350
-                onTriggered: {
-                    if (!edgeHov.hovered && !islandHov.hovered) {
-                        root.islandHovered = false
-                    }
-                }
-            }
-
-            MinimalIsland {
-                id: minimalIslandItem
-                attachedBottom: root.mainBarEdge === "bottom"
-                islandStyle: root.islandStyle
-                islandOpacity: root.minimalOpacity
-                pillHeight: root.pillHeight
-                notchHeight: root.notchHeight
-                notifCount: (notificationServer && notificationServer.trackedNotifications) ? notificationServer.trackedNotifications.values.length : 0
-                anchors.horizontalCenter: parent.horizontalCenter
-
-                y: {
-                    if (root.mainBarEdge === "bottom") {
-                        return root.islandRevealed
-                            ? (parent.height - height - ((root.islandStyle === "notch") ? 0 : 8))
-                            : (parent.height + 10)
-                    } else {
-                        return root.islandRevealed
-                            ? ((root.islandStyle === "notch") ? 0 : 8)
-                            : (-height - 10)
-                    }
-                }
-                opacity: root.islandRevealed ? 1.0 : 0.0
-
-                Behavior on y {
-                    NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
-                }
-                Behavior on opacity {
-                    NumberAnimation { duration: 200 }
-                }
-
-                HoverHandler {
-                    id: islandHov
-                    onHoveredChanged: {
-                        if (islandHov.hovered) {
-                            islandHoverLeaveTimer.stop()
-                            root.islandHovered = true
-                            minimalIslandItem.forceActiveFocus()
-                        } else {
-                            islandHoverLeaveTimer.restart()
-                        }
-                    }
-                }
-
-                Binding on currentPage {
-                    value: root.islandPage
-                }
-                onCurrentPageChanged: {
-                    if (root.islandPage !== currentPage) root.islandPage = currentPage
-                }
-                onOpenLauncher: root.toggleDefaultLauncher()
-                onToggleControls: root.toggleControls()
-                onOpenMixer: root.openMixer()
-                onCloseMixer: mixerLeaveTimer.restart()
-                onToggleMixer: root.toggleMixer()
-                onOpenBrightness: root.openBrightness()
-                onCloseBrightness: brightnessLeaveTimer.restart()
-                onToggleBrightness: root.toggleBrightness()
-                onOpenBattery: root.openBattery()
-                onCloseBattery: batteryLeaveTimer.restart()
-                onToggleBattery: root.toggleBattery()
-                onOpenWifi: root.openWifi()
-                onCloseWifi: wifiLeaveTimer.restart()
-                onToggleWifi: root.toggleWifi()
-                onOpenBt: root.openBt()
-                onCloseBt: btLeaveTimer.restart()
-                onToggleBt: root.toggleBt()
-                onOpenNotif: root.openNotif()
-                onCloseNotif: notifLeaveTimer.restart()
-                onToggleNotif: root.toggleNotif()
-                onOpenCalendar: root.openCalendar()
-                onCloseCalendar: {
-                    calendarLeaveTimer.restart()
-                    if (root.centerDashboardOpen && !root.centerDashboardHovered) {
-                        centerDashboardLeaveTimer.interval = 1000
-                        centerDashboardLeaveTimer.restart()
-                    }
-                }
-                onToggleCalendar: root.toggleCalendar()
-                onOpenSmallMusic: root.openSmallMusic()
-                onCloseSmallMusic: smallMusicLeaveTimer.restart()
-                onToggleSmallMusic: root.toggleSmallMusic()
-                onSwitchIslandStyle: (s) => root.switchIslandStyle(s)
-                onToggleSpotlight: root.toggleDefaultLauncher()
-                onOpenSpotlight: root.toggleDefaultLauncher()
             }
         }
     }

@@ -2,6 +2,7 @@ import QtCore
 import QtQuick
 import Quickshell.Io
 import Quickshell.Widgets
+import "../../../../Singletons"
 
 Item {
     id: root

@@ -7,6 +7,7 @@ import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Widgets
 import "../common"
+import "../../../../Singletons"
 
 Item {
     id: root

@@ -7,3 +7,8 @@ singleton LockTransition LockTransition.qml
 singleton NotificationService NotificationService.qml
 singleton LockState LockState.qml
 singleton ShellConfig ShellConfig.qml
+singleton StyleTokens StyleTokens.qml
+singleton UserConfig UserConfig.qml
+singleton CompositorBackend CompositorBackend.qml
+singleton SysBackend SysBackend.qml
+singleton SystemServices SystemServices.qml

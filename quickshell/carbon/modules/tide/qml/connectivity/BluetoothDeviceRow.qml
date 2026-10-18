@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Bluetooth
 import Quickshell.Widgets
+import "../../../../Singletons"
 
 Rectangle {
     id: root

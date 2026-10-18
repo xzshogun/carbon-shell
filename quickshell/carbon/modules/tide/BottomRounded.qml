@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import "../../Singletons"
 
 // A mask item painting a rectangle with square top corners and rounded bottom corners.
 // Use as the maskSource of an OpacityMask / MultiEffect (layer effect) to clip a surface.

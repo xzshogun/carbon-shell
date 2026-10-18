@@ -1,4 +1,5 @@
 import QtQuick
+import "../../../../Singletons"
 
 MouseArea {
     id: root

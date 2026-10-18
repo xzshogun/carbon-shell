@@ -91,9 +91,9 @@ hl.gesture({
 })
 
 -- Load Modular Carbon Shell Configurations
-dofile("/home/reduct/.config/hypr/carbon/looknfeel.lua")
-dofile("/home/reduct/.config/hypr/carbon/windowrules.lua")
-dofile("/home/reduct/.config/hypr/carbon/keybinds.lua")
-pcall(dofile, "/home/reduct/.config/hypr/current-mode-keybinds.lua")
+dofile("/home/shogun/.config/hypr/carbon/looknfeel.lua")
+dofile("/home/shogun/.config/hypr/carbon/windowrules.lua")
+dofile("/home/shogun/.config/hypr/carbon/keybinds.lua")
+pcall(dofile, "/home/shogun/.config/hypr/current-mode-keybinds.lua")
 
 pcall(require, "hyprland-gui")

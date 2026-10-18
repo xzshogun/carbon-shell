@@ -135,14 +135,14 @@ Singleton {
         if (root._reloading) return
         root._reloading = true
         try {
+            caelestiaFile.reload()
+            fallbackFile.reload()
+            if (hyprFallbackFile) hyprFallbackFile.reload()
+
             var txt = caelestiaFile.text().trim()
             var parsed = null
 
             if (txt.length > 0) {
-                if (txt === root._lastLoadedThemeText) {
-                    root._reloading = false
-                    return
-                }
                 try {
                     parsed = JSON.parse(txt)
                 } catch (pe) {
@@ -175,21 +175,21 @@ Singleton {
                 root.m3outline = col(c.outline, "#75747f")
                 root.m3outlineVariant = col(c.outlineVariant, "#474750")
 
-                root.m3primary = col(c.primary, "#c0c4ee")
-                root.m3primaryDim = col(c.primaryDim, "#b2b6e0")
-                root.m3onPrimary = col(c.onPrimary, "#393e61")
-                root.m3primaryContainer = col(c.primaryContainer, "#4b5074")
-                root.m3onPrimaryContainer = col(c.onPrimaryContainer, "#e0e1ff")
+                root.m3primary = col(c.primary, "#bfc7d5")
+                root.m3primaryDim = col(c.primaryDim, "#a7abb4")
+                root.m3onPrimary = col(c.onPrimary, "#29313c")
+                root.m3primaryContainer = col(c.primaryContainer, "#3f4753")
+                root.m3onPrimaryContainer = col(c.onPrimaryContainer, "#d7e3f8")
 
-                root.m3secondary = col(c.secondary, "#c4c5dd")
-                root.m3onSecondary = col(c.onSecondary, "#3d3f52")
+                root.m3secondary = col(c.secondary, "#bbc7db")
+                root.m3onSecondary = col(c.onSecondary, "#253141")
                 root.m3secondaryContainer = col(c.secondaryContainer, "#383a4d")
                 root.m3onSecondaryContainer = col(c.onSecondaryContainer, "#bdbdd5")
 
-                root.m3tertiary = col(c.tertiary, "#fbe3ff")
-                root.m3onTertiary = col(c.onTertiary, "#684d73")
-                root.m3tertiaryContainer = col(c.tertiaryContainer, "#f5d1ff")
-                root.m3onTertiaryContainer = col(c.onTertiaryContainer, "#60446a")
+                root.m3tertiary = col(c.tertiary, "#bbc7db")
+                root.m3onTertiary = col(c.onTertiary, "#253141")
+                root.m3tertiaryContainer = col(c.tertiaryContainer, "#3c4858")
+                root.m3onTertiaryContainer = col(c.onTertiaryContainer, "#d7e3f8")
 
                 root.m3error = col(c.error, "#f97386")
                 root.m3onError = col(c.onError, "#490013")
@@ -339,56 +339,56 @@ Singleton {
     Component.onCompleted: reload()
 
     /* ── Standard Carbon Tokens ───────────────────────────────────────── */
-    property color bg:             "#E6191920"
-    property color bgAlt:          "#BF1F1F26"
-    property color bgHover:        "#E624252E"
-    property color bgActive:       "#D94B5074"
-    property color fg:             "#E6E4F0"
-    property color fgDim:          "#ABAAB5"
-    property color fgFaint:        "#75747F"
-    property color accent:         "#C0C4EE"
-    property color accentLit:      "#E0E1FF"
-    property color accentFg:       "#393E61"
-    property color accentContrast: "#393E61"
-    property color outline:        "#40474750"
+    property color bg:             "#E6111418"
+    property color bgAlt:          "#BF1B1B1D"
+    property color bgHover:        "#E62A2A2B"
+    property color bgActive:       "#D93F4753"
+    property color fg:             "#E1E2E8"
+    property color fgDim:          "#C3C6CF"
+    property color fgFaint:        "#8D9199"
+    property color accent:         "#BFC7D5"
+    property color accentLit:      "#D7E3F8"
+    property color accentFg:       "#29313C"
+    property color accentContrast: "#29313C"
+    property color outline:        "#4043474E"
     property color ok:             "#B5CCBA"
-    property color warn:           "#FBE3FF"
-    property color err:            "#F97386"
+    property color warn:           "#F9E2AF"
+    property color err:            "#F38BA8"
     property bool isDark:          true
     property bool dnd:             false
 
     /* ── Caelestia Material 3 Palette Tokens ─────────────────────────── */
-    property color m3background:             "#0E0E12"
-    property color m3onBackground:           "#E6E4F0"
-    property color m3surface:                "#0E0E12"
-    property color m3surfaceDim:             "#0E0E12"
-    property color m3surfaceBright:          "#2B2B34"
-    property color m3surfaceContainerLowest: "#000000"
-    property color m3surfaceContainerLow:    "#131318"
-    property color m3surfaceContainer:       "#191920"
-    property color m3surfaceContainerHigh:   "#1F1F26"
-    property color m3surfaceContainerHighest:"#24252E"
-    property color m3onSurface:              "#E6E4F0"
-    property color m3surfaceVariant:         "#24252E"
-    property color m3onSurfaceVariant:       "#ABAAB5"
-    property color m3outline:                "#75747F"
-    property color m3outlineVariant:         "#474750"
-    property color m3primary:                "#C0C4EE"
-    property color m3primaryDim:             "#B2B6E0"
-    property color m3onPrimary:              "#393E61"
-    property color m3primaryContainer:       "#4B5074"
-    property color m3onPrimaryContainer:     "#E0E1FF"
-    property color m3secondary:              "#C4C5DD"
-    property color m3onSecondary:            "#3D3F52"
-    property color m3secondaryContainer:     "#383A4D"
-    property color m3onSecondaryContainer:   "#BDBDD5"
-    property color m3tertiary:               "#FBE3FF"
-    property color m3onTertiary:             "#684D73"
-    property color m3tertiaryContainer:      "#F5D1FF"
-    property color m3onTertiaryContainer:    "#60446A"
-    property color m3error:                  "#F97386"
-    property color m3onError:                "#490013"
-    property color m3errorContainer:         "#871C34"
+    property color m3background:             "#0E0E0F"
+    property color m3onBackground:           "#E1E2E8"
+    property color m3surface:                "#131314"
+    property color m3surfaceDim:             "#131314"
+    property color m3surfaceBright:          "#36393E"
+    property color m3surfaceContainerLowest: "#0E0E0F"
+    property color m3surfaceContainerLow:    "#1B1B1D"
+    property color m3surfaceContainer:       "#1F1F21"
+    property color m3surfaceContainerHigh:   "#2A2A2B"
+    property color m3surfaceContainerHighest:"#353536"
+    property color m3onSurface:              "#E1E2E8"
+    property color m3surfaceVariant:         "#474648"
+    property color m3onSurfaceVariant:       "#C3C6CF"
+    property color m3outline:                "#8D9199"
+    property color m3outlineVariant:         "#43474E"
+    property color m3primary:                "#BFC7D5"
+    property color m3primaryDim:             "#A7ABB4"
+    property color m3onPrimary:              "#29313C"
+    property color m3primaryContainer:       "#3F4753"
+    property color m3onPrimaryContainer:     "#D7E3F8"
+    property color m3secondary:              "#BBC7DB"
+    property color m3onSecondary:            "#253141"
+    property color m3secondaryContainer:     "#3C4858"
+    property color m3onSecondaryContainer:   "#D7E3F8"
+    property color m3tertiary:               "#BBC7DB"
+    property color m3onTertiary:             "#253141"
+    property color m3tertiaryContainer:      "#3C4858"
+    property color m3onTertiaryContainer:    "#D7E3F8"
+    property color m3error:                  "#FFB4AB"
+    property color m3onError:                "#690005"
+    property color m3errorContainer:         "#93000A"
     property color m3success:                "#B5CCBA"
     property color m3onSuccess:              "#213528"
     property color m3successContainer:       "#374B3E"

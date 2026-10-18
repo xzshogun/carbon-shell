@@ -28,8 +28,9 @@ Item {
     property real livePositionMs: 0
     property real lastRawMprisPosMs: -1
     property int syncOffsetMs: 0 // Neutral 0ms sync so lyrics land precisely on the beat without rushing ahead
+    readonly property int visualLeadMs: LyricsService.hasRichWords ? 210 : 50
 
-    readonly property real effectivePositionMs: Math.max(0, root.livePositionMs + 105 - root.syncOffsetMs)
+    readonly property real effectivePositionMs: Math.max(0, root.livePositionMs + root.visualLeadMs - root.syncOffsetMs)
     readonly property real effectivePositionSec: root.effectivePositionMs / 1000.0
 
     function syncBaseTimeFromMpris() {
@@ -53,11 +54,11 @@ Item {
         }
     }
 
-    // 50ms Live Playback Timer: Pure Date.now() wall-clock stopwatch.
+    // 16ms Live Playback Timer (60 FPS): Pure Date.now() wall-clock stopwatch.
     // NEVER queries activePlayer.position over D-Bus inside this loop to prevent freezing!
     Timer {
         id: playbackTimer
-        interval: 50
+        interval: 16
         repeat: true
         running: true
         onTriggered: {

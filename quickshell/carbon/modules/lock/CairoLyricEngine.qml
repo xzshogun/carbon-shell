@@ -73,13 +73,16 @@ Item {
             var rawPos = activePlayer ? activePlayer.position : 0
             var mprisMs = (rawPos > 1000000) ? (rawPos / 1000) : (rawPos < 36000 ? rawPos * 1000 : rawPos)
 
-            if (Math.abs(mprisMs - root.lastRawMprisPosMs) > 10) {
-                // Fresh MPRIS position: snap our clock to it
-                root.lastRawMprisPosMs = mprisMs
-                root.livePositionMs = mprisMs
-            } else if (!activePlayer || activePlayer.playbackState === MprisPlaybackState.Playing || activePlayer.isPlaying !== false) {
-                // When MPRIS caches player.position between D-Bus signals, advance livePositionMs by dt
+            // When music is playing, smoothly advance livePositionMs by elapsed time (+dt ~50ms):
+            var isPlaying = !activePlayer || activePlayer.playbackState === MprisPlaybackState.Playing || activePlayer.isPlaying !== false
+            if (isPlaying) {
                 root.livePositionMs += dt
+            }
+
+            // ONLY snap livePositionMs to MPRIS when the drift exceeds 800ms (seek, scrub, track skip):
+            if (mprisMs > 0 && Math.abs(mprisMs - root.livePositionMs) > 800) {
+                root.livePositionMs = mprisMs
+                root.lastRawMprisPosMs = mprisMs
             }
 
             root.updateSync()
@@ -283,9 +286,10 @@ Item {
 
         for (var i = 0; i < rawLines.length; i++) {
             var cur = rawLines[i]
-            var lineStartMs = Math.round(cur.time * 1000)
-            var nextLineStartMs = (i + 1 < rawLines.length)
-                ? Math.round(rawLines[i + 1].time * 1000)
+            var lineStartMs = (cur.time > 10000) ? Math.round(cur.time) : Math.round(cur.time * 1000)
+            var nextTime = (i + 1 < rawLines.length) ? rawLines[i + 1].time : 0
+            var nextLineStartMs = (nextTime > 0)
+                ? ((nextTime > 10000) ? Math.round(nextTime) : Math.round(nextTime * 1000))
                 : (lineStartMs + 6000)
 
             // A. Check for rich word-level timestamps (enhanced LRC)
@@ -293,20 +297,23 @@ Item {
                 var rawWordTokens = []
                 for (var w = 0; w < cur.words.length; w++) {
                     var cw = cur.words[w]
-                    var wStart = Math.round(cw.time * 1000)
+                    var wTime = cw.time
+                    var wStart = (wTime > 10000) ? Math.round(wTime) : Math.round(wTime * 1000)
                     var isLastWord = (w === cur.words.length - 1)
-                    var vocalEnd = (cw.dur !== undefined && cw.dur > 0)
-                        ? (wStart + Math.round(cw.dur * 1000))
-                        : (!isLastWord ? Math.round(cur.words[w + 1].time * 1000) : Math.min(nextLineStartMs - 80, wStart + 1000))
+                    var nextWTime = !isLastWord ? cur.words[w + 1].time : 0
                     var nextWStart = !isLastWord
-                        ? Math.round(cur.words[w + 1].time * 1000)
+                        ? ((nextWTime > 10000) ? Math.round(nextWTime) : Math.round(nextWTime * 1000))
                         : nextLineStartMs
+                    var wDurMs = (cw.dur !== undefined && cw.dur > 0)
+                        ? ((cw.dur > 100) ? Math.round(cw.dur) : Math.round(cw.dur * 1000))
+                        : Math.max(120, nextWStart - wStart)
+                    var vocalEnd = wStart + wDurMs
 
                     rawWordTokens.push({
                         word: cw.text,
                         startMs: wStart,
                         endMs: nextWStart,
-                        vocalEndMs: Math.max(wStart + 120, vocalEnd)
+                        vocalEndMs: vocalEnd
                     })
                 }
 
@@ -427,14 +434,7 @@ Item {
         var effectivePos = root.effectivePositionMs
 
         if (effectivePos < root.allWords[0].startMs) {
-            root.row0Word = null
-            root.row1Word = null
-            root.row2Word = null
-            root.clusterSize = 0
-            root.currentTokenIndex = -1
-            root.currentWordIndex = -1
-            root.activeBeat = null
-            root.clearRequested()
+            // Before the song's first lyric: hold calmly, never wipe the stage
             return
         }
 
@@ -447,33 +447,7 @@ Item {
             }
         }
 
-        // Expire chunk during extended instrumental pauses (> 4.5s after vocalEndMs and next chunk is > 1.2s away)
-        if (targetIndex >= 0 && targetIndex < root.allWords.length) {
-            var curChunk = root.allWords[targetIndex]
-            var nextChunk = (targetIndex + 1 < root.allWords.length) ? root.allWords[targetIndex + 1] : null
-            var expireMs = curChunk.vocalEndMs + 4500
-            if (nextChunk) {
-                if (effectivePos > expireMs && (nextChunk.startMs - effectivePos > 1200)) {
-                    targetIndex = -1
-                }
-            } else {
-                if (effectivePos > expireMs) {
-                    targetIndex = -1
-                }
-            }
-        }
-
-        if (targetIndex === -1) {
-            if (root.currentTokenIndex !== -1) {
-                root.currentTokenIndex = -1
-                root.currentWordIndex = -1
-                root.row0Word = null
-                root.row1Word = null
-                root.row2Word = null
-                root.clusterSize = 0
-                root.activeBeat = null
-                root.clearRequested()
-            }
+        if (targetIndex < 0) {
             return
         }
 
@@ -483,23 +457,22 @@ Item {
 
             if (targetIndex > root.currentTokenIndex) {
                 var diff = targetIndex - root.currentTokenIndex
-                if (diff > 3 || root.currentTokenIndex === -1) {
-                    // Scrub / Seek / Initial Sync: jump directly
+                if (root.currentTokenIndex === -1) {
+                    // Mid-song initial sync: jump directly to targetIndex
                     nextStep = targetIndex
-                } else if (diff === 2) {
-                    // Fast sub-200ms syllable was about to be skipped between polls!
-                    // Advance by +1 first and enforce 170ms minimum hold
-                    if (nowMs - root.lastTokenStepTimeMs < 170 && root.currentTokenIndex >= 0) {
+                } else if (diff > 8) {
+                    // Large user seek (> 3-4s): jump directly to targetIndex
+                    nextStep = targetIndex
+                } else {
+                    // Normal continuous playback: step smoothly 1 token at a time!
+                    // Enforce 160ms minimum display so each token visibly renders and glides
+                    if (nowMs - root.lastTokenStepTimeMs < 160) {
                         return
                     }
                     nextStep = root.currentTokenIndex + 1
-                } else if (diff === 1) {
-                    if (nowMs - root.lastTokenStepTimeMs < 170 && root.currentTokenIndex >= 0) {
-                        return
-                    }
-                    nextStep = targetIndex
                 }
             } else {
+                // Backward seek
                 nextStep = targetIndex
             }
 

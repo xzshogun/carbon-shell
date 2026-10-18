@@ -272,14 +272,12 @@ Item {
             }
         }
 
-        // 5. SUBTLE BREATHING INNER GLASS RIM (Replaces the ugly static blue box)
+        // 5. Clean Borderless Interior (Zero sharp perimeter boxes, soft inward bloom only)
         Rectangle {
             anchors.fill: parent
-            anchors.margins: 4
-            radius: 18
             color: "transparent"
-            border.width: 1.5 + cairoAmbientBorder.beatPulse * 1.5
-            border.color: Qt.rgba(cairoAmbientBorder.glowColor.r, cairoAmbientBorder.glowColor.g, cairoAmbientBorder.glowColor.b, 0.22 + cairoAmbientBorder.beatPulse * 0.45)
+            border.width: 0
+            border.color: "transparent"
         }
     }
 
@@ -660,10 +658,12 @@ Item {
     }
 
     function handleClearRequested() {
-        for (var i = 0; i < delegates.length; i++) {
-            var d = delegates[i]
-            if (d.stage >= 0 && d.stage <= 2) {
-                d.setStage(3)
+        if (!lyricEngine || !lyricEngine.hasLyrics || !lyricEngine.hasTrack) {
+            for (var i = 0; i < delegates.length; i++) {
+                var d = delegates[i]
+                if (d.stage >= 0 && d.stage <= 2) {
+                    d.setStage(3)
+                }
             }
         }
     }

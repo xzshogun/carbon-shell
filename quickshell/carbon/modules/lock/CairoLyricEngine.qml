@@ -23,53 +23,51 @@ Item {
     readonly property bool hasTrack: LyricsService.hasTrack
     readonly property real currentPosition: LyricsService.currentPosition
 
-    // ── 1. 60fps Interpolated Audio Clock ──────────────────────────────────
+    // ── 1. Live Wall-Clock + MPRIS Sync Engine ──────────────────────────────
+    property double songEpochMs: 0
     property real livePositionMs: 0
-    property real lastFrameMs: 0
-    property int syncOffsetMs: -120 // -120ms lead compensation for instantaneous visual perception
+    property real lastRawMprisPosMs: -1
+    property int syncOffsetMs: 0 // Neutral 0ms sync so lyrics land precisely on the beat without rushing ahead
+    readonly property int visualLeadMs: LyricsService.hasRichWords ? 210 : 50
 
-    readonly property real effectivePositionMs: Math.max(0, root.livePositionMs - root.syncOffsetMs)
+    readonly property real effectivePositionMs: Math.max(0, root.livePositionMs + root.visualLeadMs - root.syncOffsetMs)
     readonly property real effectivePositionSec: root.effectivePositionMs / 1000.0
 
-    // Smooth drift nudging & seek snapping on MPRIS D-Bus position updates
-    onCurrentPositionChanged: {
-        var mprisPosMs = Math.round(root.currentPosition * 1000)
-        var diff = Math.abs(mprisPosMs - root.livePositionMs)
-        if (diff > 160 || root.livePositionMs === 0) {
-            root.livePositionMs = mprisPosMs
-        } else {
-            root.livePositionMs += (mprisPosMs - root.livePositionMs) * 0.15
-        }
+    function syncBaseTimeFromMpris() {
+        var activePlayer = LyricsService.activePlayer
+        var rawPos = activePlayer ? activePlayer.position : 0
+        var posMs = (rawPos > 1000000) ? (rawPos / 1000) : (rawPos < 36000 ? rawPos * 1000 : rawPos)
+        if (isNaN(posMs) || posMs < 0) posMs = 0
+        root.songEpochMs = Date.now() - posMs
+        root.lastRawMprisPosMs = posMs
+        root.livePositionMs = posMs
         root.updateSync()
     }
 
-    // High-precision 60fps clock driver (16ms)
-    Timer {
-        id: clock60fps
-        interval: 16
-        repeat: true
-        running: root.hasTrack
-        onTriggered: {
-            var now = Date.now()
-            var delta = root.lastFrameMs > 0 ? Math.min(60, now - root.lastFrameMs) : 16
-            root.lastFrameMs = now
+    function resetPlaybackClock() {
+        root.syncBaseTimeFromMpris()
+    }
 
-            if (root.isPlaying) {
-                root.livePositionMs += delta
-            }
-            root.updateSync()
+    onIsPlayingChanged: {
+        if (root.isPlaying) {
+            root.syncBaseTimeFromMpris()
         }
     }
 
-    // MPRIS position refresh pinger (250ms) to ensure D-Bus position ticks arrive
+    // 16ms Live Playback Timer (60 FPS): Pure Date.now() wall-clock stopwatch.
+    // NEVER queries activePlayer.position over D-Bus inside this loop to prevent freezing!
     Timer {
-        interval: 250
+        id: playbackTimer
+        interval: 16
         repeat: true
-        running: root.hasTrack
+        running: true
         onTriggered: {
-            if (LyricsService.activePlayer && LyricsService.activePlayer.positionSupported) {
-                LyricsService.activePlayer.positionChanged()
+            var activePlayer = LyricsService.activePlayer
+            var isPlaying = root.isPlaying || !activePlayer || activePlayer.playbackState === MprisPlaybackState.Playing || activePlayer.isPlaying !== false
+            if (root.songEpochMs > 0 && isPlaying) {
+                root.livePositionMs = Math.max(0, Date.now() - root.songEpochMs)
             }
+            root.updateSync()
         }
     }
 
@@ -83,33 +81,69 @@ Item {
     property int clusterSize: 0
 
     property int currentWordIndex: -1
+    property int currentTokenIndex: -1
+    property real lastTokenStepTimeMs: 0
     property var activeBeat: null
 
     signal beatTriggered(var beatData)
     signal clearRequested()
 
+    function sanitizeLineTokens(tokens) {
+        if (!tokens || tokens.length === 0) return [];
+
+        // 1. Deduplicate consecutive identical ad-lib echoes within < 350ms
+        var deduped = [];
+        for (var i = 0; i < tokens.length; i++) {
+            var cur = tokens[i];
+            if (deduped.length > 0) {
+                var prev = deduped[deduped.length - 1];
+                var cleanCur = (cur.word || "").trim().toLowerCase();
+                var cleanPrev = (prev.word || "").trim().toLowerCase();
+                if (cleanCur.length > 0 && cleanCur === cleanPrev && (cur.startMs - prev.endMs) < 350) {
+                    prev.endMs = Math.max(prev.endMs, cur.endMs);
+                    prev.vocalEndMs = Math.max(prev.vocalEndMs || prev.endMs, cur.vocalEndMs || cur.endMs);
+                    continue;
+                }
+            }
+            deduped.push(cur);
+        }
+
+        // 2. Enforce minimum 60ms duration per token and shift subsequent tokens on same line
+        for (var k = 0; k < deduped.length; k++) {
+            var tok = deduped[k];
+            tok.endMs = Math.max(tok.startMs + 60, tok.endMs);
+            tok.vocalEndMs = Math.max(tok.startMs + 60, tok.vocalEndMs || tok.endMs);
+            if (k + 1 < deduped.length) {
+                var nextTok = deduped[k + 1];
+                if (nextTok.startMs < tok.startMs + 60) {
+                    var shiftMs = (tok.startMs + 60) - nextTok.startMs;
+                    nextTok.startMs += shiftMs;
+                    nextTok.endMs += shiftMs;
+                    if (nextTok.vocalEndMs) nextTok.vocalEndMs += shiftMs;
+                }
+            }
+        }
+
+        return deduped;
+    }
+
     function tokenizeLineToSingleWords(lineText, lineStartMs, nextLineStartMs) {
-        // 1. Clean parenthetical ad-libs like "(All night long)" or "(Forever)" if they duplicate, or split every single whitespace token:
         var rawTokens = lineText.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
         if (rawTokens.length === 0) return [];
 
-        // 2. Pure 1-word array: EVERY element in `rawTokens` is its own standalone row!
-        // DO NOT group short words, articles, or pronouns. 1 token = 1 single word string.
         var rawGapMs = Math.max(350, nextLineStartMs - lineStartMs);
+        // Spread the words across 92% of the line gap (up to 460ms per word) for a relaxed, natural pace
+        var activeWindowMs = Math.min(rawGapMs * 0.92, rawTokens.length * 460);
 
-        // 3. Adaptive Tempo Window: scales naturally with fast rap/pop or slow ballads
-        // Takes 86% of the real timestamp gap (capped at 420ms * wordCount so long instrumental pauses don't stretch words)
-        var maxNaturalWindow = rawTokens.length * 420;
-        var activeWindowMs = Math.min(rawGapMs * 0.86, maxNaturalWindow);
-
-        // 4. Weight each single word slightly by character length so short words ("I", "a", "in") step fast
-        // and longer punch words ("confidence", "measurements", "together?") hold slightly longer:
         var weights = [];
         var totalWeight = 0;
         for (var i = 0; i < rawTokens.length; i++) {
-            var cleanLen = rawTokens[i].replace(/[^a-zA-Z0-9\u0900-\u097F]/g, "").length;
-            var w = Math.max(1.0, Math.pow(cleanLen, 0.55));
-            if (i === rawTokens.length - 1) w *= 1.25; // Slight hold on the last word of a line
+            var token = rawTokens[i];
+            var cleanLen = token.replace(/[^a-zA-Z0-9\u0900-\u097F]/g, "").length;
+            var w = Math.max(1.0, Math.pow(cleanLen, 0.5));
+            if (/[,;\-\u2014\?\!]$|\.\.$/.test(token)) {
+                w *= 2.2; // Hold 2.2x longer on comma/breath pauses
+            }
             weights.push(w);
             totalWeight += w;
         }
@@ -118,14 +152,101 @@ Item {
         var cursorMs = lineStartMs;
         for (var j = 0; j < rawTokens.length; j++) {
             var durMs = (weights[j] / totalWeight) * activeWindowMs;
+            var isLast = (j === rawTokens.length - 1);
             result.push({
-                word: rawTokens[j],          // STRICTLY 1 WORD STRING (never an array of 2 words!)
+                word: rawTokens[j],
                 startMs: Math.round(cursorMs),
-                endMs: Math.round(cursorMs + durMs)
+                endMs: isLast ? Math.round(nextLineStartMs) : Math.round(cursorMs + durMs),
+                vocalEndMs: isLast ? Math.round(nextLineStartMs) : Math.round(cursorMs + durMs)
             });
             cursorMs += durMs;
         }
-        return result;
+        return root.sanitizeLineTokens(result);
+    }
+
+    readonly property var leadGlueWords: new Set([
+        // English Pronouns, Prepositions, Auxiliaries & Contractions
+        "i", "im", "i'm", "ive", "i've", "id", "i'd", "ill", "i'll",
+        "you", "youre", "you're", "youve", "you've", "youd", "you'd", "your",
+        "he", "hes", "he's", "his", "she", "shes", "she's", "her",
+        "we", "were", "we're", "weve", "we've", "we'll", "our",
+        "they", "theyre", "they're", "their", "them", "it", "its", "it's",
+        "my", "me", "mine", "us", "who", "what", "whats", "what's", "that", "thats", "that's", "this", "these", "those",
+        "in", "on", "at", "to", "for", "with", "from", "by", "of", "out", "up", "down", "into", "over", "under", "through",
+        "a", "an", "the", "some", "all", "no", "not", "noo", "nah", "oh", "ooh", "ah", "yeah", "yea", "yo", "hey", "ay", "ayy",
+        "is", "are", "was", "were", "be", "been", "am", "do", "dont", "don't", "does", "did", "didnt", "didn't",
+        "can", "cant", "can't", "could", "will", "wont", "won't", "would", "should", "may", "might", "must",
+        "got", "get", "gonna", "gon", "wanna", "wana", "gotta", "lemme", "gimme", "outta", "kinda", "sorta", "tryna",
+        "so", "if", "or", "and", "but", "cuz", "cause", "'cause", "cos", "just", "only", "even", "still", "too", "very", "real",
+        "when", "where", "why", "how", "now", "then", "here", "there", "every", "each", "another",
+
+        // Hinglish & Punjabi Pronouns, Connectors & Starters
+        "tu", "tera", "tere", "teri", "tujhe", "tujhko", "tuhada", "tuhadi", "tenu", "tainu", "tusi",
+        "mai", "main", "mera", "mere", "meri", "mujhe", "mujhko", "menu", "mainu", "asi", "assi", "sada", "sade", "sadi", "apna", "apne", "apni",
+        "wo", "woh", "o", "oh", "ohda", "ohde", "ohdi", "ohnu", "us", "uska", "uske", "uski", "un", "unka", "unke",
+        "ye", "yeh", "eh", "is", "iska", "iske", "iski", "in", "inka",
+        "kaun", "kon", "kya", "ki", "kyu", "kyun", "kive", "kiven", "kithe", "kado", "kadon", "koi", "kuch", "kuj", "kujh", "sab", "saare", "sare",
+        "ek", "ik", "ikk", "do", "har", "ikalla", "kalla", "kalli",
+        "jo", "jiska", "jiske", "jehda", "jehdi", "jehde", "jido", "jadon", "jad", "je", "agar", "par", "lekin", "magar", "phir", "fir", "fer",
+        "na", "nahi", "nhi", "nai", "naa", "mat", "bina", "bin", "baaj", "baajo",
+        "bhi", "vi", "ve", "ni", "oe", "oye", "haan", "han", "ji", "bas", "hun", "ab", "abhi", "ajj", "aaj", "kal", "roz",
+        "थोड़ा", "मेरा", "तेरा", "मैं", "तू", "हम", "वो", "ये", "क्या", "क्यों", "ना", "नहीं", "एक", "हर", "जो", "अब"
+    ])
+
+    readonly property var trailGlueWords: new Set([
+        // Short trailing auxiliaries, postpositions & particles that sound natural glued to the word before them
+        "is", "it", "in", "on", "up", "out", "off", "me", "you", "us", "em", "'em", "now", "too", "so", "no",
+        "hai", "hain", "ho", "hoon", "hu", "tha", "the", "thi", "ga", "ge", "gi",
+        "si", "siga", "sigi", "ne", "nu", "te", "to", "ton", "ch", "vich", "ich", "de", "da", "di", "ke", "ka", "ki", "ko", "se", "me", "mein", "pe", "par",
+        "na", "ni", "vi", "bhi", "hi", "toh", "ta", "tan", "ja", "jaa", "le", "la", "de", "kar", "kr", "reh", "raha", "rahi", "rahe", "gaya", "gayi", "gaye",
+        "है", "हैं", "हो", "था", "थी", "थे", "से", "को", "में", "पर", "के", "का", "की", "भी", "ही", "ना", "तो", "जा", "ले"
+    ])
+
+    function mixSingleAndDoubleWords(wordTokens) {
+        var LEAD_GLUE_WORDS = root.leadGlueWords;
+        var TRAIL_GLUE_WORDS = root.trailGlueWords;
+        var mixed = [];
+        var i = 0;
+        while (i < wordTokens.length) {
+            var curr = wordTokens[i];
+            var next = (i + 1 < wordTokens.length) ? wordTokens[i + 1] : null;
+
+            if (!next) {
+                mixed.push(curr);
+                break;
+            }
+
+            var cleanCurr = (curr.word || "").toLowerCase().replace(/[^a-z0-9'\u0900-\u097F]/g, "");
+            var cleanNext = (next.word || "").toLowerCase().replace(/[^a-z0-9'\u0900-\u097F]/g, "");
+
+            var hasPausePunct = /[,;\-\u2014\?\!]$|\.\.$/.test((curr.word || "").trim());
+            var timeGapBetweenWords = next.startMs - curr.endMs;
+            var combinedLen = cleanCurr.replace(/'/g, "").length + cleanNext.replace(/'/g, "").length;
+
+            var isLeadGlue = LEAD_GLUE_WORDS.has(cleanCurr);
+            var isTrailGlue = TRAIL_GLUE_WORDS.has(cleanNext);
+            // Rhythm variety hash so even two short 4-letter non-glue words occasionally pair up (~45% of the time):
+            var firstChar = (cleanCurr && cleanCurr.length > 0) ? cleanCurr.charCodeAt(0) : 0;
+            var rhythmMix = (combinedLen <= 8) && (((firstChar * 37 + i * 19) % 100) < 45);
+
+            // Pair them if there's no comma pause, no long vocal silence (>220ms) between them, and combined length fits cleanly:
+            var maxAllowedChars = (isLeadGlue || isTrailGlue) ? 11 : 8;
+            var shouldPair = !hasPausePunct && (timeGapBetweenWords <= 220) && (combinedLen <= maxAllowedChars) && (isLeadGlue || isTrailGlue || rhythmMix);
+
+            if (shouldPair) {
+                mixed.push({
+                    word: curr.word.trim() + " " + next.word.trim(),
+                    startMs: curr.startMs,
+                    endMs: next.endMs,
+                    vocalEndMs: next.vocalEndMs || next.endMs
+                });
+                i += 2;
+            } else {
+                mixed.push(curr);
+                i += 1;
+            }
+        }
+        return mixed;
     }
 
     function processLyrics() {
@@ -146,60 +267,91 @@ Item {
 
         for (var i = 0; i < rawLines.length; i++) {
             var cur = rawLines[i]
-            var lineStartMs = Math.round(cur.time * 1000)
-            var nextLineStartMs = (i + 1 < rawLines.length)
-                ? Math.round(rawLines[i + 1].time * 1000)
+            var lineStartMs = (cur.time > 10000) ? Math.round(cur.time) : Math.round(cur.time * 1000)
+            var nextTime = (i + 1 < rawLines.length) ? rawLines[i + 1].time : 0
+            var nextLineStartMs = (nextTime > 0)
+                ? ((nextTime > 10000) ? Math.round(nextTime) : Math.round(nextTime * 1000))
                 : (lineStartMs + 6000)
 
             // A. Check for rich word-level timestamps (enhanced LRC)
             if (cur.words && cur.words.length > 0) {
+                var rawWordTokens = []
                 for (var w = 0; w < cur.words.length; w++) {
                     var cw = cur.words[w]
-                    var wStart = Math.round(cw.time * 1000)
+                    var wTime = cw.time
+                    var wStart = (wTime > 10000) ? Math.round(wTime) : Math.round(wTime * 1000)
                     var isLastWord = (w === cur.words.length - 1)
-                    var vocalEnd = (cw.dur !== undefined && cw.dur > 0)
-                        ? (wStart + Math.round(cw.dur * 1000))
-                        : (!isLastWord ? Math.round(cur.words[w + 1].time * 1000) : Math.min(nextLineStartMs - 80, wStart + 1000))
+                    var nextWTime = !isLastWord ? cur.words[w + 1].time : 0
                     var nextWStart = !isLastWord
-                        ? Math.round(cur.words[w + 1].time * 1000)
+                        ? ((nextWTime > 10000) ? Math.round(nextWTime) : Math.round(nextWTime * 1000))
                         : nextLineStartMs
+                    var wDurMs = (cw.dur !== undefined && cw.dur > 0)
+                        ? ((cw.dur > 100) ? Math.round(cw.dur) : Math.round(cw.dur * 1000))
+                        : Math.max(120, nextWStart - wStart)
+                    var vocalEnd = wStart + wDurMs
 
-                    wordsList.push({
-                        id: i + "_" + w,
-                        text: cw.text,
-                        glyph: GlyphMap.lookupGlyph(cw.text) || "",
-                        time: wStart / 1000.0,
+                    rawWordTokens.push({
+                        word: cw.text,
                         startMs: wStart,
                         endMs: nextWStart,
-                        vocalEndMs: Math.max(wStart + 120, vocalEnd),
-                        duration: (nextWStart - wStart) / 1000.0,
+                        vocalEndMs: vocalEnd
+                    })
+                }
+
+                var cleanTokensA = root.sanitizeLineTokens(rawWordTokens)
+                var mixedTokensA = root.sanitizeLineTokens(root.mixSingleAndDoubleWords(cleanTokensA))
+                for (var ma = 0; ma < mixedTokensA.length; ma++) {
+                    var mItemA = mixedTokensA[ma]
+                    var vEndA = mItemA.vocalEndMs || mItemA.endMs
+                    wordsList.push({
+                        id: i + "_" + ma,
+                        text: mItemA.word,
+                        glyph: GlyphMap.lookupGlyph(mItemA.word) || (function(txt) {
+                            var p = txt.trim().split(/\s+/)
+                            for (var k = 0; k < p.length; k++) {
+                                var g = GlyphMap.lookupGlyph(p[k])
+                                if (g) return g
+                            }
+                            return ""
+                        })(mItemA.word),
+                        time: mItemA.startMs / 1000.0,
+                        startMs: mItemA.startMs,
+                        endMs: mItemA.endMs,
+                        vocalEndMs: vEndA,
+                        duration: (mItemA.endMs - mItemA.startMs) / 1000.0,
                         lineIndex: i,
-                        chunkIndex: w,
-                        rowWords: [{ text: cw.text, startMs: wStart, endMs: Math.max(wStart + 120, vocalEnd) }]
+                        chunkIndex: ma,
+                        rowWords: [{ text: mItemA.word, startMs: mItemA.startMs, endMs: vEndA }]
                     })
                 }
             } else {
-                // B. Pure 1-Word Architecture (Standard .lrc Lines)
+                // B. Pure 1-to-2 Word Architecture (Standard .lrc Lines)
                 var singleWords = root.tokenizeLineToSingleWords(cur.text, lineStartMs, nextLineStartMs)
                 if (singleWords.length === 0) continue
 
-                for (var j = 0; j < singleWords.length; j++) {
-                    var sw = singleWords[j]
-                    var isLast = (j === singleWords.length - 1)
-                    var chunkEndMs = isLast ? nextLineStartMs : singleWords[j + 1].startMs
-
+                var mixedTokensB = root.sanitizeLineTokens(root.mixSingleAndDoubleWords(singleWords))
+                for (var mb = 0; mb < mixedTokensB.length; mb++) {
+                    var mItemB = mixedTokensB[mb]
+                    var vEndB = mItemB.vocalEndMs || mItemB.endMs
                     wordsList.push({
-                        id: i + "_" + j,
-                        text: sw.word,
-                        glyph: GlyphMap.lookupGlyph(sw.word) || "",
-                        time: sw.startMs / 1000.0,
-                        startMs: sw.startMs,
-                        endMs: chunkEndMs,
-                        vocalEndMs: sw.endMs,
-                        duration: (chunkEndMs - sw.startMs) / 1000.0,
+                        id: i + "_" + mb,
+                        text: mItemB.word,
+                        glyph: GlyphMap.lookupGlyph(mItemB.word) || (function(txt) {
+                            var p = txt.trim().split(/\s+/)
+                            for (var k = 0; k < p.length; k++) {
+                                var g = GlyphMap.lookupGlyph(p[k])
+                                if (g) return g
+                            }
+                            return ""
+                        })(mItemB.word),
+                        time: mItemB.startMs / 1000.0,
+                        startMs: mItemB.startMs,
+                        endMs: mItemB.endMs,
+                        vocalEndMs: vEndB,
+                        duration: (mItemB.endMs - mItemB.startMs) / 1000.0,
                         lineIndex: i,
-                        chunkIndex: j,
-                        rowWords: [{ text: sw.word, startMs: sw.startMs, endMs: sw.endMs }]
+                        chunkIndex: mb,
+                        rowWords: [{ text: mItemB.word, startMs: mItemB.startMs, endMs: vEndB }]
                     })
                 }
             }
@@ -207,34 +359,25 @@ Item {
 
         root.allWords = wordsList.sort(function(a, b) { return a.startMs - b.startMs })
 
-        // 3rd-Beat Rhythm Fallback Pass:
-        // Only trigger fallback on words with length >= 4 that are NOT in the stop-word list!
-        var RHYTHM_FALLBACK_MOTIFS = [
-            "dhun_play", "jaan_sparkle", "bijli_bolt", "nasha_vortex", "sona_diamond"
+        // Mandatory Rhythm Fallback (Every 2nd/3rd row MUST display a glyph):
+        var ROTATING_FALLBACKS = [
+            "JAAN_SPARKLE", "NOOR_COMET", "NASHA_PORTAL", "ISHQ_HEART"
         ]
-        var rhythmBeatCount = 0
+        var fallbackIdx = 0
+        var wordsSinceLastGlyph = 0
 
         for (var b = 0; b < root.allWords.length; b++) {
             var item = root.allWords[b]
-            if (item.glyph && item.glyph.length > 0) {
-                rhythmBeatCount = 0
-                continue
-            }
-
-            rhythmBeatCount++
-            if (rhythmBeatCount >= 3) {
-                var candidateWord = ""
-                if (item.rowWords && item.rowWords.length > 0) {
-                    candidateWord = item.rowWords[0].text
-                } else {
-                    candidateWord = (item.text || "").split(/\s+/)[0] || ""
-                }
-
-                var normWord = GlyphMap.normalizeLyricToken(candidateWord)
-                if (normWord.length >= 4 && !GlyphMap.isStopWord(normWord)) {
-                    var fallbackMotif = RHYTHM_FALLBACK_MOTIFS[b % RHYTHM_FALLBACK_MOTIFS.length]
-                    item.glyph = fallbackMotif
-                    rhythmBeatCount = 0
+            var hasG = item.glyph && ((typeof item.glyph === "object" && item.glyph.corePath) || (typeof item.glyph === "string" && item.glyph.length > 0))
+            if (hasG) {
+                wordsSinceLastGlyph = 0
+            } else {
+                wordsSinceLastGlyph++
+                if (wordsSinceLastGlyph >= 2) {
+                    var fMotif = ROTATING_FALLBACKS[fallbackIdx % ROTATING_FALLBACKS.length]
+                    fallbackIdx++
+                    item.glyph = GlyphMap.getGlyphObject(fMotif) || fMotif
+                    wordsSinceLastGlyph = 0
                 }
             }
         }
@@ -248,6 +391,7 @@ Item {
             root.processLyrics()
         }
         function onTrackTitleChanged() {
+            root.syncBaseTimeFromMpris()
             root.processLyrics()
         }
     }
@@ -259,98 +403,77 @@ Item {
             root.row1Word = null
             root.row2Word = null
             root.clusterSize = 0
+            root.currentTokenIndex = -1
             root.currentWordIndex = -1
             root.activeBeat = null
             root.clearRequested()
             return
         }
 
-        var posMs = root.effectivePositionMs
+        var livePosMs = root.livePositionMs
+        var effectivePos = root.effectivePositionMs
 
-        if (posMs < root.allWords[0].startMs) {
-            root.row0Word = null
-            root.row1Word = null
-            root.row2Word = null
-            root.clusterSize = 0
-            root.currentWordIndex = -1
-            root.activeBeat = null
-            root.clearRequested()
+        if (effectivePos < root.allWords[0].startMs) {
+            // Before the song's first lyric: hold calmly, never wipe the stage
             return
         }
 
-        var idx = -1
+        var targetIndex = -1
         for (var i = 0; i < root.allWords.length; i++) {
-            if (root.allWords[i].startMs <= posMs) {
-                idx = i
+            if (root.allWords[i].startMs <= effectivePos) {
+                targetIndex = i
             } else {
                 break
             }
         }
 
-        // Expire chunk during extended instrumental pauses (> 4.5s after vocalEndMs and next chunk is > 1.2s away)
-        if (idx >= 0 && idx < root.allWords.length) {
-            var curChunk = root.allWords[idx]
-            var nextChunk = (idx + 1 < root.allWords.length) ? root.allWords[idx + 1] : null
-            var expireMs = curChunk.vocalEndMs + 4500
-            if (nextChunk) {
-                if (posMs > expireMs && (nextChunk.startMs - posMs > 1200)) {
-                    idx = -1
-                }
-            } else {
-                if (posMs > expireMs) {
-                    idx = -1
-                }
-            }
+        if (targetIndex < 0) {
+            return
         }
 
-        if (idx !== root.currentWordIndex) {
-            var prevIdx = root.currentWordIndex
-            root.currentWordIndex = idx
+        if (targetIndex !== root.currentTokenIndex) {
+            var nextStep = targetIndex
 
-            if (idx >= 0 && idx < root.allWords.length) {
-                var newWord = root.allWords[idx]
-                root.activeBeat = newWord
+            root.lastTokenStepTimeMs = Date.now()
+            root.currentTokenIndex = nextStep
+            root.currentWordIndex = nextStep
 
-                var isNewPhrase = false
-                if (prevIdx >= 0 && (idx < prevIdx || idx > prevIdx + 2)) {
+            var newWord = root.allWords[nextStep]
+            root.activeBeat = newWord
+
+            var isNewPhrase = false
+            if (nextStep === 0) {
+                isNewPhrase = true
+            } else if (root.row2Word) {
+                var gap = newWord.startMs - root.row2Word.endMs
+                if (gap > 2000 || (newWord.lineIndex !== root.row2Word.lineIndex && gap > 1200)) {
                     isNewPhrase = true
-                } else if (root.row2Word) {
-                    var gap = newWord.startMs - root.row2Word.endMs
-                    if (gap > 2000 || (newWord.lineIndex !== root.row2Word.lineIndex && gap > 1200)) {
-                        isNewPhrase = true
-                    }
                 }
+            }
 
-                if (isNewPhrase || root.clusterSize === 0) {
-                    root.row0Word = null
-                    root.row1Word = null
-                    root.row2Word = newWord
-                    root.clusterSize = 1
-                } else if (root.clusterSize === 1) {
-                    root.row0Word = null
-                    root.row1Word = root.row2Word
-                    root.row2Word = newWord
-                    root.clusterSize = 2
-                } else {
-                    root.row0Word = root.row1Word
-                    root.row1Word = root.row2Word
-                    root.row2Word = newWord
-                    root.clusterSize = 3
-                }
-
-                root.beatTriggered(newWord)
-            } else {
+            if (isNewPhrase || root.clusterSize === 0) {
                 root.row0Word = null
                 root.row1Word = null
-                root.row2Word = null
-                root.clusterSize = 0
-                root.activeBeat = null
-                root.clearRequested()
+                root.row2Word = newWord
+                root.clusterSize = 1
+            } else if (root.clusterSize === 1) {
+                root.row0Word = null
+                root.row1Word = root.row2Word
+                root.row2Word = newWord
+                root.clusterSize = 2
+            } else {
+                root.row0Word = root.row1Word
+                root.row1Word = root.row2Word
+                root.row2Word = newWord
+                root.clusterSize = 3
             }
+
+            root.beatTriggered(newWord)
         }
     }
 
     Component.onCompleted: {
+        root.resetPlaybackClock()
         root.processLyrics()
     }
 }

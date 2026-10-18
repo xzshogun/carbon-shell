@@ -368,9 +368,39 @@ def fetch_from_lrclib(title, artist, duration=None):
                 if results and isinstance(results, list):
                     synced_items = [it for it in results if it.get("syncedLyrics")]
                     if synced_items:
-                        if target_dur > 0:
-                            synced_items.sort(key=lambda x: abs(float(x.get("duration", 0)) - target_dur))
-                        return parse_lrc(synced_items[0]["syncedLyrics"])
+                        REJECT_TAGS = ["sped up", "speed up", "slowed", "nightcore", "lofi", "lo-fi", "8d audio", "reverb"]
+                        title_l = title.lower()
+
+                        def score_lrclib_item(it):
+                            s = 0.0
+                            d = float(it.get("duration", 0))
+                            t_name = (it.get("trackName") or it.get("name") or "").lower()
+
+                            # Reject sped up / slowed / lofi / nightcore unless title requested it
+                            for tag in REJECT_TAGS:
+                                if tag in t_name and tag not in title_l:
+                                    return 99999.0
+
+                            if target_dur > 20 and d > 0:
+                                diff = abs(d - target_dur)
+                                if diff <= 3.5:
+                                    s += diff * 1.0  # Ideal match (within 3.5s)
+                                else:
+                                    s += 200.0 + diff * 15.0
+                                    if diff > 10.0:
+                                        s += 5000.0
+
+                            if "video" not in title_l and ("video" in t_name or "mv" in t_name):
+                                s += 100.0
+                            if "remix" not in title_l and "remix" in t_name:
+                                s += 500.0
+                            return s
+
+                        valid_items = [it for it in synced_items if score_lrclib_item(it) < 50000.0]
+                        if not valid_items:
+                            valid_items = synced_items
+                        valid_items.sort(key=score_lrclib_item)
+                        return parse_lrc(valid_items[0]["syncedLyrics"])
         except Exception:
             pass
 
@@ -381,6 +411,11 @@ def score_kugou_candidate(item, title, artist, target_dur):
     title_l = title.lower()
     dur = float(item.get("duration", 0))
     score = 0.0
+
+    REJECT_TAGS = ["sped up", "speed up", "slowed", "nightcore", "lofi", "lo-fi", "8d audio", "reverb"]
+    for tag in REJECT_TAGS:
+        if tag in fn and tag not in title_l:
+            return 99999.0
 
     # Keyword overlap check: ensure at least one significant word from the title is in the candidate filename
     clean_t_words = [w.lower() for w in re.findall(r"\w+", clean_text(title)) if len(w) > 1]
@@ -396,16 +431,19 @@ def score_kugou_candidate(item, title, artist, target_dur):
         if clean_a_words and not artist_overlap:
             score += 900.0
 
-    if target_dur > 0 and dur > 0:
+    if target_dur > 20 and dur > 0:
         diff = abs(dur - target_dur)
-        score += diff * 2.0
-        if diff > 15:
-            score += 200.0
+        if diff <= 3.5:
+            score += diff * 1.0  # Ideal duration match (<= 3.5s)
+        else:
+            score += 200.0 + diff * 15.0
+            if diff > 10.0:
+                score += 5000.0
 
     if "live" not in title_l and "live" in fn:
         score += 300.0
     if "remix" not in title_l and "remix" in fn:
-        score += 150.0
+        score += 500.0
     if "acoustic" not in title_l and "acoustic" in fn:
         score += 150.0
     if "instrumental" not in title_l and "instrumental" in fn:
@@ -438,7 +476,7 @@ def fetch_from_kugou(title, artist, duration=None):
         try:
             url = f"http://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword={urllib.parse.quote(q)}&page=1&pagesize=5"
             req = urllib.request.Request(url, headers={"User-Agent": "Android712-AndroidPhone-8983-18-0-Search-wifi"})
-            with urllib.request.urlopen(req, timeout=3.0) as resp:
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 items = data.get("data", {}).get("info", [])
                 if not items:
@@ -460,7 +498,7 @@ def fetch_from_kugou(title, artist, duration=None):
 
                     lrc_search_url = f"http://lyrics.kugou.com/search?ver=1&man=yes&client=pc&keyword=&duration={song_dur_ms}&hash={fhash}"
                     req_lrc = urllib.request.Request(lrc_search_url, headers={"User-Agent": "Mozilla/5.0"})
-                    with urllib.request.urlopen(req_lrc, timeout=3.0) as resp_lrc:
+                    with urllib.request.urlopen(req_lrc, timeout=5.0) as resp_lrc:
                         cands = json.loads(resp_lrc.read().decode("utf-8")).get("candidates", [])
                         if not cands:
                             continue
@@ -471,7 +509,7 @@ def fetch_from_kugou(title, artist, duration=None):
 
                         dl_url = f"http://lyrics.kugou.com/download?ver=1&client=pc&id={lid}&accesskey={akey}&fmt=krc&charset=utf8"
                         req_dl = urllib.request.Request(dl_url, headers={"User-Agent": "Mozilla/5.0"})
-                        with urllib.request.urlopen(req_dl, timeout=3.0) as resp_dl:
+                        with urllib.request.urlopen(req_dl, timeout=5.0) as resp_dl:
                             b64 = json.loads(resp_dl.read().decode("utf-8")).get("content")
                             if not b64:
                                 continue
@@ -482,6 +520,178 @@ def fetch_from_kugou(title, artist, duration=None):
                             dec = bytearray(enc[i] ^ KRC_KEY[i % len(KRC_KEY)] for i in range(len(enc)))
                             text = zlib.decompress(bytes(dec)).decode("utf-8", errors="ignore")
                             parsed = parse_krc(text)
+                            if parsed and not is_placeholder_lyrics(parsed):
+                                return parsed
+        except Exception:
+            pass
+
+    return []
+
+def parse_yrc(yrc_text):
+    lines = []
+    meta_line_pattern = re.compile(r"^\[(\d+),(\d+)\](.*)$")
+    word_pattern = re.compile(r"\((\d+),(\d+),\d+\)([^\(\n\r]*)")
+
+    for raw in yrc_text.splitlines():
+        raw = raw.strip()
+        m = meta_line_pattern.match(raw)
+        if not m:
+            continue
+        line_start_ms = int(m.group(1))
+        line_dur_ms = int(m.group(2))
+        body = m.group(3)
+
+        word_matches = list(word_pattern.finditer(body))
+        if not word_matches:
+            continue
+
+        words = []
+        full_text_parts = []
+        for wm in word_matches:
+            raw_w_offset = int(wm.group(1))
+            w_dur = int(wm.group(2))
+            w_text = wm.group(3)
+            full_text_parts.append(w_text)
+
+            clean_word = re.sub(r"[（）\(\)]", "", w_text).strip()
+            if not clean_word:
+                continue
+
+            has_word_char = bool(re.search(r"[\w\u0900-\u097f\u0a00-\u0a7f\u4e00-\u9fff]", clean_word))
+            if not has_word_char:
+                if words:
+                    words[-1]["text"] += clean_word
+                    if w_dur > 0:
+                        words[-1]["dur"] = round(words[-1]["dur"] + w_dur / 1000.0, 3)
+                continue
+
+            w_start_ms = raw_w_offset if raw_w_offset >= line_start_ms else line_start_ms + raw_w_offset
+            w_start_sec = round(w_start_ms / 1000.0, 3)
+            words.append({
+                "text": clean_word,
+                "time": w_start_sec,
+                "dur": round(w_dur / 1000.0, 3)
+            })
+
+        full_text = re.sub(r"\s+", " ", "".join(full_text_parts)).strip()
+        if not full_text:
+            continue
+
+        if is_credit_line(full_text, line_start_ms):
+            continue
+
+        line_start_sec = round(line_start_ms / 1000.0, 3)
+        lines.append({
+            "time": line_start_sec,
+            "text": full_text,
+            "words": words
+        })
+
+    return sorted(lines, key=lambda x: x["time"])
+
+def score_netease_candidate(song, title, artist, target_dur):
+    name = song.get("name", "").lower()
+    artists = [a.get("name", "").lower() for a in song.get("artists", [])]
+    dur_sec = song.get("duration", 0) / 1000.0
+
+    score = 0.0
+    title_l = title.lower()
+
+    REJECT_TAGS = ["sped up", "speed up", "slowed", "nightcore", "lofi", "lo-fi", "8d audio", "reverb"]
+    for tag in REJECT_TAGS:
+        if tag in name and tag not in title_l:
+            return 99999.0
+
+    clean_t_words = [w.lower() for w in re.findall(r"\w+", clean_text(title)) if len(w) > 1]
+    name_words = [w.lower() for w in re.findall(r"\w+", clean_text(name)) if len(w) > 1]
+    overlap = any(w in name_words for w in clean_t_words)
+    if clean_t_words and not overlap:
+        score += 1000.0
+
+    if artist:
+        clean_a_words = [w.lower() for w in re.findall(r"\w+", clean_text(artist)) if len(w) > 1]
+        all_artist_words = [w.lower() for a in artists for w in re.findall(r"\w+", clean_text(a)) if len(w) > 1]
+        artist_overlap = any(w in all_artist_words or w in name_words for w in clean_a_words)
+        if clean_a_words and not artist_overlap:
+            score += 900.0
+
+    if target_dur > 20 and dur_sec > 0:
+        diff = abs(dur_sec - target_dur)
+        if diff <= 3.5:
+            score += diff * 1.0  # Ideal duration match (<= 3.5s)
+        else:
+            score += 200.0 + diff * 15.0
+            if diff > 10.0:
+                score += 5000.0
+
+    if "live" not in title_l and "live" in name:
+        score += 300.0
+    if "remix" not in title_l and "remix" in name:
+        score += 500.0
+    if "instrumental" not in title_l and "instrumental" in name:
+        score += 500.0
+
+    return score
+
+def fetch_from_netease(title, artist, duration=None):
+    candidates = get_candidates(title, artist)
+    target_dur = 0.0
+    if duration:
+        try:
+            target_dur = float(duration)
+        except Exception:
+            target_dur = 0.0
+
+    queries = []
+    seen = set()
+    for cand_artist, cand_track in candidates:
+        if cand_artist and cand_track:
+            q = f"{cand_artist} {cand_track}".strip()
+            if q not in seen:
+                seen.add(q)
+                queries.append(q)
+        if cand_track and cand_track not in seen:
+            seen.add(cand_track)
+            queries.append(cand_track)
+    if not queries:
+        queries = [f"{artist} {title}".strip()]
+
+    search_url = "https://music.163.com/api/search/get"
+    for q in queries[:4]:
+        try:
+            data = urllib.parse.urlencode({"s": q, "type": "1", "limit": "5"}).encode("utf-8")
+            req = urllib.request.Request(
+                search_url,
+                data=data,
+                headers={"User-Agent": "Mozilla/5.0", "Cookie": "os=pc"}
+            )
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
+                res = json.loads(resp.read().decode("utf-8"))
+                songs = res.get("result", {}).get("songs", [])
+                if not songs:
+                    continue
+
+                songs.sort(key=lambda x: score_netease_candidate(x, title, artist, target_dur))
+
+                for song in songs[:3]:
+                    if score_netease_candidate(song, title, artist, target_dur) >= 800.0:
+                        continue
+
+                    sid = song.get("id")
+                    if not sid:
+                        continue
+
+                    dur_sec = song.get("duration", 0) / 1000.0
+                    if target_dur > 30 and dur_sec > 0 and abs(dur_sec - target_dur) > 25:
+                        continue
+
+                    lyr_url = f"https://interface3.music.163.com/api/song/lyric?id={sid}&yv=1&kv=1&tv=-1"
+                    req_lyr = urllib.request.Request(lyr_url, headers={"User-Agent": "Mozilla/5.0"})
+                    with urllib.request.urlopen(req_lyr, timeout=5.0) as resp_lyr:
+                        lyr_data = json.loads(resp_lyr.read().decode("utf-8"))
+                        yrc_raw = lyr_data.get("yrc", {}).get("lyric", "")
+                        if yrc_raw:
+                            parsed = parse_yrc(yrc_raw)
                             if parsed and not is_placeholder_lyrics(parsed):
                                 return parsed
         except Exception:
@@ -547,7 +757,11 @@ def main():
     # 1. Primary: Kugou syllable-level Richsync
     lines = fetch_from_kugou(title, artist, duration)
 
-    # 2. Secondary fallback: LRCLIB standard sync
+    # 2. Secondary fallback: NetEase YRC word-sync
+    if not lines or is_placeholder_lyrics(lines):
+        lines = fetch_from_netease(title, artist, duration)
+
+    # 3. Tertiary fallback: LRCLIB standard sync
     if not lines or is_placeholder_lyrics(lines):
         if cached_fallback:
             lines = cached_fallback.get("lines", [])

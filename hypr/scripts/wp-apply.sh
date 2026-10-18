@@ -104,6 +104,7 @@ THEME_SCRIPT="$CONFIG_DIR/scripts/theme-mk.py"
 [ -f "$THEME_SCRIPT" ] || THEME_SCRIPT="$HOME/.config/hypr/scripts/theme-mk.py"
 [ -f "$THEME_SCRIPT" ] || THEME_SCRIPT="$(dirname "$(readlink -f "$0")")/theme-mk.py"
 if [ -f "$THEME_SCRIPT" ]; then
+    export MATUGEN_NO_HOOK=1
     python3 "$THEME_SCRIPT" "$WALL" 2>/dev/null || true
 fi
 

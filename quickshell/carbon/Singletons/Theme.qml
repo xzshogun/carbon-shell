@@ -96,6 +96,16 @@ Singleton {
         onLoaded: root.reload()
     }
 
+    FileView {
+        id: hyprFallbackFile
+        path: root.home + "/.config/hypr/theme.json"
+        watchChanges: true
+        blockLoading: true
+        printErrors: false
+        onFileChanged: root.reload()
+        onLoaded: root.reload()
+    }
+
     property var palette: ({})
     property string schemeName: "caelestia"
 
@@ -118,13 +128,21 @@ Singleton {
         }
     }
 
+    property string _lastLoadedThemeText: ""
+    property bool _reloading: false
+
     function reload() {
+        if (root._reloading) return
+        root._reloading = true
         try {
-            caelestiaFile.reload()
             var txt = caelestiaFile.text().trim()
             var parsed = null
 
             if (txt.length > 0) {
+                if (txt === root._lastLoadedThemeText) {
+                    root._reloading = false
+                    return
+                }
                 try {
                     parsed = JSON.parse(txt)
                 } catch (pe) {
@@ -224,40 +242,97 @@ Singleton {
                 root.warn = root.m3tertiary
                 root.err = root.m3error
 
+                root._lastLoadedThemeText = txt
+                root._reloading = false
                 console.log("[Theme] Synchronized with Caelestia Scheme:", root.schemeName, "Mode:", parsed.mode || (root.isDark ? "dark" : "light"), "Primary:", root.accent)
                 return
             }
 
-            /* Fallback to ~/.config/hypr/theme.json */
+            /* Fallback to ~/.config/carbon/theme.json or ~/.config/hypr/theme.json */
             var ftxt = fallbackFile.text().trim()
+            if (!ftxt && hyprFallbackFile) {
+                ftxt = hyprFallbackFile.text().trim()
+            }
             if (ftxt.length > 0) {
                 var p = JSON.parse(ftxt)
                 root.palette = p
                 if (p.bg) {
                     var rawBg = Qt.color(p.bg)
                     root.bg = Qt.rgba(rawBg.r, rawBg.g, rawBg.b, root.shellOpacity)
+                    root.m3background = p.bg
+                    root.m3surface = p.bg
+                    root.m3surfaceDim = p.bg
+                    root.m3surfaceContainer = p.bg
+                    root.m3surfaceContainerLow = p.bg
                 }
-                if (p.bgAlt) root.bgAlt = p.bgAlt
-                if (p.bgHover) root.bgHover = p.bgHover
-                if (p.bgActive) root.bgActive = p.bgActive
-                if (p.fg) root.fg = p.fg
-                if (p.fgDim) root.fgDim = p.fgDim
-                if (p.fgFaint) root.fgFaint = p.fgFaint
-                if (p.accent) root.accent = p.accent
-                if (p.accentLit) root.accentLit = p.accentLit
+                if (p.bgAlt) {
+                    root.bgAlt = p.bgAlt
+                    root.m3surfaceBright = p.bgAlt
+                    root.m3surfaceVariant = p.bgAlt
+                    root.m3surfaceContainerHigh = p.bgAlt
+                }
+                if (p.bgHover) {
+                    root.bgHover = p.bgHover
+                    root.m3surfaceContainerHighest = p.bgHover
+                }
+                if (p.bgActive) {
+                    root.bgActive = p.bgActive
+                }
+                if (p.fg) {
+                    root.fg = p.fg
+                    root.m3onBackground = p.fg
+                    root.m3onSurface = p.fg
+                }
+                if (p.fgDim) {
+                    root.fgDim = p.fgDim
+                    root.m3onSurfaceVariant = p.fgDim
+                }
+                if (p.fgFaint) {
+                    root.fgFaint = p.fgFaint
+                }
+                if (p.accent) {
+                    root.accent = p.accent
+                    root.m3primary = p.accent
+                    root.m3primaryDim = p.accent
+                }
+                if (p.accentLit) {
+                    root.accentLit = p.accentLit
+                    root.m3primaryContainer = p.accentLit
+                    root.m3onPrimaryContainer = p.accentLit
+                }
                 if (p.onAccent || p.accentFg) {
                     root.accentFg = p.accentFg || p.onAccent
                     root.accentContrast = root.accentFg
+                    root.m3onPrimary = root.accentFg
                 }
-                if (p.outline) root.outline = p.outline
-                if (p.ok) root.ok = p.ok
-                if (p.warn) root.warn = p.warn
-                if (p.err) root.err = p.err
+                if (p.tertiary) {
+                    root.m3tertiary = p.tertiary
+                    root.m3secondary = p.tertiary
+                }
+                if (p.outline) {
+                    root.outline = p.outline
+                    root.m3outline = p.outline
+                    root.m3outlineVariant = p.outline
+                }
+                if (p.ok) {
+                    root.ok = p.ok
+                    root.m3success = p.ok
+                }
+                if (p.warn) {
+                    root.warn = p.warn
+                    root.m3tertiary = p.warn
+                }
+                if (p.err) {
+                    root.err = p.err
+                    root.m3error = p.err
+                }
                 if (p.isDark !== undefined) root.isDark = p.isDark
                 console.log("[Theme] Loaded from theme.json. Accent:", root.accent)
             }
         } catch (e) {
             console.log("[Theme] Reload error: " + e)
+        } finally {
+            root._reloading = false
         }
     }
 

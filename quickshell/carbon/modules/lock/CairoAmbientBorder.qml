@@ -50,8 +50,8 @@ Item {
         anchors.margins: root.m + 2
         radius: 14
         color: "transparent"
-        border.width: 4
-        border.color: root.primaryColor
+        border.width: 0
+        border.color: "transparent"
         opacity: root.currentAlpha * 0.40
 
         Behavior on opacity {
@@ -59,14 +59,14 @@ Item {
         }
     }
 
-    // 2. Razor-sharp 1.5px Ambient Border (Exact match to app border)
+    // 2. Ambient Border
     Rectangle {
         anchors.fill: parent
         anchors.margins: root.m
         radius: 16
         color: "transparent"
-        border.width: 1.5
-        border.color: root.primaryColor
+        border.width: 0
+        border.color: "transparent"
         opacity: root.currentAlpha
 
         Behavior on opacity {

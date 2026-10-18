@@ -1,7 +1,7 @@
 -- Auto-synchronized from ~/.config/hypr/carbon/keybinds.conf
 local mainMod = "SUPER"
-local terminal = "/home/zily/.local/opt/kitty/bin/kitty"
-local fileManager = "/home/zily/.local/opt/kitty/bin/kitty -e /home/zily/.local/bin/yazi"
+local terminal = "kitty"
+local fileManager = "nautilus"
 
 -- 
 -- CARBON SHELL — DEDICATED HYPRLAND KEYBINDINGS
@@ -13,18 +13,18 @@ local fileManager = "/home/zily/.local/opt/kitty/bin/kitty -e /home/zily/.local/
 -- 
 
 local mainMod = "SUPER"
-local terminal = "/home/zily/.local/opt/kitty/bin/kitty"
-local fileManager = "/home/zily/.local/opt/kitty/bin/kitty -e /home/zily/.local/bin/yazi"
+local terminal = "kitty"
+local fileManager = "nautilus"
 
 -- ==============================================================================
 -- APPLICATIONS & WINDOW CONTROL
 -- ==============================================================================
-hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd("/home/zily/.local/opt/kitty/bin/kitty"))
+hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd("kitty"))
 hl.bind(mainMod .. " + " .. "SHIFT" .. " + Return", hl.dsp.exec_cmd("[float; size 800 550] kitty"))
 hl.bind(mainMod .. " + Q", hl.dsp.window.close())
 hl.bind("ALT" .. " + F4", hl.dsp.window.close())
 hl.bind("CTRL" .. " + " .. "ALT" .. " + Delete", hl.dsp.exec_cmd("hyprctl dispatch exit 0"))
-hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("/home/zily/.local/opt/kitty/bin/kitty -e /home/zily/.local/bin/yazi"))
+hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("nautilus"))
 hl.bind(mainMod .. " + Space", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + " .. "SHIFT" .. " + R", hl.dsp.exec_cmd("hyprctl reload"))
 hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen())
@@ -33,22 +33,12 @@ hl.bind(mainMod .. " + " .. "SHIFT" .. " + S", hl.dsp.exec_cmd("hyprshot -m regi
 hl.bind(mainMod .. " + " .. "SHIFT" .. " + Q", hl.dsp.exec_cmd("~/.config/hypr/scripts/KillActiveProcess.sh"))
 
 -- ==============================================================================
--- CARBON SHELL FEATURES & CONTROLS
+-- CARBON SHELL FEATURES & CONTROLS (COMMON)
+-- Mode-specific shell controls (SUPER+C, SUPER+R, SUPER+N, etc.) are loaded
+-- dynamically from ~/.config/hypr/current-mode-keybinds.lua
 -- ==============================================================================
 -- Carbon Config Editor GUI (Settings)
-hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("~/.config/hypr/scripts/carbon-config-editor"))
-
--- Carbon Controls / Quick Settings Menu
-hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh controls"))
-
--- Carbon Spotlight Search
-hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh spotlight"))
-
--- Carbon Overview (Atom-Fluid bohr model & workspace switcher)
-hl.bind("SUPER" .. " + Tab", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh toggle-overview"))
-
--- Carbon Wallpaper Picker
-hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("sh ~/.config/hypr/scripts/carbon-ipc.sh wallpaper"))
+hl.bind(mainMod .. " + comma", hl.dsp.exec_cmd("/home/reduct/.config/hypr/scripts/carbon-config-editor"))
 
 -- Carbon Pomodoro Timer
 hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("~/.config/hypr/scripts/carbon-pomodoro"))
@@ -57,7 +47,7 @@ hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("~/.config/hypr/scripts/carbon-pomodo
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("~/.config/hypr/scripts/hyprlock.sh"))
 
 -- Clipboard Manager (Cliphist + Rofi)
-hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("bash -c 'kitty -e python3 /home/zily/.local/bin/carbon-clip-picker'"))
+hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("bash -c 'cliphist list | rofi -dmenu | cliphist decode | wl-copy'"))
 
 -- ==============================================================================
 -- NAVIGATION & WINDOW MOVEMENT
@@ -124,9 +114,10 @@ hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 -- ==============================================================================
 -- HARDWARE & MEDIA KEYS
 -- ==============================================================================
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("~/.config/hypr/scripts/volume.sh --inc"), { repeating = true, locked = true })
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("~/.config/hypr/scripts/volume.sh --dec"), { repeating = true, locked = true })
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd("~/.config/hypr/scripts/volume.sh --toggle"), { repeating = true, locked = true })
+local homeDir = os.getenv("HOME") or "/home/reduct"
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(homeDir .. "/.config/hypr/scripts/volume.sh --inc"), { repeating = true, locked = true })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(homeDir .. "/.config/hypr/scripts/volume.sh --dec"), { repeating = true, locked = true })
+hl.bind("XF86AudioMute", hl.dsp.exec_cmd(homeDir .. "/.config/hypr/scripts/volume.sh --toggle"), { repeating = true, locked = true })
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { repeating = true, locked = true })
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl set +5%"), { repeating = true, locked = true })
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl set 5%-"), { repeating = true, locked = true })

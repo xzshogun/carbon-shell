@@ -218,8 +218,8 @@ Item {
             anchors.left: parent.left
             anchors.leftMargin: 8
             anchors.verticalCenter: parent.verticalCenter
-            color: Theme.bg
-            border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.09) : Qt.rgba(0, 0, 0, 0.12)
+            color: Theme.isDark ? Theme.bg : "#0e0e14"
+            border.color: Qt.rgba(1, 1, 1, 0.09)
             border.width: 1
 
             Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
@@ -308,8 +308,8 @@ Item {
             radius: 20
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
-            color: Theme.bg
-            border.color: Theme.isDark ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.25) : Qt.rgba(0, 0, 0, 0.14)
+            color: Theme.isDark ? Theme.bg : "#0e0e14"
+            border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.25)
             border.width: 1
 
             /* Background Orbit Waveform Track */
@@ -617,8 +617,8 @@ Item {
             anchors.right: parent.right
             anchors.rightMargin: 8
             anchors.verticalCenter: parent.verticalCenter
-            color: Theme.bg
-            border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.09) : Qt.rgba(0, 0, 0, 0.12)
+            color: Theme.isDark ? Theme.bg : "#0e0e14"
+            border.color: Qt.rgba(1, 1, 1, 0.09)
             border.width: 1
 
             RowLayout {

@@ -65,7 +65,7 @@ Singleton {
     }
 
     Connections {
-        target: root.sink ? root.sink.audio : null
+        target: root.enabled && root.sink ? root.sink.audio : null
         function onVolumeChanged() {
             if (!root.sink || !root.sink.audio) return
             const v = root.sink.audio.volume
@@ -107,6 +107,7 @@ Singleton {
     }
 
     /* ── 2. Brightness Monitoring ─────────────────────────────────────── */
+    property bool enabled: false
     property int lastBrightnessPct: -1
 
     Process {
@@ -118,7 +119,7 @@ Singleton {
             "  case \"$line\" in *change*) brightnessctl -m 2>/dev/null | head -n1 | cut -d, -f4 | tr -d '%';; esac; " +
             "done"
         ]
-        running: true
+        running: root.enabled
         stdout: SplitParser {
             onRead: line => {
                 const pct = parseInt(line.trim(), 10)
@@ -163,7 +164,7 @@ Singleton {
     Timer {
         interval: 1000
         repeat: true
-        running: true
+        running: root.enabled
         triggeredOnStart: true
         onTriggered: {
             root.activePlayer = root.resolveActivePlayer()
@@ -197,7 +198,7 @@ Singleton {
     property bool initialBatterySeen: false
 
     Connections {
-        target: root.displayDevice ? root.displayDevice : null
+        target: root.enabled && root.displayDevice ? root.displayDevice : null
         function onStateChanged() {
             if (!root.displayDevice) return
             const st = root.displayDevice.state

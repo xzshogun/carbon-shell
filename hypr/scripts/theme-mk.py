@@ -50,9 +50,10 @@ def get_luminance(hex_str):
 
 
 def resolve_source_wallpaper():
-    # 1. Command-line argument
-    if len(sys.argv) > 1 and os.path.isfile(sys.argv[1]):
-        return os.path.realpath(os.path.abspath(sys.argv[1]))
+    # 1. Command-line argument (ignoring flags)
+    for arg in sys.argv[1:]:
+        if not arg.startswith("-") and os.path.isfile(arg):
+            return os.path.realpath(os.path.abspath(arg))
 
     # 2. current_wallpaper_path file
     for p_dir in [CARBON_CONFIG_DIR, os.path.expanduser("~/.config/carbon"), os.path.expanduser("~/.config/hypr")]:
@@ -111,6 +112,30 @@ def resolve_source_wallpaper():
         return scaled
 
     return None
+
+
+def resolve_mode():
+    for i, arg in enumerate(sys.argv):
+        if arg in ("--light", "-l"):
+            return "light"
+        if arg in ("--dark", "-d"):
+            return "dark"
+        if arg in ("--mode", "-m") and i + 1 < len(sys.argv):
+            m = sys.argv[i + 1].lower()
+            if m in ("light", "dark"):
+                return m
+    # Fallback to existing theme.json
+    try:
+        if os.path.isfile(JSON_PATH):
+            with open(JSON_PATH, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                if "mode" in d and d["mode"] in ("light", "dark"):
+                    return d["mode"]
+                if "isDark" in d:
+                    return "dark" if d["isDark"] else "light"
+    except Exception:
+        pass
+    return "dark"
 
 
 def get_image_frame_for_analysis(src_path):
@@ -352,12 +377,12 @@ def update_waybar_theme(accent_hex, accent_lit_hex, on_accent_hex, bg_hex, bg_al
     subprocess.run(["pkill", "-SIGUSR2", "-x", "waybar"], capture_output=True)
 
 
-def extract_matugen_palette(img_path):
+def extract_matugen_palette(img_path, mode="dark"):
     """Run matugen to extract authentic Google Material 3 tokens non-interactively."""
     try:
         env = {**os.environ, "MATUGEN_NO_HOOK": "1"}
         res = subprocess.run(
-            ["matugen", "image", "--source-color-index", "0", "-t", "scheme-tonal-spot", "--prefer", "saturation", "-j", "hex", "-m", "dark", img_path],
+            ["matugen", "image", "--source-color-index", "0", "-t", "scheme-tonal-spot", "--prefer", "saturation", "-j", "hex", "-m", mode, img_path],
             capture_output=True, text=True, timeout=5.0, env=env
         )
         if res.returncode == 0 and res.stdout.strip():
@@ -365,39 +390,39 @@ def extract_matugen_palette(img_path):
             colors = data.get("colors", {})
             def get_c(key, fallback):
                 node = colors.get(key, {})
-                return node.get("dark", {}).get("color") or node.get("default", {}).get("color") or fallback
+                return node.get(mode, {}).get("color") or node.get("default", {}).get("color") or fallback
 
             primary = get_c("primary", None)
             if primary:
                 return {
                     "primary": primary,
-                    "onPrimary": get_c("on_primary", "#00325a"),
-                    "primaryContainer": get_c("primary_container", "#1a4874"),
-                    "onPrimaryContainer": get_c("on_primary_container", "#d2e4ff"),
-                    "secondary": get_c("secondary", "#bbc7db"),
-                    "onSecondary": get_c("on_secondary", "#253141"),
-                    "secondaryContainer": get_c("secondary_container", "#3c4858"),
-                    "onSecondaryContainer": get_c("on_secondary_container", "#d7e3f8"),
-                    "tertiary": get_c("tertiary", "#d7bde4"),
-                    "onTertiary": get_c("on_tertiary", "#3b2947"),
-                    "tertiaryContainer": get_c("tertiary_container", "#533f5f"),
-                    "onTertiaryContainer": get_c("on_tertiary_container", "#f3daff"),
-                    "surface": get_c("surface", "#111418"),
-                    "surfaceDim": get_c("surface_dim", "#111418"),
-                    "surfaceBright": get_c("surface_bright", "#37393e"),
-                    "surfaceContainerLowest": get_c("surface_container_lowest", "#0b0e13"),
-                    "surfaceContainerLow": get_c("surface_container_low", "#191c20"),
-                    "surfaceContainer": get_c("surface_container", "#1d2024"),
-                    "surfaceContainerHigh": get_c("surface_container_high", "#272a2f"),
-                    "surfaceContainerHighest": get_c("surface_container_highest", "#32353a"),
-                    "onSurface": get_c("on_surface", "#e1e2e8"),
-                    "surfaceVariant": get_c("surface_variant", "#43474e"),
-                    "onSurfaceVariant": get_c("on_surface_variant", "#c3c6cf"),
-                    "outline": get_c("outline", "#8d9199"),
-                    "outlineVariant": get_c("outline_variant", "#43474e"),
-                    "error": get_c("error", "#ffb4ab"),
-                    "onError": get_c("on_error", "#690005"),
-                    "errorContainer": get_c("error_container", "#93000a"),
+                    "onPrimary": get_c("on_primary", "#ffffff" if mode == "light" else "#00325a"),
+                    "primaryContainer": get_c("primary_container", "#d2e4ff" if mode == "light" else "#1a4874"),
+                    "onPrimaryContainer": get_c("on_primary_container", "#001d36" if mode == "light" else "#d2e4ff"),
+                    "secondary": get_c("secondary", "#535f70" if mode == "light" else "#bbc7db"),
+                    "onSecondary": get_c("on_secondary", "#ffffff" if mode == "light" else "#253141"),
+                    "secondaryContainer": get_c("secondary_container", "#d7e3f8" if mode == "light" else "#3c4858"),
+                    "onSecondaryContainer": get_c("on_secondary_container", "#101c2b" if mode == "light" else "#d7e3f8"),
+                    "tertiary": get_c("tertiary", "#6b5778" if mode == "light" else "#d7bde4"),
+                    "onTertiary": get_c("on_tertiary", "#ffffff" if mode == "light" else "#3b2947"),
+                    "tertiaryContainer": get_c("tertiary_container", "#f3daff" if mode == "light" else "#533f5f"),
+                    "onTertiaryContainer": get_c("on_tertiary_container", "#251432" if mode == "light" else "#f3daff"),
+                    "surface": get_c("surface", "#f8f9ff" if mode == "light" else "#111418"),
+                    "surfaceDim": get_c("surface_dim", "#d8dae0" if mode == "light" else "#111418"),
+                    "surfaceBright": get_c("surface_bright", "#f8f9ff" if mode == "light" else "#37393e"),
+                    "surfaceContainerLowest": get_c("surface_container_lowest", "#ffffff" if mode == "light" else "#0b0e13"),
+                    "surfaceContainerLow": get_c("surface_container_low", "#f2f3fa" if mode == "light" else "#191c20"),
+                    "surfaceContainer": get_c("surface_container", "#eceef4" if mode == "light" else "#1d2024"),
+                    "surfaceContainerHigh": get_c("surface_container_high", "#e6e8ee" if mode == "light" else "#272a2f"),
+                    "surfaceContainerHighest": get_c("surface_container_highest", "#e1e2e8" if mode == "light" else "#32353a"),
+                    "onSurface": get_c("on_surface", "#191c20" if mode == "light" else "#e1e2e8"),
+                    "surfaceVariant": get_c("surface_variant", "#e1e2ec" if mode == "light" else "#43474e"),
+                    "onSurfaceVariant": get_c("on_surface_variant", "#43474e" if mode == "light" else "#c3c6cf"),
+                    "outline": get_c("outline", "#73777f" if mode == "light" else "#8d9199"),
+                    "outlineVariant": get_c("outline_variant", "#c3c6cf" if mode == "light" else "#43474e"),
+                    "error": get_c("error", "#ba1a1a" if mode == "light" else "#ffb4ab"),
+                    "onError": get_c("on_error", "#ffffff" if mode == "light" else "#690005"),
+                    "errorContainer": get_c("error_container", "#ffdad6" if mode == "light" else "#93000a"),
                 }
     except Exception:
         pass
@@ -405,6 +430,7 @@ def extract_matugen_palette(img_path):
 
 
 def main():
+    mode = resolve_mode()
     src_wp = resolve_source_wallpaper()
     if not src_wp or not os.path.exists(src_wp):
         print("theme-mk: no valid wallpaper source found", file=sys.stderr)
@@ -418,23 +444,33 @@ def main():
 
     m3 = None
     if is_mono:
-        accent_hex = "#E2E2E8"
-        accent_lit_hex = "#FFFFFF"
-        tertiary_hex = "#D4D4DC"
-        on_accent_hex = "#141418"
-        bg_hex = "#121215"
-        bg_alt_hex = "#1A1A1F"
-        fg_hex = "#E4E4E8"
-        outline_hex = "#484852"
+        if mode == "light":
+            accent_hex = "#2b2b30"
+            accent_lit_hex = "#484850"
+            tertiary_hex = "#5c5c66"
+            on_accent_hex = "#ffffff"
+            bg_hex = "#f8f9fc"
+            bg_alt_hex = "#eceef2"
+            fg_hex = "#191c20"
+            outline_hex = "#73777f"
+        else:
+            accent_hex = "#E2E2E8"
+            accent_lit_hex = "#FFFFFF"
+            tertiary_hex = "#D4D4DC"
+            on_accent_hex = "#141418"
+            bg_hex = "#121215"
+            bg_alt_hex = "#1A1A1F"
+            fg_hex = "#E4E4E8"
+            outline_hex = "#484852"
         try:
             subprocess.run(
-                ["matugen", "color", "hex", "ffffff", "-t", "scheme-monochrome", "-m", "dark"],
+                ["matugen", "color", "hex", "111111" if mode == "light" else "ffffff", "-t", "scheme-monochrome", "-m", mode],
                 capture_output=True, timeout=4.0
             )
         except Exception:
             pass
     else:
-        m3 = extract_matugen_palette(analysis_img)
+        m3 = extract_matugen_palette(analysis_img, mode=mode)
         if m3:
             accent_hex = m3["primary"]
             accent_lit_hex = m3["primaryContainer"]
@@ -447,7 +483,7 @@ def main():
             try:
                 env = {**os.environ, "MATUGEN_NO_HOOK": "1"}
                 subprocess.run(
-                    ["matugen", "image", "--source-color-index", "0", "-t", "scheme-tonal-spot", "--prefer", "saturation", "-m", "dark", src_wp],
+                    ["matugen", "image", "--source-color-index", "0", "-t", "scheme-tonal-spot", "--prefer", "saturation", "-m", mode, src_wp],
                     capture_output=True, timeout=4.0, env=env
                 )
             except Exception:
@@ -466,8 +502,8 @@ def main():
     palette_dict = {
         "bg": alpha(bg_hex, 0.92),
         "bgAlt": alpha(bg_alt_hex, 0.75),
-        "bgHover": alpha(accent_hex, 0.20),
-        "bgActive": alpha(accent_hex, 0.35),
+        "bgHover": alpha(accent_hex, 0.15 if mode == "light" else 0.20),
+        "bgActive": alpha(accent_hex, 0.25 if mode == "light" else 0.35),
         "fg": fg_hex,
         "fgDim": alpha(fg_hex, 0.70),
         "fgFaint": alpha(fg_hex, 0.42),
@@ -475,11 +511,12 @@ def main():
         "accentLit": accent_lit_hex,
         "tertiary": tertiary_hex,
         "onAccent": on_accent_hex,
-        "outline": alpha(outline_hex, 0.40),
+        "outline": alpha(outline_hex, 0.30 if mode == "light" else 0.40),
         "ok": OK,
         "warn": WARN,
         "err": ERR,
-        "isDark": True,
+        "isDark": (mode == "dark"),
+        "mode": mode,
     }
 
     # Write theme.json atomically to both carbon and hypr configs
@@ -498,8 +535,8 @@ def main():
     os.makedirs(os.path.dirname(caelestia_scheme_path), exist_ok=True)
     cael_data = {
         "name": "carbon-dynamic",
-        "flavour": "dark",
-        "mode": "dark",
+        "flavour": mode,
+        "mode": mode,
         "variant": "tonalspot",
         "colours": {
             "primary": accent_hex.lstrip("#"),
@@ -518,7 +555,7 @@ def main():
             "surface": bg_hex.lstrip("#"),
             "surfaceDim": (m3.get("surfaceDim", bg_hex) if m3 else bg_hex).lstrip("#"),
             "surfaceBright": (m3.get("surfaceBright", bg_alt_hex) if m3 else bg_alt_hex).lstrip("#"),
-            "surfaceContainerLowest": (m3.get("surfaceContainerLowest", "000000") if m3 else "000000").lstrip("#"),
+            "surfaceContainerLowest": (m3.get("surfaceContainerLowest", "ffffff" if mode == "light" else "000000") if m3 else ("ffffff" if mode == "light" else "000000")).lstrip("#"),
             "surfaceContainerLow": (m3.get("surfaceContainerLow", bg_hex) if m3 else bg_hex).lstrip("#"),
             "surfaceContainer": (m3.get("surfaceContainer", bg_hex) if m3 else bg_hex).lstrip("#"),
             "surfaceContainerHigh": bg_alt_hex.lstrip("#"),
@@ -547,9 +584,10 @@ def main():
     # 2. Update Fastfetch Bohr atom logo
     update_fastfetch_logo(accent_hex, fg_hex)
 
-    # 3. Ensure system color-scheme is set to prefer-dark
+    # 3. Ensure system color-scheme is set
+    color_scheme_pref = "prefer-light" if mode == "light" else "prefer-dark"
     subprocess.run(
-        ["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", "prefer-dark"],
+        ["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", color_scheme_pref],
         capture_output=True
     )
 

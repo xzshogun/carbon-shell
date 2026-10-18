@@ -1080,21 +1080,21 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             background-color: #131318;
             border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 18px;
-            padding: 24px 20px;
-            margin-bottom: 16px;
+            padding: 14px 18px;
+            margin-bottom: 12px;
             min-width: 0;
         }}
         .hero-icon-circle {{
             background-color: {self.accent_rgba(0.14)};
-            border-radius: 28px;
-            min-width: 54px;
-            min-height: 54px;
+            border-radius: 20px;
+            min-width: 40px;
+            min-height: 40px;
         }}
         .hero-title {{
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             color: #ffffff;
-            margin-top: 10px;
+            margin-top: 6px;
         }}
         .hero-subtitle {{
             font-size: 12px;
@@ -1105,12 +1105,12 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             background-color: #131318;
             border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 18px;
-            padding: 16px 20px;
-            margin-bottom: 16px;
+            padding: 12px 18px;
+            margin-bottom: 12px;
             min-width: 0;
         }}
         .settings-row {{
-            padding: 8px 0px;
+            padding: 6px 0px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.04);
             min-width: 0;
             border-radius: 12px;
@@ -1923,9 +1923,6 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             self.bar_pos["pillBlur"] = act
             self.pending_layer_blur = act
             self.mark_dirty()
-            row_bls.set_visible(act)
-            row_blp.set_visible(act)
-            row_blxr.set_visible(act)
         sw_blur = self.add_switch_row(card, "Frosted Glass Blur", "Enable backdrop blur behind the bar", cur_blur, on_blur_toggle)
         row_blur = sw_blur.get_parent()
 
@@ -1974,11 +1971,11 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             # Background Opacity: Notch, Pill, and Minimal
             row_op.set_visible(is_notch or is_pill or is_minimal)
 
-            # Frosted Glass Blur: Notch, Pill, and Minimal
+            # Frosted Glass Blur & Parameters: Notch, Pill, and Minimal
             row_blur.set_visible(is_notch or is_pill or is_minimal)
-            row_bls.set_visible((is_notch or is_pill or is_minimal) and cur_blur)
-            row_blp.set_visible((is_notch or is_pill or is_minimal) and cur_blur)
-            row_blxr.set_visible((is_notch or is_pill or is_minimal) and cur_blur)
+            row_bls.set_visible(is_notch or is_pill or is_minimal)
+            row_blp.set_visible(is_notch or is_pill or is_minimal)
+            row_blxr.set_visible(is_notch or is_pill or is_minimal)
 
             # Battery Layout: Notch, Pill, Minimal (hidden in Vanish Mode)
             row_bat.set_visible(is_notch or is_pill or is_minimal)

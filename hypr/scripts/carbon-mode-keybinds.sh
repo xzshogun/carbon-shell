@@ -71,10 +71,10 @@ hl.bind("SUPER + Down", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -
 hl.bind("SUPER + Right", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/reduct/.local/share/quickshell/carbon call tide swipeRight"))
 hl.bind("SUPER + Left", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/reduct/.local/share/quickshell/carbon call tide swipeLeft"))
 hl.bind("SUPER + B", hl.dsp.exec_cmd("/home/reduct/.config/hypr/scripts/carbon-ipc.sh controls"))
-hl.bind("SUPER + Up", hl.dsp.window.move({ direction = "up" }))
-hl.bind("SUPER + ALT + Left", hl.dsp.window.move({ direction = "left" }))
-hl.bind("SUPER + ALT + Right", hl.dsp.window.move({ direction = "right" }))
-hl.bind("SUPER + ALT + Down", hl.dsp.window.move({ direction = "down" }))
+hl.bind("SUPER + Up", hl.dsp.window.move({ direction = "u" }))
+hl.bind("SUPER + ALT + Left", hl.dsp.window.move({ direction = "l" }))
+hl.bind("SUPER + ALT + Right", hl.dsp.window.move({ direction = "r" }))
+hl.bind("SUPER + ALT + Down", hl.dsp.window.move({ direction = "d" }))
 """,
     "notch": """-- Active Mode: Carbon Notch
 hl.bind("SUPER + B", hl.dsp.exec_cmd("/home/reduct/.config/hypr/scripts/carbon-ipc.sh center-dashboard"))
@@ -83,19 +83,19 @@ hl.bind("SUPER + K", hl.dsp.exec_cmd("/home/reduct/.config/hypr/scripts/carbon-i
 hl.bind("SUPER + C", hl.dsp.exec_cmd("hyprpicker -a"))
 hl.bind("SUPER + SHIFT + B", hl.dsp.exec_cmd("/home/reduct/.config/hypr/scripts/carbon-ipc.sh controls"))
 hl.bind("SUPER + SHIFT + P", hl.dsp.exec_cmd("/home/reduct/.config/hypr/scripts/carbon-ipc.sh power"))
-hl.bind("SUPER + Left", hl.dsp.window.move({ direction = "left" }))
-hl.bind("SUPER + Right", hl.dsp.window.move({ direction = "right" }))
-hl.bind("SUPER + Up", hl.dsp.window.move({ direction = "up" }))
-hl.bind("SUPER + Down", hl.dsp.window.move({ direction = "down" }))
+hl.bind("SUPER + Left", hl.dsp.window.move({ direction = "l" }))
+hl.bind("SUPER + Right", hl.dsp.window.move({ direction = "r" }))
+hl.bind("SUPER + Up", hl.dsp.window.move({ direction = "u" }))
+hl.bind("SUPER + Down", hl.dsp.window.move({ direction = "d" }))
 """,
     "pill": """-- Active Mode: Pill / Waybar
 hl.bind("SUPER + R", hl.dsp.exec_cmd("rofi -show drun || rofi -show run"))
 hl.bind("SUPER + C", hl.dsp.exec_cmd("hyprpicker -a"))
 hl.bind("SUPER + B", hl.dsp.exec_cmd("/home/reduct/.config/hypr/scripts/carbon-ipc.sh controls"))
-hl.bind("SUPER + Left", hl.dsp.window.move({ direction = "left" }))
-hl.bind("SUPER + Right", hl.dsp.window.move({ direction = "right" }))
-hl.bind("SUPER + Up", hl.dsp.window.move({ direction = "up" }))
-hl.bind("SUPER + Down", hl.dsp.window.move({ direction = "down" }))
+hl.bind("SUPER + Left", hl.dsp.window.move({ direction = "l" }))
+hl.bind("SUPER + Right", hl.dsp.window.move({ direction = "r" }))
+hl.bind("SUPER + Up", hl.dsp.window.move({ direction = "u" }))
+hl.bind("SUPER + Down", hl.dsp.window.move({ direction = "d" }))
 """,
     "vanish": """-- Active Mode: Vanish / Nucleus
 hl.bind("SUPER + Super_L", hl.dsp.exec_cmd("sh /home/reduct/.config/carbon/scripts/carbon-vanish-dispatch.sh toggle-hub"), { release = true })
@@ -106,10 +106,10 @@ hl.bind("SUPER + W", hl.dsp.exec_cmd("sh /home/reduct/.config/carbon/scripts/car
 hl.bind("SUPER + A", hl.dsp.exec_cmd("sh /home/reduct/.config/carbon/scripts/carbon-vanish-dispatch.sh focus-alerts"))
 hl.bind("SUPER + B", hl.dsp.exec_cmd("sh /home/reduct/.config/carbon/scripts/carbon-vanish-dispatch.sh quick-toggles"))
 hl.bind("SUPER + C", hl.dsp.exec_cmd("hyprpicker -a"))
-hl.bind("SUPER + Left", hl.dsp.window.move({ direction = "left" }))
-hl.bind("SUPER + Right", hl.dsp.window.move({ direction = "right" }))
-hl.bind("SUPER + Up", hl.dsp.window.move({ direction = "up" }))
-hl.bind("SUPER + Down", hl.dsp.window.move({ direction = "down" }))
+hl.bind("SUPER + Left", hl.dsp.window.move({ direction = "l" }))
+hl.bind("SUPER + Right", hl.dsp.window.move({ direction = "r" }))
+hl.bind("SUPER + Up", hl.dsp.window.move({ direction = "u" }))
+hl.bind("SUPER + Down", hl.dsp.window.move({ direction = "d" }))
 """
 }
 

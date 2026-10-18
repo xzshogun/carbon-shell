@@ -14,11 +14,11 @@ local c = {
 }
 
 -- Monitor
-hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
+hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1, sdrsaturation = 1.3 })
 
 -- Programs
 local terminal    = "kitty"
-local fileManager = "/home/zily/.local/opt/kitty/bin/kitty -e /home/zily/.local/bin/yazi"
+local fileManager = "nautilus"
 
 -- Autostart
 hl.on("hyprland.start", function()
@@ -75,9 +75,9 @@ hl.config({
     input = {
         kb_layout      = "us",
         follow_mouse   = 1,
-        sensitivity    = 0,
-        accel_profile  = "flat",
-        force_no_accel = true,
+        sensitivity    = 0.0,
+        accel_profile  = "adaptive",
+        force_no_accel = false,
         touchpad = {
             natural_scroll = true,
         },
@@ -91,9 +91,9 @@ hl.gesture({
 })
 
 -- Load Modular Carbon Shell Configurations
-local home = os.getenv("HOME") or ""
-dofile(home .. "/.config/hypr/carbon/looknfeel.lua")
-dofile(home .. "/.config/hypr/carbon/windowrules.lua")
-dofile(home .. "/.config/hypr/carbon/keybinds.lua")
+dofile("/home/reduct/.config/hypr/carbon/looknfeel.lua")
+dofile("/home/reduct/.config/hypr/carbon/windowrules.lua")
+dofile("/home/reduct/.config/hypr/carbon/keybinds.lua")
+pcall(dofile, "/home/reduct/.config/hypr/current-mode-keybinds.lua")
 
 pcall(require, "hyprland-gui")

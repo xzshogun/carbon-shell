@@ -14,6 +14,8 @@ import "Singletons"
 import "components"
 import "modules"
 import "modules/lock"
+import "modules/tide"
+import IslandBackend
 
 /**
  * Carbon — a full Quickshell shell with a single left vertical bar.
@@ -799,6 +801,7 @@ ShellRoot {
     property bool screenshotFreezeActive: false
     onBarModeChanged: {
         console.log("[BAR-MODE CHANGED] New root.barMode is now: " + root.barMode)
+        Quickshell.execDetached(["bash", root.home + "/.config/hypr/scripts/carbon-mode-keybinds.sh", root.barMode])
         if (root.barMode === "pill") {
             Quickshell.execDetached(["bash", root.home + "/.config/waybar/launch.sh"])
         } else {
@@ -889,6 +892,7 @@ ShellRoot {
                     if (target === "three_islands") target = "pill"
                     if (target === "vanish") target = "nucleus"
                     if (target === "island") target = "notch"
+                    if (target === "minimal") target = "minimal_notch"
                     if (root.barMode !== target) {
                         console.log("[BAR-MODE] Switching mode from", root.barMode, "to", target)
                         root.barMode = target
@@ -903,7 +907,7 @@ ShellRoot {
                 if (d.batteryLayout) {
                     root.batteryLayout = String(d.batteryLayout).toLowerCase()
                 }
-                if (root.barMode === "pill" || root.barMode === "minimal") {
+                if (root.barMode === "pill" || root.barMode === "minimal" || root.barMode === "minimal_notch") {
                     if (root.mainBarEdge !== "top" && root.mainBarEdge !== "bottom") {
                         root.mainBarEdge = "top"
                         root.barEdge = "top"
@@ -923,6 +927,7 @@ ShellRoot {
         if (m === "three_islands") m = "pill"
         if (m === "vanish") m = "nucleus"
         if (m === "island") m = "notch"
+        if (m === "minimal") m = "minimal_notch"
         if (m === "nucleus" && root.barMode !== "nucleus" && root.nucleusTransitionEnabled) {
             root.startNucleusTransition(false)
             return
@@ -975,6 +980,142 @@ ShellRoot {
     property bool notchBlur: root.shellBlur
     property real minimalOpacity: root.shellOpacity
     property bool minimalBlur: root.shellBlur
+
+    /* ── Minimal Notch / Tide Island State & Helpers ── */
+    readonly property bool screenRecordingActive: false
+    property bool tideFocusEnabled: false
+    property bool tideNightLightEnabled: false
+    property bool islandAutoHideRuntimeEnabled: true
+
+    function forEachTideWindow(callback) {
+        const windows = tideIslandVariants.instances ? tideIslandVariants.instances : [];
+        for (let index = 0; index < windows.length; index++) {
+            const window = windows[index];
+            if (window)
+                callback(window);
+        }
+    }
+
+    function forFocusedTideWindow(callback) {
+        const windows = tideIslandVariants.instances ? tideIslandVariants.instances : [];
+        let fallbackWindow = null;
+        for (let index = 0; index < windows.length; index++) {
+            const window = windows[index];
+            if (window && !fallbackWindow)
+                fallbackWindow = window;
+            if (window && window.monitorFocused) {
+                callback(window);
+                return;
+            }
+        }
+        if (fallbackWindow)
+            callback(fallbackWindow);
+    }
+
+    function anyTideOverviewOpen() {
+        const windows = tideIslandVariants.instances ? tideIslandVariants.instances : [];
+        for (let index = 0; index < windows.length; index++) {
+            const window = windows[index];
+            if (window && window.overviewPhase !== "closed")
+                return true;
+        }
+        return false;
+    }
+
+    function prepareOverviewAll() {
+        forEachTideWindow((window) => window.prepareOverview());
+    }
+
+    function cancelPreparedOverviewAll() {
+        forEachTideWindow((window) => window.cancelPreparedOverview());
+    }
+
+    function openOverviewAll() {
+        forEachTideWindow((window) => window.openOverview());
+    }
+
+    function closeOverviewAll() {
+        forEachTideWindow((window) => window.closeOverview());
+    }
+
+    function toggleOverviewAll() {
+        if (anyTideOverviewOpen())
+            closeOverviewAll();
+        else
+            openOverviewAll();
+    }
+
+    function anyIslandShown() {
+        const windows = tideIslandVariants.instances ? tideIslandVariants.instances : [];
+        for (let index = 0; index < windows.length; index++) {
+            const window = windows[index];
+            if (window && window.autoHideTargetVisible)
+                return true;
+        }
+        return false;
+    }
+
+    function showIslandAll() {
+        forEachTideWindow((window) => {
+            if (window && window.showIslandWindow)
+                window.showIslandWindow();
+        });
+    }
+
+    function hideIslandAll() {
+        forEachTideWindow((window) => {
+            if (window && window.hideIslandWindow)
+                window.hideIslandWindow();
+        });
+    }
+
+    function toggleIslandAll() {
+        if (anyIslandShown())
+            hideIslandAll();
+        else
+            showIslandAll();
+    }
+
+    function refreshIslandAutoHideAll() {
+        forEachTideWindow((window) => {
+            if (window && window.refreshAutoHideWindow)
+                window.refreshAutoHideWindow();
+        });
+    }
+
+    function toggleNotchAll() {
+        forEachTideWindow((window) => {
+            if (window && window.toggleNotchMode)
+                window.toggleNotchMode();
+        });
+    }
+
+    function setNotchModeAll(enabled) {
+        forEachTideWindow((window) => {
+            if (window && window.setNotchMode)
+                window.setNotchMode(enabled);
+        });
+    }
+
+    function refreshOverviewWallpaperCaches(wallpaperPath) {
+        forEachTideWindow((window) => {
+            if (window && wallpaperPath !== undefined && wallpaperPath !== null && String(wallpaperPath) !== "") {
+                window.wallpaperPickerActiveWallpaper = String(wallpaperPath);
+            }
+            if (window && window.prewarmWallpaperCache)
+                window.prewarmWallpaperCache();
+        });
+    }
+
+    function showTideNotificationAll(appName, summary, body) {
+        if (root.tideFocusEnabled)
+            return;
+        forEachTideWindow((window) => {
+            if (window && window.showNotification)
+                window.showNotification(appName, summary, body);
+        });
+    }
+
     property int barHeight: root.barMode === "notch" ? root.notchHeight : root.pillHeight
     property string barEdge: "top"
     property string mainBarEdge: "top"
@@ -1003,7 +1144,7 @@ ShellRoot {
         if (root.mainBarEdge === "bottom") return 0
         if (root.barMode === "notch") return root.notchHeight + 4
         if (root.barMode === "pill") return root.pillHeight + 10
-        if (root.barMode === "minimal") return (root.islandStyle === "notch" ? root.notchHeight + 6 : root.pillHeight + 16)
+        if (root.barMode === "minimal" || root.barMode === "minimal_notch") return (root.islandStyle === "notch" ? root.notchHeight + 6 : root.pillHeight + 16)
         return 0
     }
 
@@ -1011,7 +1152,7 @@ ShellRoot {
         if (root.mainBarEdge !== "bottom") return 0
         if (root.barMode === "notch") return root.notchHeight + 4
         if (root.barMode === "pill") return root.pillHeight + 10
-        if (root.barMode === "minimal") return (root.islandStyle === "notch" ? root.notchHeight + 6 : root.pillHeight + 16)
+        if (root.barMode === "minimal" || root.barMode === "minimal_notch") return (root.islandStyle === "notch" ? root.notchHeight + 6 : root.pillHeight + 16)
         return 0
     }
 
@@ -1226,6 +1367,9 @@ ShellRoot {
         onNotification: notification => {
             notification.tracked = true
             NotificationService.addNotification(notification)
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch") {
+                root.showTideNotificationAll(notification.appName || "Notification", notification.summary || "", notification.body || "")
+            }
         }
     }
 
@@ -1682,8 +1826,9 @@ ShellRoot {
                         var m = cmd.replace(/^(bar-mode|set-bar-mode|mode|switch-mode|bar_mode|set_bar_mode)\s+/, "").trim().toLowerCase()
                         root.switchBarMode(m)
                     }
-                    else if (cmd === "notch" || cmd === "pill" || cmd === "minimal" || cmd === "vanish" || cmd === "mode-notch" || cmd === "mode-pill" || cmd === "mode-minimal") {
+                    else if (cmd === "notch" || cmd === "pill" || cmd === "minimal" || cmd === "minimal_notch" || cmd === "vanish" || cmd === "mode-notch" || cmd === "mode-pill" || cmd === "mode-minimal" || cmd === "mode-minimal_notch") {
                         var m = cmd.replace(/^mode-/, "")
+                        if (m === "minimal") m = "minimal_notch"
                         root.switchBarMode(m)
                     }
                     else if (cmd.startsWith("island-style ")) {
@@ -1739,11 +1884,219 @@ ShellRoot {
                             }
                         }
                     }
+                    else if (cmd.startsWith("tide ")) {
+                        var tcmd = cmd.substring(5).trim()
+                        if (tcmd === "showClock") root.forFocusedTideWindow((w) => w.showClockWindow())
+                        else if (tcmd === "showTimer") root.forFocusedTideWindow((w) => w.showTimerWindow())
+                        else if (tcmd === "showCustom") root.forFocusedTideWindow((w) => w.showCustomInfoWindow())
+                        else if (tcmd === "showLyrics") root.forFocusedTideWindow((w) => w.showLyricsWindow())
+                        else if (tcmd === "swipeRight") root.forFocusedTideWindow((w) => w.swipeRightWindow())
+                        else if (tcmd === "swipeLeft") root.forFocusedTideWindow((w) => w.swipeLeftWindow())
+                        else if (tcmd === "togglePlayer") {
+                            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                                root.forFocusedTideWindow((w) => w.togglePlayerWindow())
+                            else
+                                root.toggleMusic()
+                        }
+                        else if (tcmd === "toggleControlCenter") {
+                            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                                root.forFocusedTideWindow((w) => w.toggleControlCenterWindow())
+                            else
+                                root.toggleControls()
+                        }
+                        else if (tcmd === "togglePowerMenu") {
+                            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                                root.forFocusedTideWindow((w) => w.togglePowerMenuWindow())
+                            else
+                                root.openPower()
+                        }
+                        else if (tcmd === "toggleNotificationCenter") {
+                            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                                root.forFocusedTideWindow((w) => w.toggleNotificationCenterWindow())
+                            else
+                                root.toggleNotif()
+                        }
+                        else if (tcmd === "toggleWallpaperPicker") {
+                            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                                root.forFocusedTideWindow((w) => w.toggleWallpaperPickerWindow())
+                            else
+                                root.toggleWallpaperPicker()
+                        }
+                        else if (tcmd === "toggleApplicationLauncher") {
+                            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                                root.forFocusedTideWindow((w) => w.toggleApplicationLauncherWindow())
+                            else
+                                root.toggleDefaultLauncher()
+                        }
+                    }
+                    else if (cmd.startsWith("island ")) {
+                        var icmd = cmd.substring(7).trim()
+                        if (icmd === "toggle") root.toggleIslandAll()
+                        else if (icmd === "show" || icmd === "open" || icmd === "reveal") root.showIslandAll()
+                        else if (icmd === "hide") root.hideIslandAll()
+                    }
                 }
             }
         }
     }
 }
+
+    /* ── Native Quickshell IPC Handlers for Tide Island ─────────── */
+    IpcHandler {
+        target: "overview"
+
+        function toggle() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.toggleOverviewAll();
+            else
+                root.toggleOverview();
+        }
+
+        function open() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.openOverviewAll();
+            else
+                root.openOverview();
+        }
+
+        function close() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.closeOverviewAll();
+            else
+                root.closeOverview();
+        }
+
+        function refreshWallpaperCache() {
+            root.refreshOverviewWallpaperCaches();
+        }
+    }
+
+    IpcHandler {
+        target: "island"
+
+        function show() {
+            root.showIslandAll();
+        }
+
+        function open() {
+            root.showIslandAll();
+        }
+
+        function reveal() {
+            root.showIslandAll();
+        }
+
+        function hide() {
+            root.hideIslandAll();
+        }
+
+        function toggle() {
+            root.toggleIslandAll();
+        }
+
+        function enableAutoHide() {
+            root.islandAutoHideRuntimeEnabled = true;
+            root.refreshIslandAutoHideAll();
+        }
+
+        function disableAutoHide() {
+            root.islandAutoHideRuntimeEnabled = false;
+            root.showIslandAll();
+        }
+
+        function toggleNotch() {
+            root.toggleNotchAll();
+        }
+
+        function enableNotch() {
+            root.setNotchModeAll(true);
+        }
+
+        function disableNotch() {
+            root.setNotchModeAll(false);
+        }
+
+        function reloadConfig() {
+            root.forEachTideWindow((w) => {
+                if (w && w.reloadExtraConfig)
+                    w.reloadExtraConfig();
+            });
+        }
+    }
+
+    IpcHandler {
+        target: "tide"
+
+        function showClock() {
+            root.forFocusedTideWindow((w) => w.showClockWindow());
+        }
+
+        function showTimer() {
+            root.forFocusedTideWindow((w) => w.showTimerWindow());
+        }
+
+        function showCustom() {
+            root.forFocusedTideWindow((w) => w.showCustomInfoWindow());
+        }
+
+        function showLyrics() {
+            root.forFocusedTideWindow((w) => w.showLyricsWindow());
+        }
+
+        function swipeRight() {
+            root.forFocusedTideWindow((w) => w.swipeRightWindow());
+        }
+
+        function swipeLeft() {
+            root.forFocusedTideWindow((w) => w.swipeLeftWindow());
+        }
+
+        function togglePlayer() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.forFocusedTideWindow((w) => w.togglePlayerWindow());
+            else
+                root.toggleMusic();
+        }
+
+        function toggleControlCenter() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.forFocusedTideWindow((w) => w.toggleControlCenterWindow());
+            else
+                root.toggleControls();
+        }
+
+        function togglePowerMenu() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.forFocusedTideWindow((w) => w.togglePowerMenuWindow());
+            else
+                root.openPower();
+        }
+
+        function toggleNotificationCenter() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.forFocusedTideWindow((w) => w.toggleNotificationCenterWindow());
+            else
+                root.toggleNotif();
+        }
+
+        function toggleWallpaperPicker() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.forFocusedTideWindow((w) => w.toggleWallpaperPickerWindow());
+            else
+                root.toggleWallpaperPicker();
+        }
+
+        function toggleApplicationLauncher() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.forFocusedTideWindow((w) => w.toggleApplicationLauncherWindow());
+            else
+                root.toggleDefaultLauncher();
+        }
+
+        function toggleFileShelf() {
+            // Disabled per user request
+        }
+    }
 
     /* ── Lock Screen (Carbon Lewis Dot Structure & Password Card) ───── */
     LockScreen {
@@ -1979,7 +2332,7 @@ ShellRoot {
 
     /* ── Pill Mode: Connected Continuous Full Floating Bar ──────────── */
     Variants {
-        model: Quickshell.screens
+        model: root.barMode === "pill_qml" ? Quickshell.screens : []
 
         PanelWindow {
             id: pillFullBarWindow
@@ -2085,7 +2438,7 @@ ShellRoot {
 
     /* ── Pill Mode: Connected Continuous Full Vertical Floating Bar (Left / Right) ── */
     Variants {
-        model: Quickshell.screens
+        model: root.barMode === "pill_qml" ? Quickshell.screens : []
 
         PanelWindow {
             id: pillFullVerticalBarWindow
@@ -2232,7 +2585,7 @@ ShellRoot {
 
     /* ── Minimal Mode: Ultra-Lightweight Single Floating Dynamic Island ── */
     Variants {
-        model: Quickshell.screens
+        model: root.barMode === "minimal_old" ? Quickshell.screens : []
 
         PanelWindow {
             id: minimalIslandWindow
@@ -2258,7 +2611,7 @@ ShellRoot {
 
             implicitHeight: Math.max(root.barHeight + 28, minimalIslandItem.height + 16)
             implicitWidth: 600
-            visible: root.barMode === "minimal"
+            visible: root.barMode === "minimal_old"
 
             mask: Region {
                 item: root.islandRevealed ? minimalIslandItem : edgeTrigger
@@ -2379,6 +2732,18 @@ ShellRoot {
                 onToggleSpotlight: root.toggleDefaultLauncher()
                 onOpenSpotlight: root.toggleDefaultLauncher()
             }
+        }
+    }
+
+    /* ── Minimal Notch Mode: Tide Island ── */
+    Variants {
+        id: tideIslandVariants
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? Quickshell.screens : []
+
+        TideIslandWindow {
+            required property var modelData
+            screen: modelData
+            shellRootController: root
         }
     }
 
@@ -2509,7 +2874,7 @@ ShellRoot {
 
     /* ── Notch Mode: Center Dashboard Scrim for Outside Click ─────────── */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "notch" && root.centerDashboardOpen) ? Quickshell.screens : []
 
         PanelWindow {
             id: centerDashboardScrimWindow
@@ -2541,7 +2906,7 @@ ShellRoot {
 
     /* ── Notch Mode: Curved 3-notch bar ──────────────────────────────── */
     Variants {
-        model: Quickshell.screens
+        model: root.barMode === "notch" ? Quickshell.screens : []
 
         PanelWindow {
             id: notchBarWindow
@@ -2694,7 +3059,7 @@ ShellRoot {
 
     /* ── Concept 3: Kinetic Shard (Cybernetic Origami & Asymmetric Crystal) ── */
     Variants {
-        model: Quickshell.screens
+        model: root.barMode === "shard" ? Quickshell.screens : []
 
         PanelWindow {
             id: kineticShardWindow
@@ -2862,7 +3227,7 @@ ShellRoot {
     }
 
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "nucleus" || root.barMode === "vanish") ? Quickshell.screens : []
 
         // 1. Resting Dot (Sits on desktop below windows, never blocks apps)
         PanelWindow {
@@ -3046,7 +3411,7 @@ ShellRoot {
     }
 
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "nucleus" || root.barMode === "vanish") ? Quickshell.screens : []
 
         // 2. Opened Radial Hub (Always on overlay layer, appears above all windows when active)
         PanelWindow {
@@ -3176,7 +3541,7 @@ ShellRoot {
 
     /* ── Notch Center Island Window (When musicBarEdge is on separate edge or main bar is vertical) ── */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "notch" && (root.musicBarEdge !== root.mainBarEdge || root.mainBarEdge === "left" || root.mainBarEdge === "right")) ? Quickshell.screens : []
 
         PanelWindow {
             id: notchCenterWindow

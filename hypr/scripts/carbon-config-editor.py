@@ -169,15 +169,16 @@ DEFAULT_LOOKNFEEL = {
     "shadow_range": 15,
     "shadow_render_power": 3,
     "blur_enabled": True,
-    "blur_size": 5,
-    "blur_passes": 2,
+    "blur_size": 3,
+    "blur_passes": 1,
     "blur_ignore_opacity": True,
     "blur_new_optimizations": True,
     "blur_special": False,
     "blur_popups": True,
-    "blur_xray": True,
+    "blur_xray": False,
     "blur_vibrancy": 0.1696,
 }
+
 
 def generate_vanish_keybinds_conf(shortcuts):
     dispatch_path = VANISH_DISPATCH_SCRIPT if os.path.exists(VANISH_DISPATCH_SCRIPT) else os.path.expanduser("~/.config/hypr/scripts/carbon-vanish-dispatch.sh")
@@ -403,13 +404,13 @@ def write_looknfeel_config(data):
     shadow_render_power = int(data.get("shadow_render_power", 3))
 
     blur_enabled = "true" if data.get("blur_enabled", True) else "false"
-    blur_size = int(data.get("blur_size", 5))
-    blur_passes = int(data.get("blur_passes", 2))
+    blur_size = int(data.get("blur_size", 3))
+    blur_passes = int(data.get("blur_passes", 1))
     blur_ignore_opacity = "true" if data.get("blur_ignore_opacity", True) else "false"
     blur_new_optimizations = "true" if data.get("blur_new_optimizations", True) else "false"
     blur_special = "true" if data.get("blur_special", False) else "false"
     blur_popups = "true" if data.get("blur_popups", True) else "false"
-    blur_xray = "true" if data.get("blur_xray", True) else "false"
+    blur_xray = "true" if data.get("blur_xray", False) else "false"
     blur_vibrancy = float(data.get("blur_vibrancy", 0.1696))
 
     content = f"""# ==============================================================================
@@ -482,6 +483,20 @@ decoration {{
         except Exception as e:
             pass
 
+    gui_lua = os.path.expanduser("~/.config/hypr/hyprland-gui.lua")
+    if os.path.isfile(gui_lua):
+        try:
+            with open(gui_lua, "r", encoding="utf-8") as f:
+                c = f.read()
+            c = re.sub(r"(size\s*=\s*)\d+", rf"\g<1>{blur_size}", c)
+            c = re.sub(r"(passes\s*=\s*)\d+", rf"\g<1>{blur_passes}", c)
+            c = re.sub(r"(xray\s*=\s*)(true|false)", rf"\g<1>{'true' if blur_xray == 'true' else 'false'}", c)
+            c = re.sub(r"(enabled\s*=\s*)(true|false)", rf"\g<1>{'true' if blur_enabled == 'true' else 'false'}", c)
+            with open(gui_lua, "w", encoding="utf-8") as f:
+                f.write(c)
+        except Exception:
+            pass
+
 def apply_hyprland_looknfeel_live(cfg):
     keywords = [
         ("general:gaps_in", str(int(cfg.get("gaps_in", 6)))),
@@ -498,17 +513,19 @@ def apply_hyprland_looknfeel_live(cfg):
         ("decoration:shadow:range", str(int(cfg.get("shadow_range", 15)))),
         ("decoration:shadow:render_power", str(int(cfg.get("shadow_render_power", 3)))),
         ("decoration:blur:enabled", "true" if cfg.get("blur_enabled", True) else "false"),
-        ("decoration:blur:size", str(int(cfg.get("blur_size", 5)))),
-        ("decoration:blur:passes", str(int(cfg.get("blur_passes", 2)))),
+        ("decoration:blur:size", str(int(cfg.get("blur_size", 3)))),
+        ("decoration:blur:passes", str(int(cfg.get("blur_passes", 1)))),
         ("decoration:blur:ignore_opacity", "true" if cfg.get("blur_ignore_opacity", True) else "false"),
         ("decoration:blur:new_optimizations", "true" if cfg.get("blur_new_optimizations", True) else "false"),
         ("decoration:blur:special", "true" if cfg.get("blur_special", False) else "false"),
         ("decoration:blur:popups", "true" if cfg.get("blur_popups", True) else "false"),
-        ("decoration:blur:xray", "true" if cfg.get("blur_xray", True) else "false"),
+        ("decoration:blur:xray", "true" if cfg.get("blur_xray", False) else "false"),
         ("decoration:blur:vibrancy", f"{float(cfg.get('blur_vibrancy', 0.1696)):.4f}"),
     ]
     for key, val in keywords:
         subprocess.run(["hyprctl", "keyword", key, val], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["hyprctl", "reload"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
 
 def write_blur_exceptions_config(exceptions):
     lines = [
@@ -1832,7 +1849,8 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         modes = ["Notch Mode", "Pill Mode", "Minimal Island", "Vanish Mode (Nucleus)"]
         mode_ids = ["notch", "pill", "minimal", "nucleus"]
         cur_mode = self.bar_mode.get("mode", "notch")
-        cur_idx = mode_ids.index(cur_mode) if cur_mode in mode_ids else 0
+        cur_mode_norm = "minimal" if cur_mode in ("minimal", "minimal_notch") else cur_mode
+        cur_idx = mode_ids.index(cur_mode_norm) if cur_mode_norm in mode_ids else 0
 
         # Bar Style Combobox (Always visible)
         dd_mode = self.add_combo_row(card, "Bar Style", "Choose screen notch, floating pill, or single dynamic island", modes, cur_idx, lambda idx: on_mode_selected(idx))
@@ -1846,8 +1864,6 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             self.mark_dirty()
         dd_edge = self.add_combo_row(card, "Screen Position", "Anchor bar to top or bottom edge", edges, edge_idx, on_edge_selected)
         row_pos = dd_edge.get_parent()
-
-
 
         # Battery Layout (Horizontal / Vertical)
         bat_layouts = ["Horizontal", "Vertical"]
@@ -1900,13 +1916,42 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
         # Frosted Glass Blur - Notch, Pill, Minimal
         cur_blur = is_layer_blur_enabled()
         def on_blur_toggle(act):
+            nonlocal cur_blur
+            cur_blur = act
             self.bar_pos["notchBlur"] = act
             self.bar_pos["shellBlur"] = act
             self.bar_pos["pillBlur"] = act
             self.pending_layer_blur = act
             self.mark_dirty()
+            row_bls.set_visible(act)
+            row_blp.set_visible(act)
+            row_blxr.set_visible(act)
         sw_blur = self.add_switch_row(card, "Frosted Glass Blur", "Enable backdrop blur behind the bar", cur_blur, on_blur_toggle)
         row_blur = sw_blur.get_parent()
+
+        # Blur Radius Size - Notch, Pill, Minimal
+        cur_bls = int(self.looknfeel_cfg.get("blur_size", 3))
+        def on_bls_bar_changed(v):
+            self.looknfeel_cfg["blur_size"] = int(v)
+            self.mark_dirty()
+        sl_bls = self.add_slider_row(card, "Blur Radius Size", "Backdrop blur radius (lower = smoother, less lag)", 1, 16, 1, cur_bls, "px", on_bls_bar_changed)
+        row_bls = sl_bls.get_parent()
+
+        # Blur Passes - Notch, Pill, Minimal
+        cur_blp = int(self.looknfeel_cfg.get("blur_passes", 1))
+        def on_blp_bar_changed(v):
+            self.looknfeel_cfg["blur_passes"] = int(v)
+            self.mark_dirty()
+        sl_blp = self.add_slider_row(card, "Blur Passes", "Sampling passes (1 = ultra-fast / low lag, 2+ = heavy GPU load)", 1, 4, 1, cur_blp, "passes", on_blp_bar_changed)
+        row_blp = sl_blp.get_parent()
+
+        # X-Ray Blur Mode - Notch, Pill, Minimal
+        cur_blxr = bool(self.looknfeel_cfg.get("blur_xray", False))
+        def on_blxr_bar_toggle(act):
+            self.looknfeel_cfg["blur_xray"] = act
+            self.mark_dirty()
+        sw_blxr = self.add_switch_row(card, "Blur X-Ray Mode", "Blur directly through to wallpaper (disable for max performance)", cur_blxr, on_blxr_bar_toggle)
+        row_blxr = sw_blxr.get_parent()
 
         def update_visibility(selected_mode):
             is_notch = (selected_mode == "notch")
@@ -1931,18 +1976,23 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
 
             # Frosted Glass Blur: Notch, Pill, and Minimal
             row_blur.set_visible(is_notch or is_pill or is_minimal)
+            row_bls.set_visible((is_notch or is_pill or is_minimal) and cur_blur)
+            row_blp.set_visible((is_notch or is_pill or is_minimal) and cur_blur)
+            row_blxr.set_visible((is_notch or is_pill or is_minimal) and cur_blur)
 
             # Battery Layout: Notch, Pill, Minimal (hidden in Vanish Mode)
             row_bat.set_visible(is_notch or is_pill or is_minimal)
 
         def on_mode_selected(idx):
             mode_id = mode_ids[idx]
-            self.bar_mode["mode"] = mode_id
-            self.bar_mode["islandStyle"] = mode_id
+            stored_mode = "minimal_notch" if mode_id == "minimal" else mode_id
+            self.bar_mode["mode"] = stored_mode
+            self.bar_mode["islandStyle"] = stored_mode
             self.mark_dirty()
             update_visibility(mode_id)
 
-        update_visibility(cur_mode)
+        update_visibility(cur_mode_norm)
+
 
         page.append(card)
         return page
@@ -3723,12 +3773,15 @@ class ConfigEditorWindow(Adw.ApplicationWindow):
             subprocess.run(["pkill", "-x", "waybar-bin"], check=False)
             subprocess.run(["pkill", "-x", "swaync"], check=False)
 
-        # 7. Reload Hyprland & Carbon Quickshell
+        # 7. Reload Mode-Specific Keybinds & Hyprland (Seamless IPC mode switch, zero service restart)
         try:
+            keybinds_script = os.path.expanduser("~/.config/hypr/scripts/carbon-mode-keybinds.sh")
+            if os.path.exists(keybinds_script):
+                subprocess.run(["bash", keybinds_script, mode_id], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["hyprctl", "reload"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.run(["systemctl", "--user", "restart", "carbon-quickshell.service"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
-            print("Error restarting shell:", e, file=sys.stderr)
+            print("Error reloading keybinds or Hyprland:", e, file=sys.stderr)
+
 
         self.dirty = False
         self.lbl_status.set_text("Changes applied successfully.")

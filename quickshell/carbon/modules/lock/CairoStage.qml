@@ -617,10 +617,6 @@ Item {
     function handleBeatTriggered(beat) {
         if (!beat) return
 
-        if (ambientBorder && typeof ambientBorder.triggerBeat === "function") {
-            ambientBorder.triggerBeat()
-        }
-
         // 1. Strictly shift active delegates by +1 exactly once per token change:
         // Stage 2 -> Stage 3 (exiting top)
         // Stage 1 -> Stage 2 (top row)

@@ -74,15 +74,22 @@ Item {
             var mprisMs = (rawPos > 1000000) ? (rawPos / 1000) : (rawPos < 36000 ? rawPos * 1000 : rawPos)
 
             // When music is playing, smoothly advance livePositionMs by elapsed time (+dt ~50ms):
-            var isPlaying = !activePlayer || activePlayer.playbackState === MprisPlaybackState.Playing || activePlayer.isPlaying !== false
+            var isPlaying = root.isPlaying || !activePlayer || activePlayer.playbackState === MprisPlaybackState.Playing || activePlayer.isPlaying !== false
             if (isPlaying) {
                 root.livePositionMs += dt
             }
 
-            // ONLY snap livePositionMs to MPRIS when the drift exceeds 800ms (seek, scrub, track skip):
-            if (mprisMs > 0 && Math.abs(mprisMs - root.livePositionMs) > 800) {
-                root.livePositionMs = mprisMs
+            // ONLY react when MPRIS actually emits a fresh position update:
+            if (mprisMs > 0 && Math.abs(mprisMs - root.lastRawMprisPosMs) > 50) {
+                var mprisDrift = Math.abs(mprisMs - root.livePositionMs)
                 root.lastRawMprisPosMs = mprisMs
+                // If it's a real user seek / scrub / skip (> 800ms drift) or initial sync, snap:
+                if (mprisDrift > 800 || root.livePositionMs <= 0) {
+                    root.livePositionMs = mprisMs
+                } else if (mprisDrift > 120) {
+                    // Small drift nudge: gently align with player clock
+                    root.livePositionMs = (root.livePositionMs * 0.75) + (mprisMs * 0.25)
+                }
             }
 
             root.updateSync()

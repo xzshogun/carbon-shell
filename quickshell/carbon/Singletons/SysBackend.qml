@@ -17,4 +17,8 @@ QtObject {
     signal batteryChanged(int capacity, string status)
     signal brightnessChanged(real brightnessPercentage)
     signal bluetoothChanged(bool connected, string deviceName)
+
+    function setLyricsClientActive(active) {
+        // Handled via LyricsService
+    }
 }

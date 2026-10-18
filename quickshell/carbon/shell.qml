@@ -2246,9 +2246,9 @@ ShellRoot {
         }
     }
 
-    /* Wallpaper: bottom-most fullscreen image, updated live by WallpaperMod */
+    /* Wallpaper: bottom-most fullscreen image, updated live by WallpaperMod across all modes */
     Variants {
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
+        model: Quickshell.screens
 
         PanelWindow {
             id: wallpaperWindow

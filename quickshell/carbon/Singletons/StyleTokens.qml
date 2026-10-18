@@ -38,4 +38,14 @@ QtObject {
     readonly property color overviewCard: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.8)
     readonly property color overviewBorder: Theme.outline
     readonly property color overviewInnerBorder: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.15)
+
+    readonly property color black: "#000000"
+    readonly property color panel: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.95)
+    readonly property color track: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
+    readonly property color textPrimaryBright: Theme.fg
+    readonly property color textSecondary: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.7)
+    readonly property color cardFillHover: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.08)
+    readonly property color buttonFill: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.06)
+    readonly property color buttonFillHover: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.12)
+    readonly property color buttonFillPressed: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.18)
 }

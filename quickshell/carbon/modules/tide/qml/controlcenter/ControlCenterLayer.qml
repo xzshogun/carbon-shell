@@ -138,8 +138,8 @@ Item {
     property string bluetoothError: ""
     property string bluetoothPairAndConnectPath: ""
     property string bluetoothPendingSecretValue: ""
-    readonly property var wifiController: WifiController
-    readonly property var bluetoothPairingAgent: BluetoothPairingAgent
+    readonly property var wifiController: (typeof WifiController !== "undefined" ? WifiController : null)
+    readonly property var bluetoothPairingAgent: (typeof BluetoothPairingAgent !== "undefined" ? BluetoothPairingAgent : null)
     readonly property var wifiNetworks: wifiController ? wifiController.networks : null
 
     readonly property real sliderKnobSize: 24

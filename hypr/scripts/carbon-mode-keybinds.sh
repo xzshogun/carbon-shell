@@ -79,10 +79,11 @@ hl.bind("SUPER + Down", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -
 hl.bind("SUPER + Right", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call tide swipeRight"))
 hl.bind("SUPER + Left", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call tide swipeLeft"))
 hl.bind("SUPER + B", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call tide toggle"))
-hl.bind("SUPER + Up", hl.dsp.window.move({ direction = "u" }))
-hl.bind("SUPER + ALT + Left", hl.dsp.window.move({ direction = "l" }))
-hl.bind("SUPER + ALT + Right", hl.dsp.window.move({ direction = "r" }))
-hl.bind("SUPER + ALT + Down", hl.dsp.window.move({ direction = "d" }))
+hl.bind("SUPER + Up", hl.dsp.focus({ direction = "up" }))
+hl.bind("SUPER + ALT + Left", hl.dsp.focus({ direction = "left" }))
+hl.bind("SUPER + ALT + Right", hl.dsp.focus({ direction = "right" }))
+hl.bind("SUPER + ALT + Up", hl.dsp.focus({ direction = "up" }))
+hl.bind("SUPER + ALT + Down", hl.dsp.focus({ direction = "down" }))
 """,
     "notch": """-- Active Mode: Carbon Notch
 hl.bind("SUPER + B", hl.dsp.exec_cmd("/home/shogun/.config/hypr/scripts/carbon-ipc.sh center-dashboard"))

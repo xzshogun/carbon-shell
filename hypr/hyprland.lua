@@ -1,101 +1,99 @@
-local home   = os.getenv("HOME")
-local hypr   = home .. "/.config/hypr"
-package.path = package.path .. ";" .. home .. "/.config/caelestia/?.lua"
+-- ==============================================================================
+-- CARBON SHELL — HYPRLAND MASTER CONFIGURATION (LUA)
+-- Location: ~/.config/hypr/carbon/hyprland.lua
+-- Activated by shell-switcher (option 2 / carbon)
+-- ==============================================================================
 
--- Invalidate cached modules on each reload to ensure updated configs/keybinds apply live
-package.loaded["variables"] = nil
-package.loaded["hypr-vars"] = nil
-package.loaded["hypr-user"] = nil
-package.loaded["hyprland.env"] = nil
-package.loaded["hyprland.general"] = nil
-package.loaded["hyprland.input"] = nil
-package.loaded["hyprland.misc"] = nil
-package.loaded["hyprland.animations"] = nil
-package.loaded["hyprland.decoration"] = nil
-package.loaded["hyprland.group"] = nil
-package.loaded["hyprland.execs"] = nil
-package.loaded["hyprland.rules"] = nil
-package.loaded["hyprland.gestures"] = nil
-package.loaded["hyprland.keybinds"] = nil
-package.loaded["hyprland.vanish_keybinds"] = nil
-package.loaded["hyprland-gui"] = nil
+-- Colors
+local c = {
+    outline            = "rgba(899296ff)",
+    outline_variant    = "rgba(40484bff)",
+    on_secondary_container = "rgba(cee6f0ff)",
+    secondary          = "rgba(b3cad3ff)",
+    source_color       = "rgba(0e3c48ff)",
+}
 
--- Create a file if it doesn't exist, optionally with initial content
-local function maybe_create(file, content)
-    local f = io.open(file)
+-- Monitor
+hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1, sdrsaturation = 1.3 })
 
-    if f then
-        f:close()
-        return
-    end
+-- Programs
+local terminal    = "kitty"
+local fileManager = "nautilus"
 
-    f = io.open(file, "w")
-    if f then
-        if content then f:write(content) end
-        f:close()
-    end
-end
+-- Autostart
+hl.on("hyprland.start", function()
+    hl.exec_cmd("awww-daemon --format argb")
+    hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=Hyprland")
+    hl.exec_cmd("systemctl --user restart xdg-desktop-portal-hyprland")
+    hl.exec_cmd("systemctl --user restart xdg-desktop-portal")
+    hl.exec_cmd("pactl set-card-profile alsa_card.pci-0000_00_1b.0 output:analog-stereo+input:analog-stereo")
+    hl.exec_cmd("systemctl --user start hyprpolkitagent")
+    hl.exec_cmd("hypridle")
+    hl.exec_cmd("bash -c 'wl-paste --watch cliphist store'")
+    hl.exec_cmd("bash -c 'wl-paste --type image --watch cliphist store --max-items 500'")
+    hl.exec_cmd("systemctl --user start carbon-quickshell.service")
+end)
 
--- Copy src to dst, but only if dst doesn't already exist
-local function maybe_copy(src, dst)
-    local out = io.open(dst)
-    if out then
-        out:close()
-        return
-    end
+-- Environment
+hl.env("XCURSOR_SIZE", "24")
+hl.env("XCURSOR_THEME", "capitaine-cursors")
+hl.env("HYPRCURSOR_SIZE", "24")
+hl.env("LIBVA_DRIVER_NAME", "i965")
+hl.env("XDG_CURRENT_DESKTOP", "Hyprland")
+hl.env("XDG_SESSION_DESKTOP", "Hyprland")
+hl.env("XDG_DESKTOP_PORTAL", "hyprland")
 
-    local input = io.open(src, "r")
-    if not input then return end
+-- Animations & Curves
+hl.config({
+    animations = {
+        enabled = true,
+    },
+})
+hl.curve("myBezier",    { type = "bezier", points = { {0.05, 0.9}, {0.1, 1.05} } })
+hl.curve("been",        { type = "bezier", points = { {0.24, 0.9}, {0.25, 0.91} } })
+hl.curve("been2",       { type = "bezier", points = { {0, 0.94}, {0.5, 0.99} } })
+hl.curve("menu_decel",  { type = "bezier", points = { {0.1, 1}, {0, 1} } })
+hl.curve("linear",      { type = "bezier", points = { {0, 0}, {1, 1} } })
+hl.curve("wind",        { type = "bezier", points = { {0.05, 0.9}, {0.1, 1.05} } })
+hl.curve("winIn",       { type = "bezier", points = { {0.1, 1.1}, {0.1, 1.1} } })
+hl.curve("winOut",      { type = "bezier", points = { {0.3, -0.3}, {0, 1} } })
+hl.curve("slow",        { type = "bezier", points = { {0, 0.85}, {0.3, 1} } })
+hl.curve("overshot",    { type = "bezier", points = { {0.7, 0.6}, {0.1, 1.1} } })
+hl.curve("bounce",      { type = "bezier", points = { {1.1, 1.6}, {0.1, 0.85} } })
+hl.curve("sligshot",    { type = "bezier", points = { {1, -1}, {0.15, 1.25} } })
 
-    out = io.open(dst, "w")
-    if out then
-        out:write(input:read("*a"))
-        out:close()
-    end
-    input:close()
-end
+hl.animation({ leaf = "windowsIn",     enabled = true, speed = 4,  bezier = "slow",     style = "popin" })
+hl.animation({ leaf = "windowsOut",    enabled = true, speed = 5,  bezier = "been",     style = "popin 70%" })
+hl.animation({ leaf = "windowsMove",   enabled = true, speed = 4,  bezier = "wind",     style = "slide" })
+hl.animation({ leaf = "border",        enabled = true, speed = 1,  bezier = "linear" })
+hl.animation({ leaf = "fade",          enabled = true, speed = 4,  bezier = "overshot" })
+hl.animation({ leaf = "workspaces",    enabled = true, speed = 4,  bezier = "wind" })
+hl.animation({ leaf = "windows",       enabled = true, speed = 4,  bezier = "bounce",   style = "popin" })
 
--- Maybe set current colours to defaults
-maybe_copy(hypr .. "/scheme/default.lua", hypr .. "/scheme/current.lua")
-
--- User variables
-maybe_create(home .. "/.config/caelestia/hypr-vars.lua", "return {}\n")
-local overrides = require("hypr-vars")
-if type(overrides) == "table" then
-    local vars = require("variables")
-    for k, v in pairs(overrides) do
-        vars[k] = v
-    end
-end
-
--- Default monitor conf
-hl.monitor({
-    output   = "",
-    mode     = "preferred",
-    position = "auto",
-    scale    = 1,
+-- Input & Touchpad
+hl.config({
+    input = {
+        kb_layout      = "us",
+        follow_mouse   = 1,
+        sensitivity    = 0.0,
+        accel_profile  = "adaptive",
+        force_no_accel = false,
+        touchpad = {
+            natural_scroll = true,
+        },
+    },
 })
 
--- Configs
-require("hyprland.env")
-require("hyprland.general")
-require("hyprland.input")
-require("hyprland.misc")
-require("hyprland.animations")
-require("hyprland.decoration")
-require("hyprland.group")
-require("hyprland.execs")
-require("hyprland.rules")
-require("hyprland.gestures")
-require("hyprland.keybinds")
-require("hyprland.vanish_keybinds")
+hl.gesture({
+    fingers   = 3,
+    direction = "horizontal",
+    action    = "workspace",
+})
 
--- User configs
-maybe_create(home .. "/.config/caelestia/hypr-user.lua")
-require("hypr-user")
+-- Load Modular Carbon Shell Configurations
+dofile("/home/reduct/.config/hypr/carbon/looknfeel.lua")
+dofile("/home/reduct/.config/hypr/carbon/windowrules.lua")
+dofile("/home/reduct/.config/hypr/carbon/keybinds.lua")
+pcall(dofile, "/home/reduct/.config/hypr/current-mode-keybinds.lua")
 
--- HyprMod managed settings
-require("hyprland-gui")
-
-
-
+pcall(require, "hyprland-gui")

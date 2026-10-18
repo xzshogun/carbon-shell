@@ -14,6 +14,8 @@ import "Singletons"
 import "components"
 import "modules"
 import "modules/lock"
+import "modules/tide"
+import IslandBackend
 
 /**
  * Carbon — a full Quickshell shell with a single left vertical bar.
@@ -32,6 +34,21 @@ ShellRoot {
     property bool wallpaperPickerOpen: false
     property string wallpaperSource: "local"
     property var wallpaperModItem: null
+    property var launcherItem: null
+    property var spotlightItem: null
+    property var controlsItem: null
+    property var musicItem: null
+    property var smallMusicItem: null
+    property var wpItem: null
+    property var mixerItem: null
+    property var brightnessItem: null
+    property var batteryItem: null
+    property var wifiItem: null
+    property var btItem: null
+    property var trayItem: null
+    property var notifItem: null
+    property var calendarItem: null
+    property var centerDashboardItem: null
 
     property bool spotlightOpen: false
     function openSpotlight() {
@@ -643,8 +660,8 @@ ShellRoot {
     Timer {
         interval: 12000
         repeat: true
-        running: true
-        triggeredOnStart: true
+        running: (root.barMode !== "minimal" && root.barMode !== "minimal_notch")
+        triggeredOnStart: false
         onTriggered: {
             if (!wifiProbe.running) wifiProbe.running = true
             if (!wifiNameProbe.running) wifiNameProbe.running = true
@@ -799,6 +816,7 @@ ShellRoot {
     property bool screenshotFreezeActive: false
     onBarModeChanged: {
         console.log("[BAR-MODE CHANGED] New root.barMode is now: " + root.barMode)
+        Quickshell.execDetached(["bash", root.home + "/.config/hypr/scripts/carbon-mode-keybinds.sh", root.barMode])
         if (root.barMode === "pill") {
             Quickshell.execDetached(["bash", root.home + "/.config/waybar/launch.sh"])
         } else {
@@ -889,6 +907,7 @@ ShellRoot {
                     if (target === "three_islands") target = "pill"
                     if (target === "vanish") target = "nucleus"
                     if (target === "island") target = "notch"
+                    if (target === "minimal") target = "minimal_notch"
                     if (root.barMode !== target) {
                         console.log("[BAR-MODE] Switching mode from", root.barMode, "to", target)
                         root.barMode = target
@@ -903,7 +922,7 @@ ShellRoot {
                 if (d.batteryLayout) {
                     root.batteryLayout = String(d.batteryLayout).toLowerCase()
                 }
-                if (root.barMode === "pill" || root.barMode === "minimal") {
+                if (root.barMode === "pill" || root.barMode === "minimal" || root.barMode === "minimal_notch") {
                     if (root.mainBarEdge !== "top" && root.mainBarEdge !== "bottom") {
                         root.mainBarEdge = "top"
                         root.barEdge = "top"
@@ -923,6 +942,7 @@ ShellRoot {
         if (m === "three_islands") m = "pill"
         if (m === "vanish") m = "nucleus"
         if (m === "island") m = "notch"
+        if (m === "minimal") m = "minimal_notch"
         if (m === "nucleus" && root.barMode !== "nucleus" && root.nucleusTransitionEnabled) {
             root.startNucleusTransition(false)
             return
@@ -975,6 +995,142 @@ ShellRoot {
     property bool notchBlur: root.shellBlur
     property real minimalOpacity: root.shellOpacity
     property bool minimalBlur: root.shellBlur
+
+    /* ── Minimal Notch / Tide Island State & Helpers ── */
+    readonly property bool screenRecordingActive: false
+    property bool tideFocusEnabled: false
+    property bool tideNightLightEnabled: false
+    property bool islandAutoHideRuntimeEnabled: true
+
+    function forEachTideWindow(callback) {
+        const windows = tideIslandVariants.instances ? tideIslandVariants.instances : [];
+        for (let index = 0; index < windows.length; index++) {
+            const window = windows[index];
+            if (window)
+                callback(window);
+        }
+    }
+
+    function forFocusedTideWindow(callback) {
+        const windows = tideIslandVariants.instances ? tideIslandVariants.instances : [];
+        let fallbackWindow = null;
+        for (let index = 0; index < windows.length; index++) {
+            const window = windows[index];
+            if (window && !fallbackWindow)
+                fallbackWindow = window;
+            if (window && window.monitorFocused) {
+                callback(window);
+                return;
+            }
+        }
+        if (fallbackWindow)
+            callback(fallbackWindow);
+    }
+
+    function anyTideOverviewOpen() {
+        const windows = tideIslandVariants.instances ? tideIslandVariants.instances : [];
+        for (let index = 0; index < windows.length; index++) {
+            const window = windows[index];
+            if (window && window.overviewPhase !== "closed")
+                return true;
+        }
+        return false;
+    }
+
+    function prepareOverviewAll() {
+        forEachTideWindow((window) => window.prepareOverview());
+    }
+
+    function cancelPreparedOverviewAll() {
+        forEachTideWindow((window) => window.cancelPreparedOverview());
+    }
+
+    function openOverviewAll() {
+        forEachTideWindow((window) => window.openOverview());
+    }
+
+    function closeOverviewAll() {
+        forEachTideWindow((window) => window.closeOverview());
+    }
+
+    function toggleOverviewAll() {
+        if (anyTideOverviewOpen())
+            closeOverviewAll();
+        else
+            openOverviewAll();
+    }
+
+    function anyIslandShown() {
+        const windows = tideIslandVariants.instances ? tideIslandVariants.instances : [];
+        for (let index = 0; index < windows.length; index++) {
+            const window = windows[index];
+            if (window && window.autoHideTargetVisible)
+                return true;
+        }
+        return false;
+    }
+
+    function showIslandAll() {
+        forEachTideWindow((window) => {
+            if (window && window.showIslandWindow)
+                window.showIslandWindow();
+        });
+    }
+
+    function hideIslandAll() {
+        forEachTideWindow((window) => {
+            if (window && window.hideIslandWindow)
+                window.hideIslandWindow();
+        });
+    }
+
+    function toggleIslandAll() {
+        if (anyIslandShown())
+            hideIslandAll();
+        else
+            showIslandAll();
+    }
+
+    function refreshIslandAutoHideAll() {
+        forEachTideWindow((window) => {
+            if (window && window.refreshAutoHideWindow)
+                window.refreshAutoHideWindow();
+        });
+    }
+
+    function toggleNotchAll() {
+        forEachTideWindow((window) => {
+            if (window && window.toggleNotchMode)
+                window.toggleNotchMode();
+        });
+    }
+
+    function setNotchModeAll(enabled) {
+        forEachTideWindow((window) => {
+            if (window && window.setNotchMode)
+                window.setNotchMode(enabled);
+        });
+    }
+
+    function refreshOverviewWallpaperCaches(wallpaperPath) {
+        forEachTideWindow((window) => {
+            if (window && wallpaperPath !== undefined && wallpaperPath !== null && String(wallpaperPath) !== "") {
+                window.wallpaperPickerActiveWallpaper = String(wallpaperPath);
+            }
+            if (window && window.prewarmWallpaperCache)
+                window.prewarmWallpaperCache();
+        });
+    }
+
+    function showTideNotificationAll(appName, summary, body) {
+        if (root.tideFocusEnabled)
+            return;
+        forEachTideWindow((window) => {
+            if (window && window.showNotification)
+                window.showNotification(appName, summary, body);
+        });
+    }
+
     property int barHeight: root.barMode === "notch" ? root.notchHeight : root.pillHeight
     property string barEdge: "top"
     property string mainBarEdge: "top"
@@ -1003,7 +1159,7 @@ ShellRoot {
         if (root.mainBarEdge === "bottom") return 0
         if (root.barMode === "notch") return root.notchHeight + 4
         if (root.barMode === "pill") return root.pillHeight + 10
-        if (root.barMode === "minimal") return (root.islandStyle === "notch" ? root.notchHeight + 6 : root.pillHeight + 16)
+        if (root.barMode === "minimal" || root.barMode === "minimal_notch") return (root.islandStyle === "notch" ? root.notchHeight + 6 : root.pillHeight + 16)
         return 0
     }
 
@@ -1011,7 +1167,7 @@ ShellRoot {
         if (root.mainBarEdge !== "bottom") return 0
         if (root.barMode === "notch") return root.notchHeight + 4
         if (root.barMode === "pill") return root.pillHeight + 10
-        if (root.barMode === "minimal") return (root.islandStyle === "notch" ? root.notchHeight + 6 : root.pillHeight + 16)
+        if (root.barMode === "minimal" || root.barMode === "minimal_notch") return (root.islandStyle === "notch" ? root.notchHeight + 6 : root.pillHeight + 16)
         return 0
     }
 
@@ -1226,6 +1382,9 @@ ShellRoot {
         onNotification: notification => {
             notification.tracked = true
             NotificationService.addNotification(notification)
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch") {
+                root.showTideNotificationAll(notification.appName || "Notification", notification.summary || "", notification.body || "")
+            }
         }
     }
 
@@ -1233,6 +1392,18 @@ ShellRoot {
         target: NotificationService
         property: "server"
         value: notificationServer
+    }
+
+    Binding {
+        target: LyricsService
+        property: "enabled"
+        value: (root.barMode !== "minimal" && root.barMode !== "minimal_notch")
+    }
+
+    Binding {
+        target: HudService
+        property: "enabled"
+        value: (root.barMode !== "minimal" && root.barMode !== "minimal_notch")
     }
 
     /* External trigger (keybinds): Super+W brokered to the launcher in
@@ -1389,13 +1560,28 @@ ShellRoot {
                         if (controlsItem) controlsItem.openAudioDetails()
                     }
                     else if (cmd === "controls volume up") {
-                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.volumeAction("up")
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) {
+                            root.nucleusHubItem.volumeAction("up")
+                        } else if (Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
+                            var s = Pipewire.defaultAudioSink.audio;
+                            s.muted = false;
+                            s.volume = Math.min(1.5, Math.round((s.volume + root.volumeStepVal) * 100) / 100);
+                        }
                     }
                     else if (cmd === "controls volume down") {
-                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.volumeAction("down")
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) {
+                            root.nucleusHubItem.volumeAction("down")
+                        } else if (Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
+                            var s = Pipewire.defaultAudioSink.audio;
+                            s.volume = Math.max(0.0, Math.round((s.volume - root.volumeStepVal) * 100) / 100);
+                        }
                     }
                     else if (cmd === "controls volume toggle-mute") {
-                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.volumeAction("toggle-mute")
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) {
+                            root.nucleusHubItem.volumeAction("toggle-mute")
+                        } else if (Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
+                            Pipewire.defaultAudioSink.audio.muted = !Pipewire.defaultAudioSink.audio.muted;
+                        }
                     }
                     else if (cmd === "controls volume open") {
                         if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.volumeAction("open")
@@ -1682,8 +1868,9 @@ ShellRoot {
                         var m = cmd.replace(/^(bar-mode|set-bar-mode|mode|switch-mode|bar_mode|set_bar_mode)\s+/, "").trim().toLowerCase()
                         root.switchBarMode(m)
                     }
-                    else if (cmd === "notch" || cmd === "pill" || cmd === "minimal" || cmd === "vanish" || cmd === "mode-notch" || cmd === "mode-pill" || cmd === "mode-minimal") {
+                    else if (cmd === "notch" || cmd === "pill" || cmd === "minimal" || cmd === "minimal_notch" || cmd === "vanish" || cmd === "mode-notch" || cmd === "mode-pill" || cmd === "mode-minimal" || cmd === "mode-minimal_notch") {
                         var m = cmd.replace(/^mode-/, "")
+                        if (m === "minimal") m = "minimal_notch"
                         root.switchBarMode(m)
                     }
                     else if (cmd.startsWith("island-style ")) {
@@ -1739,11 +1926,235 @@ ShellRoot {
                             }
                         }
                     }
+                    else if (cmd.startsWith("tide ")) {
+                        var tcmd = cmd.substring(5).trim()
+                        if (tcmd === "showClock") root.forFocusedTideWindow((w) => w.showClockWindow())
+                        else if (tcmd === "showTimer") root.forFocusedTideWindow((w) => w.showTimerWindow())
+                        else if (tcmd === "showCustom") root.forFocusedTideWindow((w) => w.showCustomInfoWindow())
+                        else if (tcmd === "showLyrics") root.forFocusedTideWindow((w) => w.showLyricsWindow())
+                        else if (tcmd === "swipeRight") root.forFocusedTideWindow((w) => w.swipeRightWindow())
+                        else if (tcmd === "swipeLeft") root.forFocusedTideWindow((w) => w.swipeLeftWindow())
+                        else if (tcmd === "togglePlayer") {
+                            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                                root.forFocusedTideWindow((w) => w.togglePlayerWindow())
+                            else
+                                root.toggleMusic()
+                        }
+                        else if (tcmd === "toggleControlCenter") {
+                            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                                root.forFocusedTideWindow((w) => w.toggleControlCenterWindow())
+                            else
+                                root.toggleControls()
+                        }
+                        else if (tcmd === "togglePowerMenu") {
+                            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                                root.forFocusedTideWindow((w) => w.togglePowerMenuWindow())
+                            else
+                                root.openPower()
+                        }
+                        else if (tcmd === "toggleNotificationCenter") {
+                            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                                root.forFocusedTideWindow((w) => w.toggleNotificationCenterWindow())
+                            else
+                                root.toggleNotif()
+                        }
+                        else if (tcmd === "toggleWallpaperPicker") {
+                            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                                root.forFocusedTideWindow((w) => w.toggleWallpaperPickerWindow())
+                            else
+                                root.toggleWallpaperPicker()
+                        }
+                        else if (tcmd === "toggleApplicationLauncher") {
+                            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                                root.forFocusedTideWindow((w) => w.toggleApplicationLauncherWindow())
+                            else
+                                root.toggleDefaultLauncher()
+                        }
+                    }
+                    else if (cmd.startsWith("island ")) {
+                        var icmd = cmd.substring(7).trim()
+                        if (icmd === "toggle") root.toggleIslandAll()
+                        else if (icmd === "show" || icmd === "open" || icmd === "reveal") root.showIslandAll()
+                        else if (icmd === "hide") root.hideIslandAll()
+                    }
                 }
             }
         }
     }
 }
+
+    /* ── Native Quickshell IPC Handlers for Tide Island ─────────── */
+    IpcHandler {
+        target: "overview"
+
+        function toggle() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.toggleOverviewAll();
+            else
+                root.toggleOverview();
+        }
+
+        function open() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.openOverviewAll();
+            else
+                root.openOverview();
+        }
+
+        function close() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.closeOverviewAll();
+            else
+                root.closeOverview();
+        }
+
+        function refreshWallpaperCache() {
+            root.refreshOverviewWallpaperCaches();
+        }
+    }
+
+    IpcHandler {
+        target: "island"
+
+        function show() {
+            root.showIslandAll();
+        }
+
+        function open() {
+            root.showIslandAll();
+        }
+
+        function reveal() {
+            root.showIslandAll();
+        }
+
+        function hide() {
+            root.hideIslandAll();
+        }
+
+        function toggle() {
+            root.toggleIslandAll();
+        }
+
+        function enableAutoHide() {
+            root.islandAutoHideRuntimeEnabled = true;
+            root.refreshIslandAutoHideAll();
+        }
+
+        function disableAutoHide() {
+            root.islandAutoHideRuntimeEnabled = false;
+            root.showIslandAll();
+        }
+
+        function toggleNotch() {
+            root.toggleNotchAll();
+        }
+
+        function enableNotch() {
+            root.setNotchModeAll(true);
+        }
+
+        function disableNotch() {
+            root.setNotchModeAll(false);
+        }
+
+        function reloadConfig() {
+            root.forEachTideWindow((w) => {
+                if (w && w.reloadExtraConfig)
+                    w.reloadExtraConfig();
+            });
+        }
+    }
+
+    IpcHandler {
+        target: "tide"
+
+        function toggle() {
+            root.toggleIslandAll();
+        }
+
+        function toggleIsland() {
+            root.toggleIslandAll();
+        }
+
+        function hide() {
+            root.hideIslandAll();
+        }
+
+        function show() {
+            root.showIslandAll();
+        }
+
+        function showClock() {
+            root.forFocusedTideWindow((w) => w.showClockWindow());
+        }
+
+        function showTimer() {
+            root.forFocusedTideWindow((w) => w.showTimerWindow());
+        }
+
+        function showCustom() {
+            root.forFocusedTideWindow((w) => w.showCustomInfoWindow());
+        }
+
+        function showLyrics() {
+            root.forFocusedTideWindow((w) => w.showLyricsWindow());
+        }
+
+        function swipeRight() {
+            root.forFocusedTideWindow((w) => w.swipeRightWindow());
+        }
+
+        function swipeLeft() {
+            root.forFocusedTideWindow((w) => w.swipeLeftWindow());
+        }
+
+        function togglePlayer() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.forFocusedTideWindow((w) => w.togglePlayerWindow());
+            else
+                root.toggleMusic();
+        }
+
+        function toggleControlCenter() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.forFocusedTideWindow((w) => w.toggleControlCenterWindow());
+            else
+                root.toggleControls();
+        }
+
+        function togglePowerMenu() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.forFocusedTideWindow((w) => w.togglePowerMenuWindow());
+            else
+                root.openPower();
+        }
+
+        function toggleNotificationCenter() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.forFocusedTideWindow((w) => w.toggleNotificationCenterWindow());
+            else
+                root.toggleNotif();
+        }
+
+        function toggleWallpaperPicker() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.forFocusedTideWindow((w) => w.toggleWallpaperPickerWindow());
+            else
+                root.toggleWallpaperPicker();
+        }
+
+        function toggleApplicationLauncher() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
+                root.forFocusedTideWindow((w) => w.toggleApplicationLauncherWindow());
+            else
+                root.toggleDefaultLauncher();
+        }
+
+        function toggleFileShelf() {
+            // Disabled per user request
+        }
+    }
 
     /* ── Lock Screen (Carbon Lewis Dot Structure & Password Card) ───── */
     LockScreen {
@@ -1758,7 +2169,7 @@ ShellRoot {
 
     /* ── Fullscreen Desktop Lock Transition Overlay (0-780ms handoff to WlSessionLock) ── */
     Variants {
-        model: Quickshell.screens
+        model: (LockTransition.phase === "post_unlock" || (LockTransition.phase === "unlocking" && LockTransition.u >= 800.0) || (!LockTransition.lockSync && LockTransition.phase === "locking")) ? Quickshell.screens : []
 
         PanelWindow {
             id: lockOverlayWindow
@@ -1789,7 +2200,7 @@ ShellRoot {
 
     /* ── Carbon // Cairo Mode Standby & Lock Screen (0 MB Lazy Loaded) ───── */
     Variants {
-        model: Quickshell.screens
+        model: (LockState.isLocked && ShellConfig.cairoModeEnabled) ? Quickshell.screens : []
 
         PanelWindow {
             id: cairoLockWindow
@@ -1837,7 +2248,7 @@ ShellRoot {
 
     /* Wallpaper: bottom-most fullscreen image, updated live by WallpaperMod */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: wallpaperWindow
@@ -1872,15 +2283,13 @@ ShellRoot {
     Process {
         id: audioBorderDaemon
         command: ["python3", root.carbonConfigDir + "/scripts/audio-border.py"]
-        running: true
+        running: (root.barMode !== "minimal" && root.barMode !== "minimal_notch")
     }
 
     /* ── Dynamic Edge Reservation Windows (Prevents App Overlap) ────────── */
     readonly property bool hasTopReserve: false
-    readonly property bool hasBottomReserve: (root.barMode === "atomic" || root.barMode === "shard" || root.barMode === "bloom" || root.barMode === "nucleus") ? false :
-        ((root.barMode === "pill" || (root.barMode === "minimal" && root.islandPersistent))
-        ? (root.mainBarEdge === "bottom")
-        : (root.barMode === "minimal" ? false : (root.mainBarEdge === "bottom" || root.musicBarEdge === "bottom")))
+    readonly property bool hasBottomReserve: (root.barMode === "atomic" || root.barMode === "shard" || root.barMode === "bloom" || root.barMode === "nucleus" || root.barMode === "minimal" || root.barMode === "minimal_notch") ? false :
+        (root.barMode === "pill" ? (root.mainBarEdge === "bottom") : (root.mainBarEdge === "bottom" || root.musicBarEdge === "bottom"))
     readonly property bool hasLeftReserve: false
     readonly property bool hasRightReserve: false
 
@@ -1891,7 +2300,7 @@ ShellRoot {
 
     /* Top Edge Reserve */
     Variants {
-        model: Quickshell.screens
+        model: root.hasTopReserve ? Quickshell.screens : []
 
         PanelWindow {
             id: reserveTopWindow
@@ -1913,7 +2322,7 @@ ShellRoot {
 
     /* Bottom Edge Reserve */
     Variants {
-        model: Quickshell.screens
+        model: root.hasBottomReserve ? Quickshell.screens : []
 
         PanelWindow {
             id: reserveBottomWindow
@@ -1935,7 +2344,7 @@ ShellRoot {
 
     /* Left Edge Reserve */
     Variants {
-        model: Quickshell.screens
+        model: root.hasLeftReserve ? Quickshell.screens : []
 
         PanelWindow {
             id: reserveLeftWindow
@@ -1957,7 +2366,7 @@ ShellRoot {
 
     /* Right Edge Reserve */
     Variants {
-        model: Quickshell.screens
+        model: root.hasRightReserve ? Quickshell.screens : []
 
         PanelWindow {
             id: reserveRightWindow
@@ -1979,7 +2388,7 @@ ShellRoot {
 
     /* ── Pill Mode: Connected Continuous Full Floating Bar ──────────── */
     Variants {
-        model: Quickshell.screens
+        model: root.barMode === "pill_qml" ? Quickshell.screens : []
 
         PanelWindow {
             id: pillFullBarWindow
@@ -2085,7 +2494,7 @@ ShellRoot {
 
     /* ── Pill Mode: Connected Continuous Full Vertical Floating Bar (Left / Right) ── */
     Variants {
-        model: Quickshell.screens
+        model: root.barMode === "pill_qml" ? Quickshell.screens : []
 
         PanelWindow {
             id: pillFullVerticalBarWindow
@@ -2232,7 +2641,7 @@ ShellRoot {
 
     /* ── Minimal Mode: Ultra-Lightweight Single Floating Dynamic Island ── */
     Variants {
-        model: Quickshell.screens
+        model: root.barMode === "minimal_old" ? Quickshell.screens : []
 
         PanelWindow {
             id: minimalIslandWindow
@@ -2258,7 +2667,7 @@ ShellRoot {
 
             implicitHeight: Math.max(root.barHeight + 28, minimalIslandItem.height + 16)
             implicitWidth: 600
-            visible: root.barMode === "minimal"
+            visible: root.barMode === "minimal_old"
 
             mask: Region {
                 item: root.islandRevealed ? minimalIslandItem : edgeTrigger
@@ -2382,9 +2791,21 @@ ShellRoot {
         }
     }
 
+    /* ── Minimal Notch Mode: Tide Island ── */
+    Variants {
+        id: tideIslandVariants
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? Quickshell.screens : []
+
+        TideIslandWindow {
+            required property var modelData
+            screen: modelData
+            shellRootController: root
+        }
+    }
+
     /* ── Small Music Overlay Window (Compact Dropdown Below Island) ── */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "notch" || root.barMode === "pill") ? Quickshell.screens : []
 
         PanelWindow {
             id: smallMusicWindow
@@ -2458,7 +2879,7 @@ ShellRoot {
      * resolves its real width; the pill self-centres inside it and the mask
      * Region confines pointer input to the pill. */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "notch" || root.barMode === "pill" || root.barMode === "bar") ? Quickshell.screens : []
 
         PanelWindow {
             id: musicWindow
@@ -2509,7 +2930,7 @@ ShellRoot {
 
     /* ── Notch Mode: Center Dashboard Scrim for Outside Click ─────────── */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "notch" && root.centerDashboardOpen) ? Quickshell.screens : []
 
         PanelWindow {
             id: centerDashboardScrimWindow
@@ -2541,7 +2962,7 @@ ShellRoot {
 
     /* ── Notch Mode: Curved 3-notch bar ──────────────────────────────── */
     Variants {
-        model: Quickshell.screens
+        model: root.barMode === "notch" ? Quickshell.screens : []
 
         PanelWindow {
             id: notchBarWindow
@@ -2694,7 +3115,7 @@ ShellRoot {
 
     /* ── Concept 3: Kinetic Shard (Cybernetic Origami & Asymmetric Crystal) ── */
     Variants {
-        model: Quickshell.screens
+        model: root.barMode === "shard" ? Quickshell.screens : []
 
         PanelWindow {
             id: kineticShardWindow
@@ -2862,7 +3283,7 @@ ShellRoot {
     }
 
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "nucleus" || root.barMode === "vanish") ? Quickshell.screens : []
 
         // 1. Resting Dot (Sits on desktop below windows, never blocks apps)
         PanelWindow {
@@ -3046,7 +3467,7 @@ ShellRoot {
     }
 
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "nucleus" || root.barMode === "vanish") ? Quickshell.screens : []
 
         // 2. Opened Radial Hub (Always on overlay layer, appears above all windows when active)
         PanelWindow {
@@ -3176,7 +3597,7 @@ ShellRoot {
 
     /* ── Notch Center Island Window (When musicBarEdge is on separate edge or main bar is vertical) ── */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "notch" && (root.musicBarEdge !== root.mainBarEdge || root.mainBarEdge === "left" || root.mainBarEdge === "right")) ? Quickshell.screens : []
 
         PanelWindow {
             id: notchCenterWindow
@@ -3218,7 +3639,7 @@ ShellRoot {
 
     /* Launcher popup: centred modal over the desktop */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: launcherWindow
@@ -3259,7 +3680,7 @@ ShellRoot {
 
     /* Spotlight Command Palette: centred floating modal over the desktop (Super + K) */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: spotlightWindow
@@ -3304,7 +3725,7 @@ ShellRoot {
 
     /* Wallhaven Wallpaper Picker popup: bottom-center modal over the desktop */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: wallpaperPickerWindow
@@ -3354,7 +3775,7 @@ ShellRoot {
 
     /* Full-screen blurred wallpaper applying transition overlay (0:13 video reference) */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch" || !root.wallpaperTransitionOpen) ? [] : Quickshell.screens
 
         PanelWindow {
             id: wallpaperTransitionWindow
@@ -3383,259 +3804,279 @@ ShellRoot {
     }
 
     /* Mixer popup: fullscreen transparent overlay with outside click dismissal */
-    PanelWindow {
-        id: mixerWindow
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-mixer"
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.mixerOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-        exclusionMode: ExclusionMode.Ignore
-        aboveWindows: true
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
-        anchors {
-            top: true
-            bottom: true
-            left: true
-            right: true
-        }
+        PanelWindow {
+            id: mixerWindow
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-mixer"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: root.mixerOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
 
-        visible: (root.mixerOpen || mixerItem.animatingOut) && root.mainBarEdge !== "left"
-
-        Item {
-            anchors.fill: parent
-            focus: root.mixerOpen
-            Keys.enabled: root.mixerOpen
-            Keys.onEscapePressed: (event) => {
-                root.closeMixer()
-                event.accepted = true
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
             }
 
-            /* Outside click-absorber: clicking outside the panel closes it */
-            MouseArea {
+            visible: (root.mixerOpen || mixerItem.animatingOut) && root.mainBarEdge !== "left"
+
+            Item {
                 anchors.fill: parent
-                onClicked: {
-                    console.log("[mixerWindow] Outside click - closing mixer")
+                focus: root.mixerOpen
+                Keys.enabled: root.mixerOpen
+                Keys.onEscapePressed: (event) => {
                     root.closeMixer()
+                    event.accepted = true
                 }
-            }
 
-            MixerMod {
-                id: mixerItem
-                x: (root.barMode === "pill")
-                   ? Math.round(((parent.width > 0 ? parent.width : (mixerWindow.screen ? mixerWindow.screen.width : 1920)) - 1000) / 2)
-                   : (root.barMode === "minimal")
-                   ? Math.round(((parent.width > 0 ? parent.width : (mixerWindow.screen ? mixerWindow.screen.width : 1920)) - width) / 2)
-                   : ((parent.width > 0 ? parent.width : (mixerWindow.screen ? mixerWindow.screen.width : 1920)) - width - root.popupRightMargin)
-                y: root.mainBarEdge === "bottom"
-                   ? (parent.height - height - root.popupBottomMargin)
-                   : (root.barMode === "pill" ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14) : root.popupTopMargin)
-                width: mixerItem.implicitWidth
-                height: mixerItem.implicitHeight
-                barMode: root.barMode
-                barEdge: root.mainBarEdge
-                notchOpacity: root.notchOpacity
-                open: root.mixerOpen
-                onCloseRequested: root.closeMixer()
-                onAnyHoverChanged: {
-                    root.mixerHovered = mixerItem.anyHover
-                    if (root.mixerHovered) mixerLeaveTimer.stop()
-                    else mixerLeaveTimer.restart()
+                /* Outside click-absorber: clicking outside the panel closes it */
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        console.log("[mixerWindow] Outside click - closing mixer")
+                        root.closeMixer()
+                    }
+                }
+
+                MixerMod {
+                    id: mixerItem
+                    x: (root.barMode === "pill")
+                       ? Math.round(((parent.width > 0 ? parent.width : (mixerWindow.screen ? mixerWindow.screen.width : 1920)) - 1000) / 2)
+                       : (root.barMode === "minimal")
+                       ? Math.round(((parent.width > 0 ? parent.width : (mixerWindow.screen ? mixerWindow.screen.width : 1920)) - width) / 2)
+                       : ((parent.width > 0 ? parent.width : (mixerWindow.screen ? mixerWindow.screen.width : 1920)) - width - root.popupRightMargin)
+                    y: root.mainBarEdge === "bottom"
+                       ? (parent.height - height - root.popupBottomMargin)
+                       : (root.barMode === "pill" ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14) : root.popupTopMargin)
+                    width: mixerItem.implicitWidth
+                    height: mixerItem.implicitHeight
+                    barMode: root.barMode
+                    barEdge: root.mainBarEdge
+                    notchOpacity: root.notchOpacity
+                    open: root.mixerOpen
+                    onCloseRequested: root.closeMixer()
+                    onAnyHoverChanged: {
+                        root.mixerHovered = mixerItem.anyHover
+                        if (root.mixerHovered) mixerLeaveTimer.stop()
+                        else mixerLeaveTimer.restart()
+                    }
                 }
             }
         }
     }
 
     /* Brightness popup: fullscreen transparent overlay with outside click dismissal */
-    PanelWindow {
-        id: brightnessWindow
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-brightness"
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.brightnessOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-        exclusionMode: ExclusionMode.Ignore
-        aboveWindows: true
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
-        anchors {
-            top: true
-            bottom: true
-            left: true
-            right: true
-        }
+        PanelWindow {
+            id: brightnessWindow
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-brightness"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: root.brightnessOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
 
-        visible: (root.brightnessOpen || brightnessItem.animatingOut) && root.mainBarEdge !== "left"
-
-        Item {
-            anchors.fill: parent
-            focus: root.brightnessOpen
-            Keys.enabled: root.brightnessOpen
-            Keys.onEscapePressed: (event) => {
-                root.closeBrightness()
-                event.accepted = true
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
             }
 
-            /* Outside click-absorber */
-            MouseArea {
+            visible: (root.brightnessOpen || brightnessItem.animatingOut) && root.mainBarEdge !== "left"
+
+            Item {
                 anchors.fill: parent
-                onClicked: {
-                    console.log("[brightnessWindow] Outside click - closing brightness")
+                focus: root.brightnessOpen
+                Keys.enabled: root.brightnessOpen
+                Keys.onEscapePressed: (event) => {
                     root.closeBrightness()
+                    event.accepted = true
                 }
-            }
 
-            BrightnessPopup {
-                id: brightnessItem
-                x: (root.barMode === "minimal")
-                   ? Math.round(((parent.width > 0 ? parent.width : (brightnessWindow.screen ? brightnessWindow.screen.width : 1920)) - width) / 2)
-                   : (root.barMode === "pill")
-                   ? Math.round(((parent.width > 0 ? parent.width : (brightnessWindow.screen ? brightnessWindow.screen.width : 1920)) + 1000) / 2 - width)
-                   : ((parent.width > 0 ? parent.width : (brightnessWindow.screen ? brightnessWindow.screen.width : 1920)) - width - root.popupRightMargin)
-                y: root.mainBarEdge === "bottom"
-                   ? (parent.height - height - root.popupBottomMargin)
-                   : (root.barMode === "pill" ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14) : root.popupTopMargin)
-                width: brightnessItem.implicitWidth
-                height: brightnessItem.implicitHeight
-                barMode: root.barMode
-                barEdge: root.mainBarEdge
-                notchOpacity: root.notchOpacity
-                open: root.brightnessOpen
-                onCloseRequested: root.closeBrightness()
-                onAnyHoverChanged: {
-                    root.brightnessHovered = brightnessItem.anyHover
-                    if (root.brightnessHovered) brightnessLeaveTimer.stop()
-                    else brightnessLeaveTimer.restart()
+                /* Outside click-absorber */
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        console.log("[brightnessWindow] Outside click - closing brightness")
+                        root.closeBrightness()
+                    }
+                }
+
+                BrightnessPopup {
+                    id: brightnessItem
+                    x: (root.barMode === "minimal")
+                       ? Math.round(((parent.width > 0 ? parent.width : (brightnessWindow.screen ? brightnessWindow.screen.width : 1920)) - width) / 2)
+                       : (root.barMode === "pill")
+                       ? Math.round(((parent.width > 0 ? parent.width : (brightnessWindow.screen ? brightnessWindow.screen.width : 1920)) + 1000) / 2 - width)
+                       : ((parent.width > 0 ? parent.width : (brightnessWindow.screen ? brightnessWindow.screen.width : 1920)) - width - root.popupRightMargin)
+                    y: root.mainBarEdge === "bottom"
+                       ? (parent.height - height - root.popupBottomMargin)
+                       : (root.barMode === "pill" ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14) : root.popupTopMargin)
+                    width: brightnessItem.implicitWidth
+                    height: brightnessItem.implicitHeight
+                    barMode: root.barMode
+                    barEdge: root.mainBarEdge
+                    notchOpacity: root.notchOpacity
+                    open: root.brightnessOpen
+                    onCloseRequested: root.closeBrightness()
+                    onAnyHoverChanged: {
+                        root.brightnessHovered = brightnessItem.anyHover
+                        if (root.brightnessHovered) brightnessLeaveTimer.stop()
+                        else brightnessLeaveTimer.restart()
+                    }
                 }
             }
         }
     }
 
     /* Battery popup: fullscreen transparent overlay with outside click dismissal */
-    PanelWindow {
-        id: batteryWindow
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-battery"
-        WlrLayershell.layer: WlrLayer.Overlay
-        exclusionMode: ExclusionMode.Ignore
-        aboveWindows: true
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
-        anchors {
-            top: true
-            bottom: true
-            left: true
-            right: true
-        }
+        PanelWindow {
+            id: batteryWindow
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-battery"
+            WlrLayershell.layer: WlrLayer.Overlay
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
 
-        visible: (root.batteryOpen || batteryItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "pill"
-
-        Item {
-            anchors.fill: parent
-            focus: root.batteryOpen
-            Keys.enabled: root.batteryOpen
-            Keys.onEscapePressed: (event) => {
-                root.closeBattery()
-                event.accepted = true
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
             }
 
-            /* Outside click-absorber */
-            MouseArea {
+            visible: (root.batteryOpen || batteryItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "pill"
+
+            Item {
                 anchors.fill: parent
-                onClicked: {
-                    console.log("[batteryWindow] Outside click - closing battery")
+                focus: root.batteryOpen
+                Keys.enabled: root.batteryOpen
+                Keys.onEscapePressed: (event) => {
                     root.closeBattery()
+                    event.accepted = true
                 }
-            }
 
-            BatteryPopup {
-                id: batteryItem
-                x: (root.barMode === "minimal")
-                   ? Math.round(((parent.width > 0 ? parent.width : (batteryWindow.screen ? batteryWindow.screen.width : 1920)) - width) / 2)
-                   : (root.barMode === "pill")
-                   ? Math.round(((parent.width > 0 ? parent.width : (batteryWindow.screen ? batteryWindow.screen.width : 1920)) + 1000) / 2 - width)
-                   : ((parent.width > 0 ? parent.width : (batteryWindow.screen ? batteryWindow.screen.width : 1920)) - width - root.popupRightMargin)
-                y: root.mainBarEdge === "bottom"
-                   ? (parent.height - height - root.popupBottomMargin)
-                   : (root.barMode === "pill" ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14) : root.popupTopMargin)
-                width: batteryItem.implicitWidth
-                height: batteryItem.implicitHeight
-                barMode: root.barMode
-                barEdge: root.mainBarEdge
-                notchOpacity: root.notchOpacity
-                open: root.batteryOpen
-                onHoveredChanged: {
-                    root.batteryHovered = batteryItem.hovered
-                    if (root.batteryHovered) batteryLeaveTimer.stop()
-                    else batteryLeaveTimer.restart()
+                /* Outside click-absorber */
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        console.log("[batteryWindow] Outside click - closing battery")
+                        root.closeBattery()
+                    }
+                }
+
+                BatteryPopup {
+                    id: batteryItem
+                    x: (root.barMode === "minimal")
+                       ? Math.round(((parent.width > 0 ? parent.width : (batteryWindow.screen ? batteryWindow.screen.width : 1920)) - width) / 2)
+                       : (root.barMode === "pill")
+                       ? Math.round(((parent.width > 0 ? parent.width : (batteryWindow.screen ? batteryWindow.screen.width : 1920)) + 1000) / 2 - width)
+                       : ((parent.width > 0 ? parent.width : (batteryWindow.screen ? batteryWindow.screen.width : 1920)) - width - root.popupRightMargin)
+                    y: root.mainBarEdge === "bottom"
+                       ? (parent.height - height - root.popupBottomMargin)
+                       : (root.barMode === "pill" ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14) : root.popupTopMargin)
+                    width: batteryItem.implicitWidth
+                    height: batteryItem.implicitHeight
+                    barMode: root.barMode
+                    barEdge: root.mainBarEdge
+                    notchOpacity: root.notchOpacity
+                    open: root.batteryOpen
+                    onHoveredChanged: {
+                        root.batteryHovered = batteryItem.hovered
+                        if (root.batteryHovered) batteryLeaveTimer.stop()
+                        else batteryLeaveTimer.restart()
+                    }
                 }
             }
         }
     }
 
     /* Wifi popup: fullscreen transparent overlay with outside click dismissal */
-    PanelWindow {
-        id: wifiWindow
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-wifi"
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.wifiOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-        exclusionMode: ExclusionMode.Ignore
-        aboveWindows: true
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
-        anchors {
-            top: true
-            bottom: true
-            left: true
-            right: true
-        }
+        PanelWindow {
+            id: wifiWindow
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-wifi"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: root.wifiOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
 
-        visible: (root.wifiOpen || wifiItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "pill"
-
-        Item {
-            anchors.fill: parent
-            focus: root.wifiOpen
-            Keys.enabled: root.wifiOpen
-            Keys.onEscapePressed: (event) => {
-                root.closeWifi()
-                event.accepted = true
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
             }
 
-            /* Outside click-absorber */
-            MouseArea {
+            visible: (root.wifiOpen || wifiItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "pill"
+
+            Item {
                 anchors.fill: parent
-                onClicked: {
-                    console.log("[wifiWindow] Outside click - closing wifi")
+                focus: root.wifiOpen
+                Keys.enabled: root.wifiOpen
+                Keys.onEscapePressed: (event) => {
                     root.closeWifi()
+                    event.accepted = true
                 }
-            }
 
-            WifiPopup {
-                id: wifiItem
-                x: (root.barMode === "minimal")
-                   ? Math.round(((parent.width > 0 ? parent.width : (wifiWindow.screen ? wifiWindow.screen.width : 1920)) - width) / 2)
-                   : (root.barMode === "pill")
-                   ? Math.round(((parent.width > 0 ? parent.width : (wifiWindow.screen ? wifiWindow.screen.width : 1920)) + 1000) / 2 - width)
-                   : ((parent.width > 0 ? parent.width : (wifiWindow.screen ? wifiWindow.screen.width : 1920)) - width - root.popupRightMargin)
-                y: root.mainBarEdge === "bottom"
-                   ? (parent.height - height - root.popupBottomMargin)
-                   : (root.barMode === "pill" ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14) : root.popupTopMargin)
-                width: wifiItem.implicitWidth
-                height: wifiItem.implicitHeight
-                barMode: root.barMode
-                barEdge: root.mainBarEdge
-                notchOpacity: root.notchOpacity
-                open: root.wifiOpen
-                powerOn: root.wifiOn
-                wifiName: root.wifiName
-                onPowerToggled: (on) => root.toggleWifiPower()
-                onRequestedClose: root.closeWifi()
-                HoverHandler {
-                    id: wifiHov
-                    onHoveredChanged: {
-                        root.wifiHovered = wifiHov.hovered
-                        if (root.wifiHovered) wifiLeaveTimer.stop()
-                        else wifiLeaveTimer.restart()
+                /* Outside click-absorber */
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        console.log("[wifiWindow] Outside click - closing wifi")
+                        root.closeWifi()
+                    }
+                }
+
+                WifiPopup {
+                    id: wifiItem
+                    x: (root.barMode === "minimal")
+                       ? Math.round(((parent.width > 0 ? parent.width : (wifiWindow.screen ? wifiWindow.screen.width : 1920)) - width) / 2)
+                       : (root.barMode === "pill")
+                       ? Math.round(((parent.width > 0 ? parent.width : (wifiWindow.screen ? wifiWindow.screen.width : 1920)) + 1000) / 2 - width)
+                       : ((parent.width > 0 ? parent.width : (wifiWindow.screen ? wifiWindow.screen.width : 1920)) - width - root.popupRightMargin)
+                    y: root.mainBarEdge === "bottom"
+                       ? (parent.height - height - root.popupBottomMargin)
+                       : (root.barMode === "pill" ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14) : root.popupTopMargin)
+                    width: wifiItem.implicitWidth
+                    height: wifiItem.implicitHeight
+                    barMode: root.barMode
+                    barEdge: root.mainBarEdge
+                    notchOpacity: root.notchOpacity
+                    open: root.wifiOpen
+                    powerOn: root.wifiOn
+                    wifiName: root.wifiName
+                    onPowerToggled: (on) => root.toggleWifiPower()
+                    onRequestedClose: root.closeWifi()
+                    HoverHandler {
+                        id: wifiHov
+                        onHoveredChanged: {
+                            root.wifiHovered = wifiHov.hovered
+                            if (root.wifiHovered) wifiLeaveTimer.stop()
+                            else wifiLeaveTimer.restart()
+                        }
                     }
                 }
             }
@@ -3643,69 +4084,74 @@ ShellRoot {
     }
 
     /* Bluetooth popup: fullscreen transparent overlay with outside click dismissal */
-    PanelWindow {
-        id: btWindow
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-bluetooth"
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.btOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-        exclusionMode: ExclusionMode.Ignore
-        aboveWindows: true
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
-        anchors {
-            top: true
-            bottom: true
-            left: true
-            right: true
-        }
+        PanelWindow {
+            id: btWindow
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-bluetooth"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: root.btOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
 
-        visible: (root.btOpen || btItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "pill"
-
-        Item {
-            anchors.fill: parent
-            focus: root.btOpen
-            Keys.enabled: root.btOpen
-            Keys.onEscapePressed: (event) => {
-                root.closeBt()
-                event.accepted = true
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
             }
 
-            /* Outside click-absorber */
-            MouseArea {
+            visible: (root.btOpen || btItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "pill"
+
+            Item {
                 anchors.fill: parent
-                onClicked: {
-                    console.log("[btWindow] Outside click - closing bt")
+                focus: root.btOpen
+                Keys.enabled: root.btOpen
+                Keys.onEscapePressed: (event) => {
                     root.closeBt()
+                    event.accepted = true
                 }
-            }
 
-            BtPopup {
-                id: btItem
-                x: (root.barMode === "minimal")
-                   ? Math.round(((parent.width > 0 ? parent.width : (btWindow.screen ? btWindow.screen.width : 1920)) - width) / 2)
-                   : (root.barMode === "pill")
-                   ? Math.round(((parent.width > 0 ? parent.width : (btWindow.screen ? btWindow.screen.width : 1920)) + 1000) / 2 - width)
-                   : ((parent.width > 0 ? parent.width : (btWindow.screen ? btWindow.screen.width : 1920)) - width - root.popupRightMargin)
-                y: root.mainBarEdge === "bottom"
-                   ? (parent.height - height - root.popupBottomMargin)
-                   : (root.barMode === "pill" ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14) : root.popupTopMargin)
-                width: btItem.implicitWidth
-                height: btItem.implicitHeight
-                barMode: root.barMode
-                barEdge: root.mainBarEdge
-                notchOpacity: root.notchOpacity
-                open: root.btOpen
-                powerOn: root.btOn
-                btName: root.btName
-                onPowerToggled: (on) => root.toggleBtPower()
-                onRequestedClose: root.closeBt()
-                HoverHandler {
-                    id: btHov
-                    onHoveredChanged: {
-                        root.btHovered = btHov.hovered
-                        if (root.btHovered) btLeaveTimer.stop()
-                        else btLeaveTimer.restart()
+                /* Outside click-absorber */
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        console.log("[btWindow] Outside click - closing bt")
+                        root.closeBt()
+                    }
+                }
+
+                BtPopup {
+                    id: btItem
+                    x: (root.barMode === "minimal")
+                       ? Math.round(((parent.width > 0 ? parent.width : (btWindow.screen ? btWindow.screen.width : 1920)) - width) / 2)
+                       : (root.barMode === "pill")
+                       ? Math.round(((parent.width > 0 ? parent.width : (btWindow.screen ? btWindow.screen.width : 1920)) + 1000) / 2 - width)
+                       : ((parent.width > 0 ? parent.width : (btWindow.screen ? btWindow.screen.width : 1920)) - width - root.popupRightMargin)
+                    y: root.mainBarEdge === "bottom"
+                       ? (parent.height - height - root.popupBottomMargin)
+                       : (root.barMode === "pill" ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14) : root.popupTopMargin)
+                    width: btItem.implicitWidth
+                    height: btItem.implicitHeight
+                    barMode: root.barMode
+                    barEdge: root.mainBarEdge
+                    notchOpacity: root.notchOpacity
+                    open: root.btOpen
+                    powerOn: root.btOn
+                    btName: root.btName
+                    onPowerToggled: (on) => root.toggleBtPower()
+                    onRequestedClose: root.closeBt()
+                    HoverHandler {
+                        id: btHov
+                        onHoveredChanged: {
+                            root.btHovered = btHov.hovered
+                            if (root.btHovered) btLeaveTimer.stop()
+                            else btLeaveTimer.restart()
+                        }
                     }
                 }
             }
@@ -3713,387 +4159,426 @@ ShellRoot {
     }
 
     /* Tray overflow popup: Windows-style overflow showing running background apps */
-    PanelWindow {
-        id: trayWindow
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-tray"
-        WlrLayershell.layer: WlrLayer.Overlay
-        exclusionMode: ExclusionMode.Ignore
-        anchors {
-            top: root.mainBarEdge !== "bottom" && root.mainBarEdge !== "right"
-            bottom: root.mainBarEdge === "bottom" || root.mainBarEdge === "right"
-            right: root.barMode !== "minimal"
-        }
-        margins {
-            top: root.popupTopMargin
-            bottom: root.popupBottomMargin
-            right: root.popupRightMargin
-        }
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
-        implicitWidth: trayItem.implicitWidth
-        implicitHeight: trayItem.implicitHeight
-
-        visible: (root.trayOpen || trayItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "minimal"
-
-        mask: Region {
-            item: (root.trayOpen || trayItem.animatingOut) ? trayItem : null
-            x: 0; y: 0
-            width: (root.trayOpen || trayItem.animatingOut) ? trayItem.implicitWidth : 0
-            height: (root.trayOpen || trayItem.animatingOut) ? trayItem.implicitHeight : 0
-        }
-
-        TrayPopup {
-            id: trayItem
-            barMode: root.barMode
-            barEdge: root.mainBarEdge
-            notchOpacity: root.notchOpacity
-            open: root.trayOpen
-            onHoveredChanged: {
-                root.trayHovered = trayItem.hovered
-                if (root.trayHovered) trayLeaveTimer.stop()
-                else trayLeaveTimer.restart()
+        PanelWindow {
+            id: trayWindow
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-tray"
+            WlrLayershell.layer: WlrLayer.Overlay
+            exclusionMode: ExclusionMode.Ignore
+            anchors {
+                top: root.mainBarEdge !== "bottom" && root.mainBarEdge !== "right"
+                bottom: root.mainBarEdge === "bottom" || root.mainBarEdge === "right"
+                right: root.barMode !== "minimal"
             }
-            onRequestedClose: root.closeTray()
+            margins {
+                top: root.popupTopMargin
+                bottom: root.popupBottomMargin
+                right: root.popupRightMargin
+            }
+
+            implicitWidth: trayItem.implicitWidth
+            implicitHeight: trayItem.implicitHeight
+
+            visible: (root.trayOpen || trayItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "minimal"
+
+            mask: Region {
+                item: (root.trayOpen || trayItem.animatingOut) ? trayItem : null
+                x: 0; y: 0
+                width: (root.trayOpen || trayItem.animatingOut) ? trayItem.implicitWidth : 0
+                height: (root.trayOpen || trayItem.animatingOut) ? trayItem.implicitHeight : 0
+            }
+
+            TrayPopup {
+                id: trayItem
+                barMode: root.barMode
+                barEdge: root.mainBarEdge
+                notchOpacity: root.notchOpacity
+                open: root.trayOpen
+                onHoveredChanged: {
+                    root.trayHovered = trayItem.hovered
+                    if (root.trayHovered) trayLeaveTimer.stop()
+                    else trayLeaveTimer.restart()
+                }
+                onRequestedClose: root.closeTray()
+            }
         }
     }
 
     /* Notification popup: (Positioned beneath notch in notch mode, right-anchored in bar mode) */
-    PanelWindow {
-        id: notifWindow
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-notification-popup"
-        WlrLayershell.layer: WlrLayer.Overlay
-        exclusionMode: ExclusionMode.Ignore
-        anchors {
-            top: root.mainBarEdge !== "bottom" && root.mainBarEdge !== "right"
-            bottom: root.mainBarEdge === "bottom" || root.mainBarEdge === "right"
-            right: root.barMode !== "minimal"
-        }
-        margins {
-            top: root.barMode === "notch" ? 38 : root.popupTopMargin
-            bottom: root.popupBottomMargin
-            right: root.popupRightMargin
-        }
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
-        implicitWidth: notifItem.implicitWidth
-        implicitHeight: notifItem.implicitHeight
+        PanelWindow {
+            id: notifWindow
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-notification-popup"
+            WlrLayershell.layer: WlrLayer.Overlay
+            exclusionMode: ExclusionMode.Ignore
+            anchors {
+                top: root.mainBarEdge !== "bottom" && root.mainBarEdge !== "right"
+                bottom: root.mainBarEdge === "bottom" || root.mainBarEdge === "right"
+                right: root.barMode !== "minimal"
+            }
+            margins {
+                top: root.barMode === "notch" ? 38 : root.popupTopMargin
+                bottom: root.popupBottomMargin
+                right: root.popupRightMargin
+            }
 
-        visible: (root.notifOpen || notifItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "minimal"
+            implicitWidth: notifItem.implicitWidth
+            implicitHeight: notifItem.implicitHeight
 
-        mask: Region {
-            item: (root.notifOpen || notifItem.animatingOut) ? notifItem : null
-            x: 0; y: 0
-            width: (root.notifOpen || notifItem.animatingOut) ? notifItem.implicitWidth : 0
-            height: (root.notifOpen || notifItem.animatingOut) ? notifItem.implicitHeight : 0
-        }
+            visible: (root.notifOpen || notifItem.animatingOut) && root.mainBarEdge !== "left" && root.barMode !== "minimal"
 
-        NotificationPopup {
-            id: notifItem
-            barMode: root.barMode
-            barEdge: root.mainBarEdge
-            server: notificationServer
-            open: root.notifOpen
-            onRequestClose: root.closeNotif()
+            mask: Region {
+                item: (root.notifOpen || notifItem.animatingOut) ? notifItem : null
+                x: 0; y: 0
+                width: (root.notifOpen || notifItem.animatingOut) ? notifItem.implicitWidth : 0
+                height: (root.notifOpen || notifItem.animatingOut) ? notifItem.implicitHeight : 0
+            }
+
+            NotificationPopup {
+                id: notifItem
+                barMode: root.barMode
+                barEdge: root.mainBarEdge
+                server: notificationServer
+                open: root.notifOpen
+                onRequestClose: root.closeNotif()
+            }
         }
     }
 
     /* Calendar popup: fullscreen transparent overlay with outside click dismissal */
-    PanelWindow {
-        id: calendarWindow
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-calendar"
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.calendarOpen ? (root.barMode === "minimal" ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand) : WlrKeyboardFocus.None
-        exclusionMode: ExclusionMode.Ignore
-        aboveWindows: true
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
-        anchors {
-            top: true
-            bottom: true
-            left: true
-            right: true
-        }
+        PanelWindow {
+            id: calendarWindow
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-calendar"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: root.calendarOpen ? (root.barMode === "minimal" ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand) : WlrKeyboardFocus.None
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
 
-        visible: (root.calendarOpen || calendarItem.animatingOut) && root.mainBarEdge !== "left"
-
-        Item {
-            anchors.fill: parent
-            focus: root.calendarOpen
-            Keys.enabled: root.calendarOpen
-            Keys.onEscapePressed: (event) => {
-                root.closeCalendar()
-                event.accepted = true
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
             }
 
-            /* Outside click-absorber */
-            MouseArea {
+            visible: (root.calendarOpen || calendarItem.animatingOut) && root.mainBarEdge !== "left"
+
+            Item {
                 anchors.fill: parent
-                onClicked: {
-                    console.log("[calendarWindow] Outside click - closing calendar")
-                    root.closeCalendar()
-                }
-            }
-
-            CalendarPopup {
-                id: calendarItem
-                x: (root.barMode === "minimal" || root.barMode === "pill")
-                   ? Math.round(((parent.width > 0 ? parent.width : (calendarWindow.screen ? calendarWindow.screen.width : 1920)) - width) / 2)
-                   : ((parent.width > 0 ? parent.width : (calendarWindow.screen ? calendarWindow.screen.width : 1920)) - width - 16)
-                y: root.mainBarEdge === "bottom"
-                   ? (parent.height - height - root.popupBottomMargin)
-                   : (root.barMode === "pill" ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14) : root.popupTopMargin)
-                width: 216
-                height: 206
-                barEdge: root.mainBarEdge
                 focus: root.calendarOpen
-                open: root.calendarOpen
-                onCloseRequested: root.closeCalendar()
-                onAnyHoverChanged: {
-                    root.calendarHovered = calendarItem.anyHover
-                    if (root.calendarHovered) calendarLeaveTimer.stop()
-                    else calendarLeaveTimer.restart()
+                Keys.enabled: root.calendarOpen
+                Keys.onEscapePressed: (event) => {
+                    root.closeCalendar()
+                    event.accepted = true
+                }
+
+                /* Outside click-absorber */
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        console.log("[calendarWindow] Outside click - closing calendar")
+                        root.closeCalendar()
+                    }
+                }
+
+                CalendarPopup {
+                    id: calendarItem
+                    x: (root.barMode === "minimal" || root.barMode === "pill")
+                       ? Math.round(((parent.width > 0 ? parent.width : (calendarWindow.screen ? calendarWindow.screen.width : 1920)) - width) / 2)
+                       : ((parent.width > 0 ? parent.width : (calendarWindow.screen ? calendarWindow.screen.width : 1920)) - width - 16)
+                    y: root.mainBarEdge === "bottom"
+                       ? (parent.height - height - root.popupBottomMargin)
+                       : (root.barMode === "pill" ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14) : root.popupTopMargin)
+                    width: 216
+                    height: 206
+                    barEdge: root.mainBarEdge
+                    focus: root.calendarOpen
+                    open: root.calendarOpen
+                    onCloseRequested: root.closeCalendar()
+                    onAnyHoverChanged: {
+                        root.calendarHovered = calendarItem.anyHover
+                        if (root.calendarHovered) calendarLeaveTimer.stop()
+                        else calendarLeaveTimer.restart()
+                    }
                 }
             }
         }
     }
 
     /* ── Top-Center Calendar, Time & Weather Dashboard Panel ── */
-    PanelWindow {
-        id: centerDashboardWindow
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-center-dashboard"
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.centerDashboardOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-        exclusionMode: ExclusionMode.Ignore
-        aboveWindows: true
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
-        anchors {
-            top: true
-            bottom: true
-            left: true
-            right: true
-        }
+        PanelWindow {
+            id: centerDashboardWindow
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-center-dashboard"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: root.centerDashboardOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
 
-        visible: (root.centerDashboardOpen || centerDashboardItem.animatingOut) && root.barMode !== "notch" && root.barMode !== "minimal"
-
-        function updateHover() {
-            var isHov = centerDashboardItem.hovered
-            root.centerDashboardHovered = isHov
-            if (isHov) {
-                root.centerDashboardAwaitingHover = false
-                centerDashboardLeaveTimer.stop()
-            } else if (!root.centerDashboardPinned && !root.centerDashboardAwaitingHover) {
-                centerDashboardLeaveTimer.interval = 350
-                centerDashboardLeaveTimer.restart()
-            }
-        }
-
-        Item {
-            anchors.fill: parent
-            focus: root.centerDashboardOpen
-            Keys.enabled: root.centerDashboardOpen
-            Keys.onEscapePressed: (event) => {
-                root.closeCenterDashboard();
-                event.accepted = true;
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
             }
 
-            /* Outside click dismisser */
-            MouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    console.log("[centerDashboardWindow] Outside click - closing center dashboard")
-                    root.closeCenterDashboard()
+            visible: (root.centerDashboardOpen || centerDashboardItem.animatingOut) && root.barMode !== "notch" && root.barMode !== "minimal"
+
+            function updateHover() {
+                var isHov = centerDashboardItem.hovered
+                root.centerDashboardHovered = isHov
+                if (isHov) {
+                    root.centerDashboardAwaitingHover = false
+                    centerDashboardLeaveTimer.stop()
+                } else if (!root.centerDashboardPinned && !root.centerDashboardAwaitingHover) {
+                    centerDashboardLeaveTimer.interval = 350
+                    centerDashboardLeaveTimer.restart()
                 }
             }
 
-            CenterDashboard {
-                id: centerDashboardItem
-                anchors.top: root.mainBarEdge !== "bottom" ? parent.top : undefined
-                anchors.bottom: root.mainBarEdge === "bottom" ? parent.bottom : undefined
-                anchors.topMargin: root.mainBarEdge !== "bottom" ? root.popupTopMargin : 0
-                anchors.bottomMargin: root.mainBarEdge === "bottom" ? root.popupBottomMargin : 0
-                anchors.horizontalCenter: parent.horizontalCenter
-                open: root.centerDashboardOpen
-                minimalCalendarOnly: root.barMode === "minimal"
-                attachedBottom: root.mainBarEdge === "bottom"
-                onCloseRequested: root.closeCenterDashboard()
-                onHoveredChanged: centerDashboardWindow.updateHover()
-                Keys.onEscapePressed: root.closeCenterDashboard()
+            Item {
+                anchors.fill: parent
+                focus: root.centerDashboardOpen
+                Keys.enabled: root.centerDashboardOpen
+                Keys.onEscapePressed: (event) => {
+                    root.closeCenterDashboard();
+                    event.accepted = true;
+                }
+
+                /* Outside click dismisser */
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        console.log("[centerDashboardWindow] Outside click - closing center dashboard")
+                        root.closeCenterDashboard()
+                    }
+                }
+
+                CenterDashboard {
+                    id: centerDashboardItem
+                    anchors.top: root.mainBarEdge !== "bottom" ? parent.top : undefined
+                    anchors.bottom: root.mainBarEdge === "bottom" ? parent.bottom : undefined
+                    anchors.topMargin: root.mainBarEdge !== "bottom" ? root.popupTopMargin : 0
+                    anchors.bottomMargin: root.mainBarEdge === "bottom" ? root.popupBottomMargin : 0
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    open: root.centerDashboardOpen
+                    minimalCalendarOnly: root.barMode === "minimal"
+                    attachedBottom: root.mainBarEdge === "bottom"
+                    onCloseRequested: root.closeCenterDashboard()
+                    onHoveredChanged: centerDashboardWindow.updateHover()
+                    Keys.onEscapePressed: root.closeCenterDashboard()
+                }
             }
         }
     }
 
     /* ── Left-anchored Popups for Left Edge Mode ── */
-    PanelWindow {
-        id: mixerWindowLeft
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-mixer-left"
-        WlrLayershell.layer: WlrLayer.Overlay
-        exclusionMode: ExclusionMode.Ignore
-        anchors {
-            bottom: true
-            left: true
-        }
-        margins {
-            bottom: 14
-            left: root.barMode === "notch" ? 38 : 54
-        }
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch" || root.mainBarEdge !== "left") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
-        implicitWidth: mixerItemLeft.implicitWidth
-        implicitHeight: mixerItemLeft.implicitHeight + 20
+        PanelWindow {
+            id: mixerWindowLeft
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-mixer-left"
+            WlrLayershell.layer: WlrLayer.Overlay
+            exclusionMode: ExclusionMode.Ignore
+            anchors {
+                bottom: true
+                left: true
+            }
+            margins {
+                bottom: 14
+                left: root.barMode === "notch" ? 38 : 54
+            }
 
-        visible: (root.mixerOpen || mixerItemLeft.animatingOut) && root.mainBarEdge === "left"
+            implicitWidth: mixerItemLeft.implicitWidth
+            implicitHeight: mixerItemLeft.implicitHeight + 20
 
-        mask: Region {
-            item: (root.mixerOpen || mixerItemLeft.animatingOut) ? mixerItemLeft : null
-            x: 0; y: 0
-            width: (root.mixerOpen || mixerItemLeft.animatingOut) ? mixerItemLeft.implicitWidth : 0
-            height: (root.mixerOpen || mixerItemLeft.animatingOut) ? mixerItemLeft.implicitHeight + 20 : 0
-        }
+            visible: (root.mixerOpen || mixerItemLeft.animatingOut) && root.mainBarEdge === "left"
 
-        MixerMod {
-            id: mixerItemLeft
-            barEdge: "left"
-            open: root.mixerOpen
-            onCloseRequested: root.closeMixer()
-            onAnyHoverChanged: {
-                root.mixerHovered = mixerItemLeft.anyHover
-                if (root.mixerHovered) mixerLeaveTimer.stop()
-                else mixerLeaveTimer.restart()
+            mask: Region {
+                item: (root.mixerOpen || mixerItemLeft.animatingOut) ? mixerItemLeft : null
+                x: 0; y: 0
+                width: (root.mixerOpen || mixerItemLeft.animatingOut) ? mixerItemLeft.implicitWidth : 0
+                height: (root.mixerOpen || mixerItemLeft.animatingOut) ? mixerItemLeft.implicitHeight + 20 : 0
+            }
+
+            MixerMod {
+                id: mixerItemLeft
+                barEdge: "left"
+                open: root.mixerOpen
+                onCloseRequested: root.closeMixer()
+                onAnyHoverChanged: {
+                    root.mixerHovered = mixerItemLeft.anyHover
+                    if (root.mixerHovered) mixerLeaveTimer.stop()
+                    else mixerLeaveTimer.restart()
+                }
             }
         }
     }
 
-    PanelWindow {
-        id: brightnessWindowLeft
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-brightness-left"
-        WlrLayershell.layer: WlrLayer.Overlay
-        exclusionMode: ExclusionMode.Ignore
-        anchors {
-            bottom: true
-            left: true
-        }
-        margins {
-            bottom: 14
-            left: root.barMode === "notch" ? 38 : 54
-        }
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch" || root.mainBarEdge !== "left") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
-        implicitWidth: brightnessItemLeft.implicitWidth
-        implicitHeight: brightnessItemLeft.implicitHeight + 20
+        PanelWindow {
+            id: brightnessWindowLeft
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-brightness-left"
+            WlrLayershell.layer: WlrLayer.Overlay
+            exclusionMode: ExclusionMode.Ignore
+            anchors {
+                bottom: true
+                left: true
+            }
+            margins {
+                bottom: 14
+                left: root.barMode === "notch" ? 38 : 54
+            }
 
-        visible: (root.brightnessOpen || brightnessItemLeft.animatingOut) && root.mainBarEdge === "left"
+            implicitWidth: brightnessItemLeft.implicitWidth
+            implicitHeight: brightnessItemLeft.implicitHeight + 20
 
-        mask: Region {
-            item: (root.brightnessOpen || brightnessItemLeft.animatingOut) ? brightnessItemLeft : null
-            x: 0; y: 0
-            width: (root.brightnessOpen || brightnessItemLeft.animatingOut) ? brightnessItemLeft.implicitWidth : 0
-            height: (root.brightnessOpen || brightnessItemLeft.animatingOut) ? brightnessItemLeft.implicitHeight + 20 : 0
-        }
+            visible: (root.brightnessOpen || brightnessItemLeft.animatingOut) && root.mainBarEdge === "left"
 
-        BrightnessPopup {
-            id: brightnessItemLeft
-            barEdge: "left"
-            open: root.brightnessOpen
-            onCloseRequested: root.closeBrightness()
-            onAnyHoverChanged: {
-                root.brightnessHovered = brightnessItemLeft.anyHover
-                if (root.brightnessHovered) brightnessLeaveTimer.stop()
-                else brightnessLeaveTimer.restart()
+            mask: Region {
+                item: (root.brightnessOpen || brightnessItemLeft.animatingOut) ? brightnessItemLeft : null
+                x: 0; y: 0
+                width: (root.brightnessOpen || brightnessItemLeft.animatingOut) ? brightnessItemLeft.implicitWidth : 0
+                height: (root.brightnessOpen || brightnessItemLeft.animatingOut) ? brightnessItemLeft.implicitHeight + 20 : 0
+            }
+
+            BrightnessPopup {
+                id: brightnessItemLeft
+                barEdge: "left"
+                open: root.brightnessOpen
+                onCloseRequested: root.closeBrightness()
+                onAnyHoverChanged: {
+                    root.brightnessHovered = brightnessItemLeft.anyHover
+                    if (root.brightnessHovered) brightnessLeaveTimer.stop()
+                    else brightnessLeaveTimer.restart()
+                }
             }
         }
     }
 
-    PanelWindow {
-        id: batteryWindowLeft
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-battery-left"
-        WlrLayershell.layer: WlrLayer.Overlay
-        exclusionMode: ExclusionMode.Ignore
-        anchors {
-            bottom: true
-            left: true
-        }
-        margins {
-            bottom: 14
-            left: root.barMode === "notch" ? 38 : 54
-        }
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch" || root.mainBarEdge !== "left") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
-        implicitWidth: batteryItemLeft.implicitWidth
-        implicitHeight: batteryItemLeft.implicitHeight + 20
+        PanelWindow {
+            id: batteryWindowLeft
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-battery-left"
+            WlrLayershell.layer: WlrLayer.Overlay
+            exclusionMode: ExclusionMode.Ignore
+            anchors {
+                bottom: true
+                left: true
+            }
+            margins {
+                bottom: 14
+                left: root.barMode === "notch" ? 38 : 54
+            }
 
-        visible: (root.batteryOpen || batteryItemLeft.animatingOut) && root.mainBarEdge === "left"
+            implicitWidth: batteryItemLeft.implicitWidth
+            implicitHeight: batteryItemLeft.implicitHeight + 20
 
-        mask: Region {
-            item: (root.batteryOpen || batteryItemLeft.animatingOut) ? batteryItemLeft : null
-            x: 0; y: 0
-            width: (root.batteryOpen || batteryItemLeft.animatingOut) ? batteryItemLeft.implicitWidth : 0
-            height: (root.batteryOpen || batteryItemLeft.animatingOut) ? batteryItemLeft.implicitHeight + 20 : 0
-        }
+            visible: (root.batteryOpen || batteryItemLeft.animatingOut) && root.mainBarEdge === "left"
 
-        BatteryPopup {
-            id: batteryItemLeft
-            barEdge: "left"
-            open: root.batteryOpen
-            onHoveredChanged: {
-                root.batteryHovered = batteryItemLeft.hovered
-                if (root.batteryHovered) batteryLeaveTimer.stop()
-                else batteryLeaveTimer.restart()
+            mask: Region {
+                item: (root.batteryOpen || batteryItemLeft.animatingOut) ? batteryItemLeft : null
+                x: 0; y: 0
+                width: (root.batteryOpen || batteryItemLeft.animatingOut) ? batteryItemLeft.implicitWidth : 0
+                height: (root.batteryOpen || batteryItemLeft.animatingOut) ? batteryItemLeft.implicitHeight + 20 : 0
+            }
+
+            BatteryPopup {
+                id: batteryItemLeft
+                barEdge: "left"
+                open: root.batteryOpen
+                onHoveredChanged: {
+                    root.batteryHovered = batteryItemLeft.hovered
+                    if (root.batteryHovered) batteryLeaveTimer.stop()
+                    else batteryLeaveTimer.restart()
+                }
             }
         }
     }
 
-    PanelWindow {
-        id: trayWindowLeft
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-tray-left"
-        WlrLayershell.layer: WlrLayer.Overlay
-        exclusionMode: ExclusionMode.Ignore
-        anchors {
-            bottom: true
-            left: true
-        }
-        margins {
-            bottom: 14
-            left: root.barMode === "notch" ? 38 : 54
-        }
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch" || root.mainBarEdge !== "left") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
-        implicitWidth: trayItemLeft.implicitWidth
-        implicitHeight: trayItemLeft.implicitHeight + 20
-
-        visible: (root.trayOpen || trayItemLeft.animatingOut) && root.mainBarEdge === "left"
-
-        mask: Region {
-            item: (root.trayOpen || trayItemLeft.animatingOut) ? trayItemLeft : null
-            x: 0; y: 0
-            width: (root.trayOpen || trayItemLeft.animatingOut) ? trayItemLeft.implicitWidth : 0
-            height: (root.trayOpen || trayItemLeft.animatingOut) ? trayItemLeft.implicitHeight + 20 : 0
-        }
-
-        TrayPopup {
-            id: trayItemLeft
-            barEdge: "left"
-            open: root.trayOpen
-            onHoveredChanged: {
-                root.trayHovered = trayItemLeft.hovered
-                if (root.trayHovered) trayLeaveTimer.stop()
-                else trayLeaveTimer.restart()
+        PanelWindow {
+            id: trayWindowLeft
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-tray-left"
+            WlrLayershell.layer: WlrLayer.Overlay
+            exclusionMode: ExclusionMode.Ignore
+            anchors {
+                bottom: true
+                left: true
             }
-            onRequestedClose: root.closeTray()
+            margins {
+                bottom: 14
+                left: root.barMode === "notch" ? 38 : 54
+            }
+
+            implicitWidth: trayItemLeft.implicitWidth
+            implicitHeight: trayItemLeft.implicitHeight + 20
+
+            visible: (root.trayOpen || trayItemLeft.animatingOut) && root.mainBarEdge === "left"
+
+            mask: Region {
+                item: (root.trayOpen || trayItemLeft.animatingOut) ? trayItemLeft : null
+                x: 0; y: 0
+                width: (root.trayOpen || trayItemLeft.animatingOut) ? trayItemLeft.implicitWidth : 0
+                height: (root.trayOpen || trayItemLeft.animatingOut) ? trayItemLeft.implicitHeight + 20 : 0
+            }
+
+            TrayPopup {
+                id: trayItemLeft
+                barEdge: "left"
+                open: root.trayOpen
+                onHoveredChanged: {
+                    root.trayHovered = trayItemLeft.hovered
+                    if (root.trayHovered) trayLeaveTimer.stop()
+                    else trayLeaveTimer.restart()
+                }
+                onRequestedClose: root.closeTray()
+            }
         }
     }
-
     /* Power menu: full-screen modal overlay */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch" || !root.powerOpen) ? [] : Quickshell.screens
 
         PanelWindow {
             id: powerWindow
@@ -4124,7 +4609,7 @@ ShellRoot {
 
     /* Workspaces Overview: full-screen modal overlay */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch" || !root.overviewOpen) ? [] : Quickshell.screens
 
         PanelWindow {
             id: overviewWindow
@@ -4152,77 +4637,82 @@ ShellRoot {
 
     /* Quick-settings panel: now-playing strip over the quick toggles, positioned
      * dynamically according to root.controlsCorner ("bottom_right", "top_left", or "bottom_left"). */
-    PanelWindow {
-        id: controlsWindow
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-controls"
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.controlsVisible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-        exclusionMode: ExclusionMode.Ignore
-        aboveWindows: true
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : [Quickshell.screens[0]]
 
-        anchors {
-            top: true
-            bottom: true
-            left: true
-            right: true
-        }
+        PanelWindow {
+            id: controlsWindow
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-controls"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: root.controlsVisible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
 
-        visible: (root.controlsVisible || controlsItem.animatingOut) && root.barMode !== "nucleus"
-
-        Item {
-            anchors.fill: parent
-            focus: root.controlsVisible
-            Keys.enabled: root.controlsVisible
-            Keys.onEscapePressed: event => {
-                if (controlsItem.audioPopupOpen) {
-                    controlsItem.audioPopupOpen = false
-                    event.accepted = true
-                } else if (controlsItem.btPopupOpen) {
-                    controlsItem.btPopupOpen = false
-                    event.accepted = true
-                } else if (controlsItem.wifiPopupOpen) {
-                    controlsItem.wifiPopupOpen = false
-                    event.accepted = true
-                } else {
-                    root.closeControls()
-                    event.accepted = true
-                }
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
             }
 
-            /* Outside click-absorber: clicking outside the panel closes it */
-            MouseArea {
+            visible: (root.controlsVisible || controlsItem.animatingOut) && root.barMode !== "nucleus"
+
+            Item {
                 anchors.fill: parent
-                onClicked: root.closeControls()
-            }
-
-            QuickSettings {
-                id: controlsItem
-                x: (root.barMode === "minimal")
-                   ? Math.round(((parent.width > 0 ? parent.width : (controlsWindow.screen ? controlsWindow.screen.width : 1920)) - width) / 2)
-                   : (root.barMode === "pill")
-                   ? Math.round(((parent.width > 0 ? parent.width : (controlsWindow.screen ? controlsWindow.screen.width : 1920)) + 1000) / 2 - width)
-                   : (root.controlsCorner.endsWith("left") ? 14 : ((parent.width > 0 ? parent.width : (controlsWindow.screen ? controlsWindow.screen.width : 1920)) - width - 14))
-                y: root.controlsCorner.startsWith("top")
-                   ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14)
-                   : (parent.height - height - (root.popupBottomMargin > 0 ? root.popupBottomMargin + 6 : 14))
-                corner: (root.barMode === "minimal")
-                        ? (root.mainBarEdge === "bottom" ? "bottom_center" : "top_center")
-                        : (root.barMode === "pill" ? "top_right" : root.controlsCorner)
-                width: controlsItem.implicitWidth
-                height: controlsItem.implicitHeight
-                open: root.controlsVisible
-                batteryLayout: root.batteryLayout
-                showBatteryPercent: root.showBatteryPercent
-                shellOpacity: root.shellOpacity
-                server: notificationServer
-                onHoveredChanged: {
-                    root.controlsHovered = controlsItem.hovered
-                    if (controlsItem.hovered) {
-                        controlsLeaveTimer.stop()
+                focus: root.controlsVisible
+                Keys.enabled: root.controlsVisible
+                Keys.onEscapePressed: event => {
+                    if (controlsItem.audioPopupOpen) {
+                        controlsItem.audioPopupOpen = false
+                        event.accepted = true
+                    } else if (controlsItem.btPopupOpen) {
+                        controlsItem.btPopupOpen = false
+                        event.accepted = true
+                    } else if (controlsItem.wifiPopupOpen) {
+                        controlsItem.wifiPopupOpen = false
+                        event.accepted = true
                     } else {
-                        controlsLeaveTimer.restart()
+                        root.closeControls()
+                        event.accepted = true
+                    }
+                }
+
+                /* Outside click-absorber: clicking outside the panel closes it */
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: root.closeControls()
+                }
+
+                QuickSettings {
+                    id: controlsItem
+                    x: (root.barMode === "minimal")
+                       ? Math.round(((parent.width > 0 ? parent.width : (controlsWindow.screen ? controlsWindow.screen.width : 1920)) - width) / 2)
+                       : (root.barMode === "pill")
+                       ? Math.round(((parent.width > 0 ? parent.width : (controlsWindow.screen ? controlsWindow.screen.width : 1920)) + 1000) / 2 - width)
+                       : (root.controlsCorner.endsWith("left") ? 14 : ((parent.width > 0 ? parent.width : (controlsWindow.screen ? controlsWindow.screen.width : 1920)) - width - 14))
+                    y: root.controlsCorner.startsWith("top")
+                       ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14)
+                       : (parent.height - height - (root.popupBottomMargin > 0 ? root.popupBottomMargin + 6 : 14))
+                    corner: (root.barMode === "minimal")
+                            ? (root.mainBarEdge === "bottom" ? "bottom_center" : "top_center")
+                            : (root.barMode === "pill" ? "top_right" : root.controlsCorner)
+                    width: controlsItem.implicitWidth
+                    height: controlsItem.implicitHeight
+                    open: root.controlsVisible
+                    batteryLayout: root.batteryLayout
+                    showBatteryPercent: root.showBatteryPercent
+                    shellOpacity: root.shellOpacity
+                    server: notificationServer
+                    onHoveredChanged: {
+                        root.controlsHovered = controlsItem.hovered
+                        if (controlsItem.hovered) {
+                            controlsLeaveTimer.stop()
+                        } else {
+                            controlsLeaveTimer.restart()
+                        }
                     }
                 }
             }
@@ -4231,7 +4721,7 @@ ShellRoot {
 
     /* ── Floating Volume & Brightness Notch OSD ─────────────────────────── */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: osdWindow
@@ -4253,7 +4743,7 @@ ShellRoot {
             }
 
             implicitHeight: osdItem.implicitHeight
-            visible: false // Replaced by Dynamic Island in-place morphing HUD
+            visible: (root.barMode !== "minimal" && root.barMode !== "minimal_notch") && (osdItem.active || osdItem.opacity > 0.001)
 
             NotchOsd {
                 id: osdItem
@@ -4264,7 +4754,7 @@ ShellRoot {
 
     /* ── Workspace Switcher OSD (Active only in Vanish Mode) ─────────── */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "nucleus" || root.barMode === "vanish") ? Quickshell.screens : []
 
         PanelWindow {
             id: workspaceOsdWindow
@@ -4302,7 +4792,7 @@ ShellRoot {
 
     /* ── Notification Toast Overlay Window (Top-Right) ───────────────── */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: toastWindow
@@ -4341,7 +4831,7 @@ ShellRoot {
 
     /* ── Full-screen Screen Freeze Overlay for Screenshot capture ── */
     Variants {
-        model: Quickshell.screens
+        model: (root.screenshotFreezeActive && root.screenshotFreezePath.length > 0) ? Quickshell.screens : []
 
         PanelWindow {
             id: screenshotFreezeWindow

@@ -66,12 +66,12 @@ Item {
     property string heroFontFamily: userConfig.heroFontFamily
     // ... rest of properties ...
 
-    scale: showCondition ? 1.0 : 0.12
+    scale: showCondition ? 1.0 : (opacity > 0.05 ? 1.0 : 0.96)
     transformOrigin: Item.Top
 
     Behavior on scale {
         NumberAnimation {
-            duration: 400
+            duration: showCondition ? 400 : 80
             easing.type: Easing.OutQuint
         }
     }
@@ -1067,7 +1067,7 @@ Item {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: showCondition ? 240 : 100
+            duration: showCondition ? 240 : 60
             easing.type: Easing.InOutQuad
         }
     }
@@ -2230,6 +2230,7 @@ Item {
 
             Rectangle {
                 id: batteryDrawerTunnelShade
+                visible: false
                 anchors.left: parent.left
                 anchors.top: parent.top
                 width: batteryDrawer.cardWidth

@@ -1394,6 +1394,18 @@ ShellRoot {
         value: notificationServer
     }
 
+    Binding {
+        target: LyricsService
+        property: "enabled"
+        value: (root.barMode !== "minimal" && root.barMode !== "minimal_notch")
+    }
+
+    Binding {
+        target: HudService
+        property: "enabled"
+        value: (root.barMode !== "minimal" && root.barMode !== "minimal_notch")
+    }
+
     /* External trigger (keybinds): Super+W brokered to the launcher in
      * wallpaper mode by carbon-ipc.sh over this unix socket. */
     SocketServer {
@@ -2157,7 +2169,7 @@ ShellRoot {
 
     /* ── Fullscreen Desktop Lock Transition Overlay (0-780ms handoff to WlSessionLock) ── */
     Variants {
-        model: Quickshell.screens
+        model: (LockTransition.phase === "post_unlock" || (LockTransition.phase === "unlocking" && LockTransition.u >= 800.0) || (!LockTransition.lockSync && LockTransition.phase === "locking")) ? Quickshell.screens : []
 
         PanelWindow {
             id: lockOverlayWindow

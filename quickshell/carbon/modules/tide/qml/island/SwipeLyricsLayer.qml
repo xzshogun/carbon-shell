@@ -272,9 +272,9 @@ Item {
 
     Text {
         visible: timeText !== "" && showSecondaryText
-        x: timeX
-        y: timeBaselineY - baselineOffset
-        width: textWidth
+        x: Math.round(timeX)
+        y: Math.round(timeBaselineY - baselineOffset)
+        width: Math.round(textWidth)
         text: timeText
         color: Theme.fg
         opacity: 1 - clampedProgress
@@ -282,6 +282,8 @@ Item {
         font.family: timeFontFamily
         font.weight: Font.Bold
         font.letterSpacing: -0.25
+        font.hintingPreference: Font.PreferFullHinting
+        renderType: Text.CurveRendering
         horizontalAlignment: Text.AlignHCenter
         elide: Text.ElideRight
         wrapMode: Text.NoWrap

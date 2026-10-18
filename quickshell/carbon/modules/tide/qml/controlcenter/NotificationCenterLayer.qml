@@ -7,6 +7,13 @@ Item {
     id: notificationCenter
 
     signal clearAllRequested()
+    signal closeRequested()
+
+    focus: true
+    Keys.onEscapePressed: (event) => {
+        closeRequested();
+        event.accepted = true;
+    }
 
     property var notificationModel: null
     property string iconFontFamily: userConfig.iconFontFamily

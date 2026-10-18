@@ -170,7 +170,7 @@ Item {
 
                         Rectangle {
                             anchors.fill: parent
-                            radius: parent.radius
+                            radius: root.albumCoverRadius
                             color: "transparent"
                             border.width: 1
                             border.color: "#2effffff"
@@ -341,8 +341,8 @@ Item {
 
     Text {
         visible: timeText !== "" && showSecondaryText
-        x: timeX
-        width: textWidth
+        x: Math.round(timeX)
+        width: Math.round(textWidth)
         anchors.verticalCenter: parent.verticalCenter
         text: timeText
         color: Theme.fg
@@ -351,6 +351,8 @@ Item {
         font.family: timeFontFamily
         font.weight: Font.Bold
         font.letterSpacing: -0.25
+        font.hintingPreference: Font.PreferFullHinting
+        renderType: Text.CurveRendering
         horizontalAlignment: Text.AlignHCenter
         elide: Text.ElideRight
         wrapMode: Text.NoWrap

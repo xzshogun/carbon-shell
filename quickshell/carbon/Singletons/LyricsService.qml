@@ -78,12 +78,24 @@ Singleton {
     property string prevLine: ""
 
     property string lastFetchedKey: ""
+    property bool enabled: false
+
+    onEnabledChanged: {
+        if (!enabled) {
+            lyricsProc.running = false
+            lines = []
+            currentLine = ""
+            nextLine = ""
+            prevLine = ""
+            lastFetchedKey = ""
+        }
+    }
 
     Timer {
         id: playerPollTimer
         interval: 300
         repeat: true
-        running: true
+        running: root.enabled
         triggeredOnStart: true
         onTriggered: {
             var p = root.resolveActivePlayer()
@@ -101,8 +113,8 @@ Singleton {
         }
     }
 
-    onTrackTitleChanged: fetchLyrics()
-    onTrackArtistChanged: fetchLyrics()
+    onTrackTitleChanged: if (root.enabled) fetchLyrics()
+    onTrackArtistChanged: if (root.enabled) fetchLyrics()
     onCurrentPositionChanged: updateSync()
     onIsPlayingChanged: updateSync()
 
@@ -168,7 +180,7 @@ Singleton {
     Timer {
         interval: 100
         repeat: true
-        running: root.isPlaying
+        running: root.enabled && root.isPlaying
         onTriggered: {
             if (root.activePlayer && root.activePlayer.positionSupported) {
                 root.activePlayer.positionChanged()

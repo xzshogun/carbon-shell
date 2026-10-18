@@ -298,6 +298,8 @@ PanelWindow {
         windowShrinkTimer.restart();
     }
 
+    onRequestedWindowHeightChanged: root.reconcileWindowHeight()
+
     Component.onCompleted: {
         root.reloadExtraConfig();
         root.retainedWindowHeight = root.requestedWindowHeight;
@@ -322,6 +324,7 @@ PanelWindow {
         : WlrLayer.Top
     WlrLayershell.keyboardFocus: {
         if (islandContainer.controlCenterLayerVisible
+                || islandContainer.notificationCenterLayerVisible
                 || islandContainer.wallpaperPickerLayerVisible
                 || islandContainer.applicationLauncherLayerVisible)
             return WlrKeyboardFocus.Exclusive;
@@ -1039,6 +1042,7 @@ PanelWindow {
         id: islandContainer
         anchors.fill: parent
         focus: controlCenterLayerVisible
+            || notificationCenterLayerVisible
             || wallpaperPickerLayerVisible
             || applicationLauncherLayerVisible
             || expandedPlayerKeyboardFocusRequested
@@ -1262,6 +1266,12 @@ PanelWindow {
             if (event.key === Qt.Key_Escape) {
                 if (root.overviewVisible) {
                     root.closeOverviewEverywhere();
+                    event.accepted = true;
+                    return;
+                }
+
+                if (islandContainer.notificationCenterLayerVisible) {
+                    islandContainer.smartRestoreState();
                     event.accepted = true;
                     return;
                 }
@@ -2121,12 +2131,12 @@ PanelWindow {
                 ? root.overviewCapsuleColor
                 : root.baseCapsuleColor
             color: root.isNotchMode ? "transparent" : mainCapsule.baseCapsuleColor
-            y: root.effectiveTopMargin
-                - (1 - root.autoHideProgress) * (targetHeight + root.effectiveTopMargin + 8)
-            x: parent ? parent.width * userConfig.islandPositionX / 100 - width / 2 : 0
+            y: Math.round(root.effectiveTopMargin
+                - (1 - root.autoHideProgress) * (targetHeight + root.effectiveTopMargin + 8))
+            x: parent ? Math.round(parent.width * userConfig.islandPositionX / 100 - width / 2) : 0
             clip: true
-            width: displayedWidth
-            height: targetHeight
+            width: Math.round(displayedWidth)
+            height: Math.round(targetHeight)
             radius: targetRadius
             opacity: root.autoHideProgress
             scale: 0.96 + root.autoHideProgress * 0.04
@@ -2474,7 +2484,7 @@ PanelWindow {
                         recordingActive: islandContainer.screenRecordingActive
                         showSecondaryText: islandContainer.workspaceOriginSide !== "left"
                             && islandContainer.splitOriginSide !== "left"
-                        showCondition: true
+                        showCondition: mainCapsule.height <= (root.effectiveIslandHeight + 10)
                         onPreferredWidthChanged: islandContainer.syncCustomCapsuleWidth()
                     }
                 }
@@ -2504,7 +2514,7 @@ PanelWindow {
                         recordingActive: islandContainer.screenRecordingActive
                         showSecondaryText: islandContainer.workspaceOriginSide !== "right"
                             && islandContainer.splitOriginSide !== "right"
-                        showCondition: true
+                        showCondition: mainCapsule.height <= (root.effectiveIslandHeight + 10)
                         onPreferredWidthChanged: islandContainer.syncLyricsCapsuleWidth()
                     }
                 }
@@ -2722,6 +2732,7 @@ PanelWindow {
                 active: islandContainer.notificationCenterLayerVisible
                 asynchronous: false
                 visible: active
+                onLoaded: islandContainer.forceActiveFocus()
 
                 sourceComponent: Component {
                     NotificationCenterLayer {
@@ -2729,6 +2740,7 @@ PanelWindow {
                         iconFontFamily: root.iconFontFamily
                         textFontFamily: root.textFontFamily
                         heroFontFamily: root.heroFontFamily
+                        onCloseRequested: islandContainer.smartRestoreState()
 
                         onClearAllRequested: {
                             islandContainer.notificationHistoryModel.clear();

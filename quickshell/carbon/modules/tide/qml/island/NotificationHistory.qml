@@ -10,6 +10,14 @@ Item {
 
     readonly property var userConfig: UserConfig
 
+    signal closeRequested()
+
+    focus: true
+    Keys.onEscapePressed: (event) => {
+        closeRequested();
+        event.accepted = true;
+    }
+
     property var notificationModel: null
     property string iconFontFamily: userConfig.iconFontFamily
     property string textFontFamily: userConfig.textFontFamily

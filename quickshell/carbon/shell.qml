@@ -660,8 +660,8 @@ ShellRoot {
     Timer {
         interval: 12000
         repeat: true
-        running: true
-        triggeredOnStart: true
+        running: (root.barMode !== "minimal" && root.barMode !== "minimal_notch")
+        triggeredOnStart: false
         onTriggered: {
             if (!wifiProbe.running) wifiProbe.running = true
             if (!wifiNameProbe.running) wifiNameProbe.running = true
@@ -2188,7 +2188,7 @@ ShellRoot {
 
     /* ── Carbon // Cairo Mode Standby & Lock Screen (0 MB Lazy Loaded) ───── */
     Variants {
-        model: Quickshell.screens
+        model: (LockState.isLocked && ShellConfig.cairoModeEnabled) ? Quickshell.screens : []
 
         PanelWindow {
             id: cairoLockWindow
@@ -2288,7 +2288,7 @@ ShellRoot {
 
     /* Top Edge Reserve */
     Variants {
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
+        model: root.hasTopReserve ? Quickshell.screens : []
 
         PanelWindow {
             id: reserveTopWindow
@@ -2310,7 +2310,7 @@ ShellRoot {
 
     /* Bottom Edge Reserve */
     Variants {
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
+        model: root.hasBottomReserve ? Quickshell.screens : []
 
         PanelWindow {
             id: reserveBottomWindow
@@ -2332,7 +2332,7 @@ ShellRoot {
 
     /* Left Edge Reserve */
     Variants {
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
+        model: root.hasLeftReserve ? Quickshell.screens : []
 
         PanelWindow {
             id: reserveLeftWindow
@@ -2354,7 +2354,7 @@ ShellRoot {
 
     /* Right Edge Reserve */
     Variants {
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
+        model: root.hasRightReserve ? Quickshell.screens : []
 
         PanelWindow {
             id: reserveRightWindow
@@ -2793,7 +2793,7 @@ ShellRoot {
 
     /* ── Small Music Overlay Window (Compact Dropdown Below Island) ── */
     Variants {
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
+        model: (root.barMode === "notch" || root.barMode === "pill") ? Quickshell.screens : []
 
         PanelWindow {
             id: smallMusicWindow
@@ -2867,7 +2867,7 @@ ShellRoot {
      * resolves its real width; the pill self-centres inside it and the mask
      * Region confines pointer input to the pill. */
     Variants {
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
+        model: (root.barMode === "notch" || root.barMode === "pill" || root.barMode === "bar") ? Quickshell.screens : []
 
         PanelWindow {
             id: musicWindow
@@ -3763,7 +3763,7 @@ ShellRoot {
 
     /* Full-screen blurred wallpaper applying transition overlay (0:13 video reference) */
     Variants {
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch" || !root.wallpaperTransitionOpen) ? [] : Quickshell.screens
 
         PanelWindow {
             id: wallpaperTransitionWindow
@@ -4566,7 +4566,7 @@ ShellRoot {
     }
     /* Power menu: full-screen modal overlay */
     Variants {
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch" || !root.powerOpen) ? [] : Quickshell.screens
 
         PanelWindow {
             id: powerWindow
@@ -4597,7 +4597,7 @@ ShellRoot {
 
     /* Workspaces Overview: full-screen modal overlay */
     Variants {
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch" || !root.overviewOpen) ? [] : Quickshell.screens
 
         PanelWindow {
             id: overviewWindow
@@ -4742,7 +4742,7 @@ ShellRoot {
 
     /* ── Workspace Switcher OSD (Active only in Vanish Mode) ─────────── */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "nucleus" || root.barMode === "vanish") ? Quickshell.screens : []
 
         PanelWindow {
             id: workspaceOsdWindow
@@ -4819,7 +4819,7 @@ ShellRoot {
 
     /* ── Full-screen Screen Freeze Overlay for Screenshot capture ── */
     Variants {
-        model: Quickshell.screens
+        model: (root.screenshotFreezeActive && root.screenshotFreezePath.length > 0) ? Quickshell.screens : []
 
         PanelWindow {
             id: screenshotFreezeWindow

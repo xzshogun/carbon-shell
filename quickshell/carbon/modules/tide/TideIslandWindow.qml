@@ -1040,7 +1040,8 @@ PanelWindow {
     // --- 灵动岛主容器与全局状态 ---
     FocusScope {
         id: islandContainer
-        anchors.fill: parent
+        width: root.width
+        height: root.height
         focus: controlCenterLayerVisible
             || notificationCenterLayerVisible
             || wallpaperPickerLayerVisible
@@ -2133,7 +2134,7 @@ PanelWindow {
             color: root.isNotchMode ? "transparent" : mainCapsule.baseCapsuleColor
             y: Math.round(root.effectiveTopMargin
                 - (1 - root.autoHideProgress) * (targetHeight + root.effectiveTopMargin + 8))
-            x: parent ? Math.round(parent.width * userConfig.islandPositionX / 100 - width / 2) : 0
+            x: Math.round(root.width * ((userConfig && userConfig.islandPositionX !== undefined) ? userConfig.islandPositionX : 50) / 100 - width / 2)
             clip: true
             width: Math.round(displayedWidth)
             height: Math.round(targetHeight)
@@ -3241,7 +3242,8 @@ PanelWindow {
     }
 
     IslandRootGestureArea {
-        anchors.fill: parent
+        width: root.width
+        height: root.height
         enabled: root.topGestureInputActive
         islandController: islandContainer
         capsule: mainCapsule

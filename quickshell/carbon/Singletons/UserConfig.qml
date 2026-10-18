@@ -2,35 +2,84 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import "."
 
-QtObject {
+Singleton {
     id: root
 
-    readonly property real islandHeight: 28
-    readonly property real islandWidth: 120
-    readonly property real islandTopMargin: 8
-    readonly property real islandPositionX: 0
-    readonly property real islandBackgroundOpacity: 96
+    property real islandHeight: 28
+    property real islandWidth: 120
+    property real islandTopMargin: 8
+    property real islandPositionX: 50
+    property real islandBackgroundOpacity: 96
     readonly property string userConfigPath: (Quickshell.env("HOME") || "") + "/.config/tide-island/userconfig.json"
-    readonly property string dynamicIslandPrimaryButton: "none"
-    readonly property string dynamicIslandSecondaryButton: "none"
-    readonly property string hoverExpandAction: "expand"
-    readonly property bool islandAutoHideEnabled: false
-    readonly property int islandAutoHideDelayMs: 2000
-    readonly property string clockFormat: "24h"
-    readonly property string timeFontFamily: (Theme && Theme.fontFamily) ? Theme.fontFamily : "JetBrainsMono Nerd Font"
-    readonly property int bodyFontSize: 13
-    readonly property int titleFontSize: 14
-    readonly property int iconFontSize: 16
-    readonly property string heroFontFamily: (Theme && Theme.fontFamily) ? Theme.fontFamily : "JetBrainsMono Nerd Font"
-    readonly property string textFontFamily: (Theme && Theme.fontFamily) ? Theme.fontFamily : "JetBrainsMono Nerd Font"
-    readonly property string iconFontFamily: (Theme && Theme.fontFamily) ? Theme.fontFamily : "JetBrainsMono Nerd Font"
-    readonly property bool disableAutoExpandOnTrackChange: false
-    readonly property bool wallpaperCustomCommandEnabled: false
-    readonly property real islandExclusiveZone: 0
-    readonly property var dynamicIslandLeftSwipeItems: ["clock", "lyrics", "custom"]
-    readonly property string wallpaperPath: ""
+    property string dynamicIslandPrimaryButton: "none"
+    property string dynamicIslandSecondaryButton: "none"
+    property string hoverExpandAction: "expand"
+    property bool islandAutoHideEnabled: false
+    property int islandAutoHideDelayMs: 2000
+    property string clockFormat: "24h"
+    property string timeFontFamily: (Theme && Theme.fontFamily) ? Theme.fontFamily : "JetBrainsMono Nerd Font"
+    property int bodyFontSize: 13
+    property int titleFontSize: 14
+    property int iconFontSize: 16
+    property string heroFontFamily: (Theme && Theme.fontFamily) ? Theme.fontFamily : "JetBrainsMono Nerd Font"
+    property string textFontFamily: (Theme && Theme.fontFamily) ? Theme.fontFamily : "JetBrainsMono Nerd Font"
+    property string iconFontFamily: (Theme && Theme.fontFamily) ? Theme.fontFamily : "JetBrainsMono Nerd Font"
+    property bool disableAutoExpandOnTrackChange: false
+    property bool wallpaperCustomCommandEnabled: false
+    property real islandExclusiveZone: 0
+    property var dynamicIslandLeftSwipeItems: ["clock", "lyrics", "custom"]
+    property string wallpaperPath: ""
+    property bool notchMode: false
+
+    FileView {
+        id: configFile
+        path: root.userConfigPath
+        watchChanges: true
+        blockLoading: true
+        printErrors: false
+        onFileChanged: root.reloadConfig()
+        onLoaded: root.reloadConfig()
+    }
+
+    function reloadConfig() {
+        try {
+            var txt = configFile.text().trim();
+            if (txt.length > 0) {
+                var d = JSON.parse(txt);
+                if (d.islandPositionX !== undefined) root.islandPositionX = Number(d.islandPositionX);
+                if (d.islandHeight !== undefined) root.islandHeight = Number(d.islandHeight);
+                if (d.islandWidth !== undefined) root.islandWidth = Number(d.islandWidth);
+                if (d.islandTopMargin !== undefined) root.islandTopMargin = Number(d.islandTopMargin);
+                if (d.islandBackgroundOpacity !== undefined) root.islandBackgroundOpacity = Number(d.islandBackgroundOpacity);
+                if (d.dynamicIslandPrimaryButton !== undefined) root.dynamicIslandPrimaryButton = String(d.dynamicIslandPrimaryButton);
+                if (d.dynamicIslandSecondaryButton !== undefined) root.dynamicIslandSecondaryButton = String(d.dynamicIslandSecondaryButton);
+                if (d.hoverExpandAction !== undefined) root.hoverExpandAction = String(d.hoverExpandAction);
+                if (d.islandAutoHideEnabled !== undefined) root.islandAutoHideEnabled = Boolean(d.islandAutoHideEnabled);
+                if (d.islandAutoHideDelayMs !== undefined) root.islandAutoHideDelayMs = Number(d.islandAutoHideDelayMs);
+                if (d.clockFormat !== undefined) root.clockFormat = String(d.clockFormat);
+                if (d.timeFontFamily !== undefined) root.timeFontFamily = String(d.timeFontFamily);
+                if (d.bodyFontSize !== undefined) root.bodyFontSize = Number(d.bodyFontSize);
+                if (d.titleFontSize !== undefined) root.titleFontSize = Number(d.titleFontSize);
+                if (d.iconFontSize !== undefined) root.iconFontSize = Number(d.iconFontSize);
+                if (d.disableAutoExpandOnTrackChange !== undefined) root.disableAutoExpandOnTrackChange = Boolean(d.disableAutoExpandOnTrackChange);
+                if (d.wallpaperCustomCommandEnabled !== undefined) root.wallpaperCustomCommandEnabled = Boolean(d.wallpaperCustomCommandEnabled);
+                if (d.islandExclusiveZone !== undefined) root.islandExclusiveZone = Number(d.islandExclusiveZone);
+                if (d.dynamicIslandLeftSwipeItems !== undefined) root.dynamicIslandLeftSwipeItems = d.dynamicIslandLeftSwipeItems;
+                if (d.wallpaperPath !== undefined) root.wallpaperPath = String(d.wallpaperPath);
+                if (d.notchMode !== undefined) root.notchMode = Boolean(d.notchMode);
+            }
+        } catch (e) {}
+    }
+
+    function mouseButton(btn) {
+        if (btn === 1 || btn === "left") return Qt.LeftButton;
+        if (btn === 2 || btn === "right") return Qt.RightButton;
+        if (btn === 4 || btn === "middle") return Qt.MiddleButton;
+        return Qt.NoButton;
+    }
 
     function mouseButtonsMask(buttons) {
         var mask = 0;

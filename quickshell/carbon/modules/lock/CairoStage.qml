@@ -35,24 +35,14 @@ Item {
     readonly property real cx: root.width / 2
     readonly property real cy: root.height / 2
 
-    // ── Palette Tokens ─────────────────────────────────────────────────────
+    // ── Palette Tokens (100% Native Matugen System Theme) ──────────────────
     readonly property color vibrantPrimary: Theme.m3primary || Theme.accent || Qt.rgba(0.46, 0.82, 0.98, 1.0)
     readonly property color highlightColor: root.vibrantPrimary
 
-    readonly property real highlightLuminance: 0.299 * highlightColor.r + 0.587 * highlightColor.g + 0.114 * highlightColor.b
-    readonly property color highlightedTextColor: Theme.m3onPrimary || ((highlightLuminance > 0.6) ? "#111418" : "#f7ebed")
-
-    readonly property color bronzeColor: {
-        var sec = Theme.m3secondary || Qt.rgba(0.77, 0.77, 0.87, 1.0)
-        var dSec = Qt.darker(sec, 1.15)
-        var b = Qt.color("#9c6e54")
-        return Qt.rgba(
-            dSec.r * 0.40 + b.r * 0.60,
-            dSec.g * 0.40 + b.g * 0.60,
-            dSec.b * 0.40 + b.b * 0.60,
-            1.0
-        )
-    }
+    // Matugen Dynamic Font Colors
+    readonly property color highlightedTextColor: Theme.m3onPrimaryContainer || Theme.fg || Qt.color("#ffffff")
+    readonly property color inactiveTextColor: Theme.fgDim || Theme.m3onSurfaceVariant || Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.65)
+    readonly property color bronzeColor: root.inactiveTextColor
 
     // High-precision effective audio position from 60fps clock
     readonly property real effectivePositionMs: lyricEngine.effectivePositionMs
@@ -570,7 +560,7 @@ Item {
                     font.pixelSize: delegateRoot.calcFontSize(delegateRoot.chunkText)
                     color: (delegateRoot.stage === 0)
                            ? root.highlightedTextColor
-                           : root.bronzeColor
+                           : root.inactiveTextColor
 
                     Behavior on color {
                         ColorAnimation { duration: 90; easing.type: Easing.OutQuad }
@@ -751,7 +741,7 @@ Item {
                 font.weight: Font.DemiBold
                 font.letterSpacing: 2.0
                 font.pixelSize: 14
-                color: root.bronzeColor
+                color: root.inactiveTextColor
                 opacity: 0.70
                 visible: text.length > 0
             }

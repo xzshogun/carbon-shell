@@ -13,14 +13,14 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: root.radius
-        color: root.pressed ? Theme.bgActive : (root.hovered ? Theme.bgHover : Theme.bgAlt)
+        color: root.pressed ? Theme.bgActive : (root.hovered ? Theme.bgHover : Qt.rgba(Theme.bgAlt.r, Theme.bgAlt.g, Theme.bgAlt.b, 0.35))
     }
 
     Rectangle {
         anchors.fill: parent
         anchors.margins: 1
         radius: root.innerRadius
-        color: root.pressed ? Theme.bgActive : (root.hovered ? Theme.bgHover : (Theme.isDark ? Qt.rgba(Theme.bgAlt.r, Theme.bgAlt.g, Theme.bgAlt.b, 0.95) : Theme.bg))
+        color: root.pressed ? Theme.bgActive : (root.hovered ? Theme.bgHover : (Theme.isDark ? Qt.rgba(Theme.bgAlt.r, Theme.bgAlt.g, Theme.bgAlt.b, 0.25) : Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.4)))
     }
 
     Rectangle {

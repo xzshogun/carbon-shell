@@ -114,9 +114,10 @@ hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 -- ==============================================================================
 -- HARDWARE & MEDIA KEYS
 -- ==============================================================================
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("~/.config/hypr/scripts/volume.sh --inc"), { repeating = true, locked = true })
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("~/.config/hypr/scripts/volume.sh --dec"), { repeating = true, locked = true })
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd("~/.config/hypr/scripts/volume.sh --toggle"), { repeating = true, locked = true })
+local homeDir = os.getenv("HOME") or "/home/reduct"
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(homeDir .. "/.config/hypr/scripts/volume.sh --inc"), { repeating = true, locked = true })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(homeDir .. "/.config/hypr/scripts/volume.sh --dec"), { repeating = true, locked = true })
+hl.bind("XF86AudioMute", hl.dsp.exec_cmd(homeDir .. "/.config/hypr/scripts/volume.sh --toggle"), { repeating = true, locked = true })
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { repeating = true, locked = true })
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl set +5%"), { repeating = true, locked = true })
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl set 5%-"), { repeating = true, locked = true })

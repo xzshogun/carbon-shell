@@ -70,7 +70,7 @@ hl.bind("SUPER + Tab", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p
 hl.bind("SUPER + Down", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/reduct/.local/share/quickshell/carbon call tide showClock"))
 hl.bind("SUPER + Right", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/reduct/.local/share/quickshell/carbon call tide swipeRight"))
 hl.bind("SUPER + Left", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/reduct/.local/share/quickshell/carbon call tide swipeLeft"))
-hl.bind("SUPER + B", hl.dsp.exec_cmd("/home/reduct/.config/hypr/scripts/carbon-ipc.sh controls"))
+hl.bind("SUPER + B", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/reduct/.local/share/quickshell/carbon call tide toggle"))
 hl.bind("SUPER + Up", hl.dsp.window.move({ direction = "u" }))
 hl.bind("SUPER + ALT + Left", hl.dsp.window.move({ direction = "l" }))
 hl.bind("SUPER + ALT + Right", hl.dsp.window.move({ direction = "r" }))

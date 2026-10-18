@@ -78,9 +78,19 @@ mkdir -p "$CONFIG_DIR"
 ln -sfn "$WALL" "$CONFIG_DIR/current_wallpaper"
 echo "$WALL" > "$CONFIG_DIR/current_wallpaper_path"
 
-# Paint wallpaper to monitor via awww daemon
+# Kill any lingering theme-mk.py from rapid changes
+pkill -f "python3.*theme-mk.py" 2>/dev/null || true
+
+# Paint wallpaper to monitor via awww daemon with distinct dynamic transitions
 if command -v awww &>/dev/null; then
-    awww img "$WALL" --transition-type random --transition-duration 1.5 --transition-fps 60 2>/dev/null || true
+    TRANSITION_TYPES=("fade" "left" "right" "top" "bottom" "wipe" "wave" "grow" "center" "any" "outer")
+    RANDOM_T="${TRANSITION_TYPES[$((RANDOM % ${#TRANSITION_TYPES[@]}))]}"
+    RANDOM_ANGLE=$((RANDOM % 360))
+    awww img "$WALL" \
+        --transition-type "$RANDOM_T" \
+        --transition-angle "$RANDOM_ANGLE" \
+        --transition-duration 1.2 \
+        --transition-fps 60 2>/dev/null || true
 fi
 
 # Update tide-island userconfig

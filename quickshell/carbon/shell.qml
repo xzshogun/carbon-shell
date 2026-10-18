@@ -34,6 +34,21 @@ ShellRoot {
     property bool wallpaperPickerOpen: false
     property string wallpaperSource: "local"
     property var wallpaperModItem: null
+    property var launcherItem: null
+    property var spotlightItem: null
+    property var controlsItem: null
+    property var musicItem: null
+    property var smallMusicItem: null
+    property var wpItem: null
+    property var mixerItem: null
+    property var brightnessItem: null
+    property var batteryItem: null
+    property var wifiItem: null
+    property var btItem: null
+    property var trayItem: null
+    property var notifItem: null
+    property var calendarItem: null
+    property var centerDashboardItem: null
 
     property bool spotlightOpen: false
     function openSpotlight() {
@@ -1533,13 +1548,28 @@ ShellRoot {
                         if (controlsItem) controlsItem.openAudioDetails()
                     }
                     else if (cmd === "controls volume up") {
-                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.volumeAction("up")
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) {
+                            root.nucleusHubItem.volumeAction("up")
+                        } else if (Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
+                            var s = Pipewire.defaultAudioSink.audio;
+                            s.muted = false;
+                            s.volume = Math.min(1.5, Math.round((s.volume + root.volumeStepVal) * 100) / 100);
+                        }
                     }
                     else if (cmd === "controls volume down") {
-                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.volumeAction("down")
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) {
+                            root.nucleusHubItem.volumeAction("down")
+                        } else if (Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
+                            var s = Pipewire.defaultAudioSink.audio;
+                            s.volume = Math.max(0.0, Math.round((s.volume - root.volumeStepVal) * 100) / 100);
+                        }
                     }
                     else if (cmd === "controls volume toggle-mute") {
-                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.volumeAction("toggle-mute")
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) {
+                            root.nucleusHubItem.volumeAction("toggle-mute")
+                        } else if (Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
+                            Pipewire.defaultAudioSink.audio.muted = !Pipewire.defaultAudioSink.audio.muted;
+                        }
                     }
                     else if (cmd === "controls volume open") {
                         if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.volumeAction("open")
@@ -2027,6 +2057,22 @@ ShellRoot {
     IpcHandler {
         target: "tide"
 
+        function toggle() {
+            root.toggleIslandAll();
+        }
+
+        function toggleIsland() {
+            root.toggleIslandAll();
+        }
+
+        function hide() {
+            root.hideIslandAll();
+        }
+
+        function show() {
+            root.showIslandAll();
+        }
+
         function showClock() {
             root.forFocusedTideWindow((w) => w.showClockWindow());
         }
@@ -2190,7 +2236,7 @@ ShellRoot {
 
     /* Wallpaper: bottom-most fullscreen image, updated live by WallpaperMod */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: wallpaperWindow
@@ -2225,7 +2271,7 @@ ShellRoot {
     Process {
         id: audioBorderDaemon
         command: ["python3", root.carbonConfigDir + "/scripts/audio-border.py"]
-        running: true
+        running: (root.barMode !== "minimal" && root.barMode !== "minimal_notch")
     }
 
     /* ── Dynamic Edge Reservation Windows (Prevents App Overlap) ────────── */
@@ -2242,7 +2288,7 @@ ShellRoot {
 
     /* Top Edge Reserve */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: reserveTopWindow
@@ -2264,7 +2310,7 @@ ShellRoot {
 
     /* Bottom Edge Reserve */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: reserveBottomWindow
@@ -2286,7 +2332,7 @@ ShellRoot {
 
     /* Left Edge Reserve */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: reserveLeftWindow
@@ -2308,7 +2354,7 @@ ShellRoot {
 
     /* Right Edge Reserve */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: reserveRightWindow
@@ -2747,7 +2793,7 @@ ShellRoot {
 
     /* ── Small Music Overlay Window (Compact Dropdown Below Island) ── */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: smallMusicWindow
@@ -2821,7 +2867,7 @@ ShellRoot {
      * resolves its real width; the pill self-centres inside it and the mask
      * Region confines pointer input to the pill. */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: musicWindow
@@ -3581,7 +3627,7 @@ ShellRoot {
 
     /* Launcher popup: centred modal over the desktop */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: launcherWindow
@@ -3622,7 +3668,7 @@ ShellRoot {
 
     /* Spotlight Command Palette: centred floating modal over the desktop (Super + K) */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: spotlightWindow
@@ -3667,7 +3713,7 @@ ShellRoot {
 
     /* Wallhaven Wallpaper Picker popup: bottom-center modal over the desktop */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: wallpaperPickerWindow
@@ -3717,7 +3763,7 @@ ShellRoot {
 
     /* Full-screen blurred wallpaper applying transition overlay (0:13 video reference) */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: wallpaperTransitionWindow
@@ -4487,7 +4533,7 @@ ShellRoot {
 
     /* Workspaces Overview: full-screen modal overlay */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: overviewWindow
@@ -4515,77 +4561,82 @@ ShellRoot {
 
     /* Quick-settings panel: now-playing strip over the quick toggles, positioned
      * dynamically according to root.controlsCorner ("bottom_right", "top_left", or "bottom_left"). */
-    PanelWindow {
-        id: controlsWindow
-        screen: Quickshell.screens[0]
-        color: "transparent"
-        WlrLayershell.namespace: "carbon-controls"
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.controlsVisible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-        exclusionMode: ExclusionMode.Ignore
-        aboveWindows: true
+    Variants {
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : [Quickshell.screens[0]]
 
-        anchors {
-            top: true
-            bottom: true
-            left: true
-            right: true
-        }
+        PanelWindow {
+            id: controlsWindow
+            required property var modelData
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-controls"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: root.controlsVisible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
 
-        visible: (root.controlsVisible || controlsItem.animatingOut) && root.barMode !== "nucleus"
-
-        Item {
-            anchors.fill: parent
-            focus: root.controlsVisible
-            Keys.enabled: root.controlsVisible
-            Keys.onEscapePressed: event => {
-                if (controlsItem.audioPopupOpen) {
-                    controlsItem.audioPopupOpen = false
-                    event.accepted = true
-                } else if (controlsItem.btPopupOpen) {
-                    controlsItem.btPopupOpen = false
-                    event.accepted = true
-                } else if (controlsItem.wifiPopupOpen) {
-                    controlsItem.wifiPopupOpen = false
-                    event.accepted = true
-                } else {
-                    root.closeControls()
-                    event.accepted = true
-                }
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
             }
 
-            /* Outside click-absorber: clicking outside the panel closes it */
-            MouseArea {
+            visible: (root.controlsVisible || controlsItem.animatingOut) && root.barMode !== "nucleus"
+
+            Item {
                 anchors.fill: parent
-                onClicked: root.closeControls()
-            }
-
-            QuickSettings {
-                id: controlsItem
-                x: (root.barMode === "minimal")
-                   ? Math.round(((parent.width > 0 ? parent.width : (controlsWindow.screen ? controlsWindow.screen.width : 1920)) - width) / 2)
-                   : (root.barMode === "pill")
-                   ? Math.round(((parent.width > 0 ? parent.width : (controlsWindow.screen ? controlsWindow.screen.width : 1920)) + 1000) / 2 - width)
-                   : (root.controlsCorner.endsWith("left") ? 14 : ((parent.width > 0 ? parent.width : (controlsWindow.screen ? controlsWindow.screen.width : 1920)) - width - 14))
-                y: root.controlsCorner.startsWith("top")
-                   ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14)
-                   : (parent.height - height - (root.popupBottomMargin > 0 ? root.popupBottomMargin + 6 : 14))
-                corner: (root.barMode === "minimal")
-                        ? (root.mainBarEdge === "bottom" ? "bottom_center" : "top_center")
-                        : (root.barMode === "pill" ? "top_right" : root.controlsCorner)
-                width: controlsItem.implicitWidth
-                height: controlsItem.implicitHeight
-                open: root.controlsVisible
-                batteryLayout: root.batteryLayout
-                showBatteryPercent: root.showBatteryPercent
-                shellOpacity: root.shellOpacity
-                server: notificationServer
-                onHoveredChanged: {
-                    root.controlsHovered = controlsItem.hovered
-                    if (controlsItem.hovered) {
-                        controlsLeaveTimer.stop()
+                focus: root.controlsVisible
+                Keys.enabled: root.controlsVisible
+                Keys.onEscapePressed: event => {
+                    if (controlsItem.audioPopupOpen) {
+                        controlsItem.audioPopupOpen = false
+                        event.accepted = true
+                    } else if (controlsItem.btPopupOpen) {
+                        controlsItem.btPopupOpen = false
+                        event.accepted = true
+                    } else if (controlsItem.wifiPopupOpen) {
+                        controlsItem.wifiPopupOpen = false
+                        event.accepted = true
                     } else {
-                        controlsLeaveTimer.restart()
+                        root.closeControls()
+                        event.accepted = true
+                    }
+                }
+
+                /* Outside click-absorber: clicking outside the panel closes it */
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: root.closeControls()
+                }
+
+                QuickSettings {
+                    id: controlsItem
+                    x: (root.barMode === "minimal")
+                       ? Math.round(((parent.width > 0 ? parent.width : (controlsWindow.screen ? controlsWindow.screen.width : 1920)) - width) / 2)
+                       : (root.barMode === "pill")
+                       ? Math.round(((parent.width > 0 ? parent.width : (controlsWindow.screen ? controlsWindow.screen.width : 1920)) + 1000) / 2 - width)
+                       : (root.controlsCorner.endsWith("left") ? 14 : ((parent.width > 0 ? parent.width : (controlsWindow.screen ? controlsWindow.screen.width : 1920)) - width - 14))
+                    y: root.controlsCorner.startsWith("top")
+                       ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14)
+                       : (parent.height - height - (root.popupBottomMargin > 0 ? root.popupBottomMargin + 6 : 14))
+                    corner: (root.barMode === "minimal")
+                            ? (root.mainBarEdge === "bottom" ? "bottom_center" : "top_center")
+                            : (root.barMode === "pill" ? "top_right" : root.controlsCorner)
+                    width: controlsItem.implicitWidth
+                    height: controlsItem.implicitHeight
+                    open: root.controlsVisible
+                    batteryLayout: root.batteryLayout
+                    showBatteryPercent: root.showBatteryPercent
+                    shellOpacity: root.shellOpacity
+                    server: notificationServer
+                    onHoveredChanged: {
+                        root.controlsHovered = controlsItem.hovered
+                        if (controlsItem.hovered) {
+                            controlsLeaveTimer.stop()
+                        } else {
+                            controlsLeaveTimer.restart()
+                        }
                     }
                 }
             }
@@ -4594,7 +4645,7 @@ ShellRoot {
 
     /* ── Floating Volume & Brightness Notch OSD ─────────────────────────── */
     Variants {
-        model: Quickshell.screens
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : Quickshell.screens
 
         PanelWindow {
             id: osdWindow

@@ -512,7 +512,7 @@ PanelWindow {
 
     function toggleAutoHiddenIsland() {
         if (autoHideTargetVisible)
-            hideAutoHiddenIsland(false);
+            hideAutoHiddenIsland(true);
         else
             showAutoHiddenIsland("manual");
     }
@@ -523,7 +523,7 @@ PanelWindow {
 
     function hideIslandWindow() {
         autoHidePointerInside = false;
-        hideAutoHiddenIsland(false);
+        hideAutoHiddenIsland(true);
     }
 
     function toggleIslandWindow() {
@@ -725,15 +725,35 @@ PanelWindow {
             } else {
                 console.error("[IslandWallpaper] wp-apply failed with exitCode:", exitCode);
             }
+            if (root.pendingWallpaperApplyPath !== "") {
+                wallpaperApplyDebounceTimer.restart();
+            }
         }
+    }
+
+    property string pendingWallpaperApplyPath: ""
+
+    Timer {
+        id: wallpaperApplyDebounceTimer
+        interval: 40
+        repeat: false
+        onTriggered: root._executeNextWallpaperApply()
     }
 
     function applyWallpaperGlobally(filePath) {
         if (!filePath) return;
         console.log("[IslandWallpaper] applyWallpaperGlobally requested for:", filePath);
-        if (islandWallpaperApplyProcess.running)
-            islandWallpaperApplyProcess.running = false;
-        islandWallpaperApplyProcess.wallpaperPath = filePath;
+        pendingWallpaperApplyPath = filePath;
+        if (!islandWallpaperApplyProcess.running) {
+            _executeNextWallpaperApply();
+        }
+    }
+
+    function _executeNextWallpaperApply() {
+        if (!pendingWallpaperApplyPath || islandWallpaperApplyProcess.running) return;
+        const targetPath = pendingWallpaperApplyPath;
+        pendingWallpaperApplyPath = "";
+        islandWallpaperApplyProcess.wallpaperPath = targetPath;
         islandWallpaperApplyProcess.running = true;
     }
 
@@ -2099,9 +2119,7 @@ PanelWindow {
             )
             readonly property color baseCapsuleColor: root.overviewContentVisible
                 ? root.overviewCapsuleColor
-                : (notificationHistorySurface
-                    ? "#080808"
-                    : root.baseCapsuleColor)
+                : root.baseCapsuleColor
             color: root.isNotchMode ? "transparent" : mainCapsule.baseCapsuleColor
             y: root.effectiveTopMargin
                 - (1 - root.autoHideProgress) * (targetHeight + root.effectiveTopMargin + 8)

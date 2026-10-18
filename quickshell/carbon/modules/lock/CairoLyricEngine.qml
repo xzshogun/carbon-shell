@@ -27,9 +27,9 @@ Item {
     property double songEpochMs: 0
     property real livePositionMs: 0
     property real lastRawMprisPosMs: -1
-    property int syncOffsetMs: -105 // Default -105ms lead offset so words settle into the highlight box at the exact millisecond the vocal hits!
+    property int syncOffsetMs: 0 // Neutral 0ms sync so lyrics land precisely on the beat without rushing ahead
 
-    readonly property real effectivePositionMs: Math.max(0, root.livePositionMs - root.syncOffsetMs)
+    readonly property real effectivePositionMs: Math.max(0, root.livePositionMs + 105 - root.syncOffsetMs)
     readonly property real effectivePositionSec: root.effectivePositionMs / 1000.0
 
     function syncBaseTimeFromMpris() {
@@ -53,11 +53,11 @@ Item {
         }
     }
 
-    // 25ms Live Playback Timer (40 FPS): Pure Date.now() wall-clock stopwatch.
+    // 50ms Live Playback Timer: Pure Date.now() wall-clock stopwatch.
     // NEVER queries activePlayer.position over D-Bus inside this loop to prevent freezing!
     Timer {
         id: playbackTimer
-        interval: 25
+        interval: 50
         repeat: true
         running: true
         onTriggered: {
@@ -87,10 +87,10 @@ Item {
     signal beatTriggered(var beatData)
     signal clearRequested()
 
-    function sanitizeLineTokens(tokens, maxEndMs) {
+    function sanitizeLineTokens(tokens) {
         if (!tokens || tokens.length === 0) return [];
 
-        // 1. Deduplicate consecutive identical ad-lib echoes within < 200ms
+        // 1. Deduplicate consecutive identical ad-lib echoes within < 350ms
         var deduped = [];
         for (var i = 0; i < tokens.length; i++) {
             var cur = tokens[i];
@@ -98,7 +98,7 @@ Item {
                 var prev = deduped[deduped.length - 1];
                 var cleanCur = (cur.word || "").trim().toLowerCase();
                 var cleanPrev = (prev.word || "").trim().toLowerCase();
-                if (cleanCur.length > 0 && cleanCur === cleanPrev && (cur.startMs - prev.endMs) < 200) {
+                if (cleanCur.length > 0 && cleanCur === cleanPrev && (cur.startMs - prev.endMs) < 350) {
                     prev.endMs = Math.max(prev.endMs, cur.endMs);
                     prev.vocalEndMs = Math.max(prev.vocalEndMs || prev.endMs, cur.vocalEndMs || cur.endMs);
                     continue;
@@ -107,20 +107,15 @@ Item {
             deduped.push(cur);
         }
 
-        // 2. Safety floor (55ms) for lightning-fast rap, never pushing past maxEndMs
+        // 2. Enforce minimum 60ms duration per token and shift subsequent tokens on same line
         for (var k = 0; k < deduped.length; k++) {
             var tok = deduped[k];
-            var minDur = 55;
-            tok.endMs = Math.max(tok.startMs + minDur, tok.endMs);
-            tok.vocalEndMs = Math.max(tok.startMs + minDur, tok.vocalEndMs || tok.endMs);
-            if (maxEndMs > 0 && tok.endMs > maxEndMs) {
-                tok.endMs = maxEndMs;
-                if (tok.vocalEndMs > maxEndMs) tok.vocalEndMs = maxEndMs;
-            }
+            tok.endMs = Math.max(tok.startMs + 60, tok.endMs);
+            tok.vocalEndMs = Math.max(tok.startMs + 60, tok.vocalEndMs || tok.endMs);
             if (k + 1 < deduped.length) {
                 var nextTok = deduped[k + 1];
-                if (nextTok.startMs < tok.startMs + minDur) {
-                    var shiftMs = (tok.startMs + minDur) - nextTok.startMs;
+                if (nextTok.startMs < tok.startMs + 60) {
+                    var shiftMs = (tok.startMs + 60) - nextTok.startMs;
                     nextTok.startMs += shiftMs;
                     nextTok.endMs += shiftMs;
                     if (nextTok.vocalEndMs) nextTok.vocalEndMs += shiftMs;
@@ -136,24 +131,17 @@ Item {
         if (rawTokens.length === 0) return [];
 
         var rawGapMs = Math.max(350, nextLineStartMs - lineStartMs);
-        var avgWordMs = rawGapMs / rawTokens.length;
-        var isFastRap = avgWordMs < 240;
-
-        // Fast rap / fast pop: 96% of line gap with no per-word cap so words never pile up at the end!
-        // Melodic / slow tracks: clamp to 86% of line gap (up to 360ms per word) for natural phrasing
-        var activeWindowMs = isFastRap 
-            ? (rawGapMs * 0.96) 
-            : Math.min(rawGapMs * 0.86, rawTokens.length * 360);
+        // Spread the words across 92% of the line gap (up to 460ms per word) for a relaxed, natural pace
+        var activeWindowMs = Math.min(rawGapMs * 0.92, rawTokens.length * 460);
 
         var weights = [];
         var totalWeight = 0;
-        var commaMult = isFastRap ? 1.25 : 2.2;
         for (var i = 0; i < rawTokens.length; i++) {
             var token = rawTokens[i];
             var cleanLen = token.replace(/[^a-zA-Z0-9\u0900-\u097F]/g, "").length;
             var w = Math.max(1.0, Math.pow(cleanLen, 0.5));
             if (/[,;\-\u2014\?\!]$|\.\.$/.test(token)) {
-                w *= commaMult; // Fast rap: 1.25x pause; Melodic: 2.2x pause
+                w *= 2.2; // Hold 2.2x longer on comma/breath pauses
             }
             weights.push(w);
             totalWeight += w;
@@ -172,7 +160,7 @@ Item {
             });
             cursorMs += durMs;
         }
-        return root.sanitizeLineTokens(result, nextLineStartMs);
+        return root.sanitizeLineTokens(result);
     }
 
     readonly property var leadGlueWords: new Set([
@@ -309,8 +297,8 @@ Item {
                     })
                 }
 
-                var cleanTokensA = root.sanitizeLineTokens(rawWordTokens, nextLineStartMs)
-                var mixedTokensA = root.sanitizeLineTokens(root.mixSingleAndDoubleWords(cleanTokensA), nextLineStartMs)
+                var cleanTokensA = root.sanitizeLineTokens(rawWordTokens)
+                var mixedTokensA = root.sanitizeLineTokens(root.mixSingleAndDoubleWords(cleanTokensA))
                 for (var ma = 0; ma < mixedTokensA.length; ma++) {
                     var mItemA = mixedTokensA[ma]
                     var vEndA = mItemA.vocalEndMs || mItemA.endMs
@@ -340,7 +328,7 @@ Item {
                 var singleWords = root.tokenizeLineToSingleWords(cur.text, lineStartMs, nextLineStartMs)
                 if (singleWords.length === 0) continue
 
-                var mixedTokensB = root.sanitizeLineTokens(root.mixSingleAndDoubleWords(singleWords), nextLineStartMs)
+                var mixedTokensB = root.sanitizeLineTokens(root.mixSingleAndDoubleWords(singleWords))
                 for (var mb = 0; mb < mixedTokensB.length; mb++) {
                     var mItemB = mixedTokensB[mb]
                     var vEndB = mItemB.vocalEndMs || mItemB.endMs
@@ -443,10 +431,13 @@ Item {
         }
 
         if (targetIndex !== root.currentTokenIndex) {
-            root.currentTokenIndex = targetIndex
-            root.currentWordIndex = targetIndex
+            var nextStep = targetIndex
 
-            var newWord = root.allWords[targetIndex]
+            root.lastTokenStepTimeMs = Date.now()
+            root.currentTokenIndex = nextStep
+            root.currentWordIndex = nextStep
+
+            var newWord = root.allWords[nextStep]
             root.activeBeat = newWord
 
             var isNewPhrase = false

@@ -87,6 +87,7 @@ if [ ! -f "$THEME_SCRIPT" ]; then
     THEME_SCRIPT="$(dirname "$(readlink -f "$0")")/theme-mk.py"
 fi
 if [ -f "$THEME_SCRIPT" ]; then
+    export MATUGEN_NO_HOOK=1
     python3 "$THEME_SCRIPT" "$WALL" 2>/dev/null || true
 fi
 

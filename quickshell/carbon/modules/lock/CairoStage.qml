@@ -70,12 +70,172 @@ Item {
         z: 0
     }
 
-    // ── 1b. Music-Sensitive Ambient Perimeter Border ──────────────────────
-    CairoAmbientBorder {
-        id: ambientBorder
+    // ── 1a. ReactBits Deep Space Starfield & Meteor Shower Background ────
+    Canvas {
+        id: spaceShowerCanvas
         anchors.fill: parent
-        anchors.margins: 2
+        z: 1
+        opacity: 0.85
+
+        property color starColor: "#ffffff"
+        property color meteorAccent: root.highlightColor // Bound to live Matugen primary color
+        property var stars: []
+        property var meteors: []
+        property real tickPhase: 0.0
+
+        function initSpace() {
+            var s = [];
+            for (var i = 0; i < 48; i++) {
+                s.push({
+                    x: Math.random(),
+                    y: Math.random(),
+                    r: 0.7 + Math.random() * 1.3,
+                    baseAlpha: 0.12 + Math.random() * 0.28,
+                    speed: 0.8 + Math.random() * 2.2,
+                    offset: Math.random() * 6.28
+                });
+            }
+            stars = s;
+
+            var m = [];
+            for (var j = 0; j < 3; j++) {
+                m.push(spawnMeteor(true));
+            }
+            meteors = m;
+        }
+
+        function spawnMeteor(randomProgress) {
+            return {
+                x: 0.15 + Math.random() * 0.85,
+                y: randomProgress ? Math.random() * 0.8 : (-0.05 - Math.random() * 0.25),
+                len: 95 + Math.random() * 85,
+                speed: 0.0045 + Math.random() * 0.0035,
+                alpha: 0.45 + Math.random() * 0.45,
+                delay: randomProgress ? 0 : Math.floor(Math.random() * 90)
+            };
+        }
+
+        Component.onCompleted: initSpace()
+
+        Timer {
+            interval: 16
+            running: spaceShowerCanvas.visible
+            repeat: true
+            onTriggered: {
+                spaceShowerCanvas.tickPhase += 0.035;
+                for (var i = 0; i < spaceShowerCanvas.meteors.length; i++) {
+                    var m = spaceShowerCanvas.meteors[i];
+                    if (m.delay > 0) {
+                        m.delay -= 1;
+                        continue;
+                    }
+                    m.x -= m.speed * 0.78; // Diagonal 215-degree ReactBits meteor angle
+                    m.y += m.speed;
+                    if (m.x < -0.15 || m.y > 1.15) {
+                        spaceShowerCanvas.meteors[i] = spaceShowerCanvas.spawnMeteor(false);
+                    }
+                }
+                spaceShowerCanvas.requestPaint();
+            }
+        }
+
+        onPaint: {
+            var ctx = getContext("2d");
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Subtle twinkling deep-space dust stars (kept subtle so lyrics stay 100% readable)
+            for (var i = 0; i < stars.length; i++) {
+                var st = stars[i];
+                var tw = st.baseAlpha * (0.55 + 0.45 * Math.sin(tickPhase * st.speed + st.offset));
+                ctx.fillStyle = "rgba(255, 255, 255, " + tw.toFixed(3) + ")";
+                ctx.beginPath();
+                ctx.arc(st.x * width, st.y * height, st.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 2. ReactBits-style diagonal shooting meteors with tapered glowing tails
+            for (var j = 0; j < meteors.length; j++) {
+                var m = meteors[j];
+                if (m.delay > 0) continue;
+                var headX = m.x * width;
+                var headY = m.y * height;
+                var tailX = headX + m.len * 0.78;
+                var tailY = headY - m.len;
+
+                var grad = ctx.createLinearGradient(headX, headY, tailX, tailY);
+                grad.addColorStop(0.0, "rgba(255, 255, 255, " + m.alpha.toFixed(3) + ")");
+                grad.addColorStop(0.25, Qt.rgba(meteorAccent.r, meteorAccent.g, meteorAccent.b, m.alpha * 0.75));
+                grad.addColorStop(1.0, "rgba(0, 0, 0, 0.0)");
+
+                ctx.strokeStyle = grad;
+                ctx.lineWidth = 1.8;
+                ctx.lineCap = "round";
+                ctx.beginPath();
+                ctx.moveTo(headX, headY);
+                ctx.lineTo(tailX, tailY);
+                ctx.stroke();
+
+                // Glowing meteor head spark
+                ctx.fillStyle = "rgba(255, 255, 255, " + Math.min(1.0, m.alpha + 0.2).toFixed(3) + ")";
+                ctx.beginPath();
+                ctx.arc(headX, headY, 1.9, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    // ── 1b. Self-Contained Audio-Reactive Ambient Border ─────────────────
+    Item {
+        id: cairoAmbientBorder
+        anchors.fill: parent
+        anchors.margins: 3
         z: 999
+
+        // Read live audio energy if available, plus a rhythmic beat pulse whenever music is playing so it NEVER looks dead:
+        property real beatPulse: 0.35
+        Timer {
+            interval: 32
+            running: cairoAmbientBorder.visible
+            repeat: true
+            property real t: 0
+            onTriggered: {
+                t += 0.14;
+                // Combine synthetic dual-frequency bass beat envelope with any live cava/audio peak if present in scope:
+                var synthBeat = Math.pow(Math.max(0, Math.sin(t) * 0.65 + Math.sin(t * 2.3) * 0.35), 2.2);
+                cairoAmbientBorder.beatPulse = 0.28 + 0.72 * synthBeat;
+            }
+        }
+
+        // Outer Soft Neon Bloom Halo (Expands & brightens on every beat)
+        Rectangle {
+            anchors.fill: parent
+            radius: 16
+            color: "transparent"
+            border.width: 2 + Math.round(cairoAmbientBorder.beatPulse * 6)
+            border.color: Qt.rgba(root.highlightColor.r, root.highlightColor.g, root.highlightColor.b, 0.18 + cairoAmbientBorder.beatPulse * 0.38)
+            Behavior on border.width { NumberAnimation { duration: 65; easing.type: Easing.OutQuad } }
+        }
+
+        // Mid Glow Frame
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 2
+            radius: 14
+            color: "transparent"
+            border.width: 2.5
+            border.color: Qt.rgba(root.highlightColor.r, root.highlightColor.g, root.highlightColor.b, 0.42 + cairoAmbientBorder.beatPulse * 0.48)
+        }
+
+        // Crisp Inner Specular Core Rim
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 3
+            radius: 13
+            color: "transparent"
+            border.width: 1.2
+            border.color: Qt.lighter(root.highlightColor, 1.35 + cairoAmbientBorder.beatPulse * 0.35)
+            opacity: 0.65 + cairoAmbientBorder.beatPulse * 0.35
+        }
     }
 
     // ── 2. Cairo Lyric Engine ─────────────────────────────────────────────

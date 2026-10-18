@@ -26,7 +26,7 @@ Item {
     // ── 1. 60fps Interpolated Audio Clock ──────────────────────────────────
     property real livePositionMs: 0
     property real lastFrameMs: 0
-    property int syncOffsetMs: -140 // -140ms lead compensation for instantaneous visual perception
+    property int syncOffsetMs: (LyricsService.hasRichWords ? -140 : -35) // -140ms lead for word-synced, -35ms for line-synced
 
     readonly property real effectivePositionMs: Math.max(0, root.livePositionMs - root.syncOffsetMs)
     readonly property real effectivePositionSec: root.effectivePositionMs / 1000.0
@@ -134,7 +134,9 @@ Item {
         if (rawTokens.length === 0) return [];
 
         var rawGapMs = Math.max(350, nextLineStartMs - lineStartMs);
-        var activeWindowMs = Math.min(rawGapMs * 0.72, rawTokens.length * 290);
+        // Use 88% of the line gap and up to 420ms per word so stretched Hindi/Punjabi vocals
+        // ("kaaa-li", "raaa-taan", "tenu suit karda") pace naturally across the entire bar without rushing!
+        var activeWindowMs = Math.min(rawGapMs * 0.88, rawTokens.length * 420);
 
         var weights = [];
         var totalWeight = 0;
@@ -385,9 +387,11 @@ Item {
     Connections {
         target: LyricsService
         function onLinesChanged() {
+            root.syncOffsetMs = LyricsService.hasRichWords ? -140 : -35
             root.processLyrics()
         }
         function onTrackTitleChanged() {
+            root.syncOffsetMs = LyricsService.hasRichWords ? -140 : -35
             root.processLyrics()
         }
     }

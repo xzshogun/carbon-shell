@@ -368,23 +368,39 @@ def fetch_from_lrclib(title, artist, duration=None):
                 if results and isinstance(results, list):
                     synced_items = [it for it in results if it.get("syncedLyrics")]
                     if synced_items:
+                        REJECT_TAGS = ["sped up", "speed up", "slowed", "nightcore", "lofi", "lo-fi", "8d audio", "reverb"]
+                        title_l = title.lower()
+
                         def score_lrclib_item(it):
                             s = 0.0
                             d = float(it.get("duration", 0))
                             t_name = (it.get("trackName") or it.get("name") or "").lower()
-                            if target_dur > 0 and d > 0:
+
+                            # Reject sped up / slowed / lofi / nightcore unless title requested it
+                            for tag in REJECT_TAGS:
+                                if tag in t_name and tag not in title_l:
+                                    return 99999.0
+
+                            if target_dur > 20 and d > 0:
                                 diff = abs(d - target_dur)
-                                s += diff * 3.0
-                                if diff > 15:
-                                    s += 500.0
-                            if "video" not in title.lower() and ("video" in t_name or "mv" in t_name):
+                                if diff <= 3.5:
+                                    s += diff * 1.0  # Ideal match (within 3.5s)
+                                else:
+                                    s += 200.0 + diff * 15.0
+                                    if diff > 10.0:
+                                        s += 5000.0
+
+                            if "video" not in title_l and ("video" in t_name or "mv" in t_name):
                                 s += 100.0
-                            if "remix" not in title.lower() and "remix" in t_name:
-                                s += 200.0
+                            if "remix" not in title_l and "remix" in t_name:
+                                s += 500.0
                             return s
 
-                        synced_items.sort(key=score_lrclib_item)
-                        return parse_lrc(synced_items[0]["syncedLyrics"])
+                        valid_items = [it for it in synced_items if score_lrclib_item(it) < 50000.0]
+                        if not valid_items:
+                            valid_items = synced_items
+                        valid_items.sort(key=score_lrclib_item)
+                        return parse_lrc(valid_items[0]["syncedLyrics"])
         except Exception:
             pass
 
@@ -395,6 +411,11 @@ def score_kugou_candidate(item, title, artist, target_dur):
     title_l = title.lower()
     dur = float(item.get("duration", 0))
     score = 0.0
+
+    REJECT_TAGS = ["sped up", "speed up", "slowed", "nightcore", "lofi", "lo-fi", "8d audio", "reverb"]
+    for tag in REJECT_TAGS:
+        if tag in fn and tag not in title_l:
+            return 99999.0
 
     # Keyword overlap check: ensure at least one significant word from the title is in the candidate filename
     clean_t_words = [w.lower() for w in re.findall(r"\w+", clean_text(title)) if len(w) > 1]
@@ -410,16 +431,19 @@ def score_kugou_candidate(item, title, artist, target_dur):
         if clean_a_words and not artist_overlap:
             score += 900.0
 
-    if target_dur > 0 and dur > 0:
+    if target_dur > 20 and dur > 0:
         diff = abs(dur - target_dur)
-        score += diff * 2.0
-        if diff > 15:
-            score += 200.0
+        if diff <= 3.5:
+            score += diff * 1.0  # Ideal duration match (<= 3.5s)
+        else:
+            score += 200.0 + diff * 15.0
+            if diff > 10.0:
+                score += 5000.0
 
     if "live" not in title_l and "live" in fn:
         score += 300.0
     if "remix" not in title_l and "remix" in fn:
-        score += 150.0
+        score += 500.0
     if "acoustic" not in title_l and "acoustic" in fn:
         score += 150.0
     if "instrumental" not in title_l and "instrumental" in fn:
@@ -573,6 +597,11 @@ def score_netease_candidate(song, title, artist, target_dur):
     score = 0.0
     title_l = title.lower()
 
+    REJECT_TAGS = ["sped up", "speed up", "slowed", "nightcore", "lofi", "lo-fi", "8d audio", "reverb"]
+    for tag in REJECT_TAGS:
+        if tag in name and tag not in title_l:
+            return 99999.0
+
     clean_t_words = [w.lower() for w in re.findall(r"\w+", clean_text(title)) if len(w) > 1]
     name_words = [w.lower() for w in re.findall(r"\w+", clean_text(name)) if len(w) > 1]
     overlap = any(w in name_words for w in clean_t_words)
@@ -586,16 +615,19 @@ def score_netease_candidate(song, title, artist, target_dur):
         if clean_a_words and not artist_overlap:
             score += 900.0
 
-    if target_dur > 30 and dur_sec > 0:
+    if target_dur > 20 and dur_sec > 0:
         diff = abs(dur_sec - target_dur)
-        score += diff * 2.0
-        if diff > 25:
-            score += 500.0
+        if diff <= 3.5:
+            score += diff * 1.0  # Ideal duration match (<= 3.5s)
+        else:
+            score += 200.0 + diff * 15.0
+            if diff > 10.0:
+                score += 5000.0
 
     if "live" not in title_l and "live" in name:
         score += 300.0
     if "remix" not in title_l and "remix" in name:
-        score += 200.0
+        score += 500.0
     if "instrumental" not in title_l and "instrumental" in name:
         score += 500.0
 

@@ -1749,6 +1749,14 @@ ShellRoot {
                         root.closePower()
                         sessionLock.lock()
                     }
+                    else if (cmd === "cairo" || cmd === "standby" || cmd === "toggle-cairo" || cmd === "toggle-standby") {
+                        root.closePower()
+                        if (LockState.isLocked) {
+                            sessionLock.unlock()
+                        } else {
+                            sessionLock.lock()
+                        }
+                    }
                     else if (cmd === "lock-test") {
                         root.closePower()
                         LockTransition.testLock()
@@ -1899,6 +1907,13 @@ ShellRoot {
                     }
                     else if (cmd === "lock") {
                         sessionLock.lock()
+                    }
+                    else if (cmd === "cairo" || cmd === "standby" || cmd === "toggle-cairo" || cmd === "toggle-standby") {
+                        if (LockState.isLocked) {
+                            sessionLock.unlock()
+                        } else {
+                            sessionLock.lock()
+                        }
                     }
                     else if (cmd === "lock-test") {
                         LockTransition.testLock()
@@ -2222,10 +2237,12 @@ ShellRoot {
                 focus: true
 
                 Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space || event.key === Qt.Key_Escape) {
+                        event.accepted = true
                         if (cairoStageLoader.item && typeof cairoStageLoader.item.triggerUnlock === "function") {
-                            event.accepted = true
                             cairoStageLoader.item.triggerUnlock()
+                        } else {
+                            LockState.finishUnlock()
                         }
                     }
                 }
@@ -2642,7 +2659,7 @@ ShellRoot {
     /* ── Minimal Notch Mode: Tide Island ── */
     Variants {
         id: tideIslandVariants
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? Quickshell.screens : []
+        model: ((root.barMode === "minimal" || root.barMode === "minimal_notch") && !LockState.isLocked) ? Quickshell.screens : []
 
         TideIslandWindow {
             required property var modelData
@@ -2810,7 +2827,7 @@ ShellRoot {
 
     /* ── Notch Mode: Curved 3-notch bar ──────────────────────────────── */
     Variants {
-        model: root.barMode === "notch" ? Quickshell.screens : []
+        model: (root.barMode === "notch" && !LockState.isLocked) ? Quickshell.screens : []
 
         PanelWindow {
             id: notchBarWindow
@@ -2836,7 +2853,7 @@ ShellRoot {
 
             implicitHeight: 370
             WlrLayershell.keyboardFocus: root.centerDashboardOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-            visible: root.barMode === "notch"
+            visible: root.barMode === "notch" && !LockState.isLocked
 
             Item {
                 id: notchKeyHandler

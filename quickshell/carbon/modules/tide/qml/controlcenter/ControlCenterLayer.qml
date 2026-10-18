@@ -1253,9 +1253,9 @@ Item {
         command: [
             "sh",
             "-c",
-            "if command -v hyprlock >/dev/null 2>&1; then hyprlock; "
-                + "elif command -v swaylock >/dev/null 2>&1; then swaylock; "
-                + "elif command -v i3lock >/dev/null 2>&1; then i3lock; "
+            "if [ -f \"$HOME/.config/hypr/scripts/hyprlock.sh\" ]; then sh \"$HOME/.config/hypr/scripts/hyprlock.sh\"; "
+                + "elif [ -f \"$HOME/.config/carbon/scripts/carbon-ipc.sh\" ]; then sh \"$HOME/.config/carbon/scripts/carbon-ipc.sh\" lock; "
+                + "elif command -v hyprlock >/dev/null 2>&1; then hyprlock; "
                 + "elif command -v loginctl >/dev/null 2>&1; then loginctl lock-session; "
                 + "else exit 127; fi"
         ]
@@ -1263,7 +1263,7 @@ Item {
         onExited: function(exitCode) {
             if (exitCode === 127)
                 controlCenter.requestNotification("Power", "Lock unavailable",
-                    "Install hyprlock, swaylock, or i3lock to enable screen locking.");
+                    "Screen lock script or session locker unavailable.");
         }
     }
 

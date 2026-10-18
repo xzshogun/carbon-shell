@@ -140,6 +140,10 @@ Singleton {
             if (hyprFallbackFile) hyprFallbackFile.reload()
 
             var txt = caelestiaFile.text().trim()
+            if (txt.length > 0 && txt === root._lastLoadedThemeText) {
+                root._reloading = false
+                return
+            }
             var parsed = null
 
             if (txt.length > 0) {

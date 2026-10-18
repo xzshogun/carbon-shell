@@ -11,15 +11,20 @@ Singleton {
     property var cavaLevels: [0, 0, 0, 0, 0, 0, 0, 0]
 
     signal brightnessSnapshotReady(real value, string errorString)
+    signal brightnessSetFinished(real value, bool success, string errorString)
     signal volumeSnapshotReady(real value, bool muted, string errorString)
+    signal volumeSetFinished(real value, bool success, string errorString)
     signal systemStatsReady(real cpuUsage, real ramUsage, string errorString)
+    signal tlpStateReady(bool available, string profile, string output, string errorString)
+    signal tlpSetFinished(bool success, int exitCode, string output, string errorString)
     signal hyprlandSnapshotReady(string requestId, string subject, string payloadJson, string errorString)
     signal wallpaperThumbnailFinished(string sourcePath, string finishedCachePath, bool cacheAvailable, bool updated, string errorString)
 
-    function setCavaClientActive(active) {
+    function setCavaClientActive(clientIdOrActive, active) {
         // Cava activity handled globally
     }
 
+    // --- Brightness ---
     function requestBrightness() {
         brightnessProc.running = false;
         brightnessProc.running = true;
@@ -38,6 +43,136 @@ Singleton {
         }
     }
 
+    function setBrightness(value) {
+        var pct = Math.round(Math.max(0, Math.min(1, value)) * 100);
+        var p = setBrightnessComponent.createObject(root, { "targetVal": value, "pct": pct });
+        if (p) p.start();
+    }
+
+    Component {
+        id: setBrightnessComponent
+        Process {
+            id: proc
+            property real targetVal: 1.0
+            property int pct: 100
+            command: ["brightnessctl", "set", pct + "%"]
+            onExited: (code, status) => {
+                root.brightnessSetFinished(targetVal, code === 0, code === 0 ? "" : "Failed to set brightness");
+                proc.destroy();
+            }
+            function start() { proc.running = true; }
+        }
+    }
+
+    // --- Volume ---
+    function requestVolume() {
+        volumeProc.running = false;
+        volumeProc.running = true;
+    }
+
+    Process {
+        id: volumeProc
+        command: ["bash", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || echo 'Volume: 0.50'"]
+        stdout: StdioCollector {
+            onTextChanged: {
+                if (text && text.trim().length > 0) {
+                    var t = text.trim();
+                    var isMuted = t.indexOf("[MUTED]") !== -1;
+                    var match = t.match(/([0-9]+(\.[0-9]+)?)/);
+                    var val = match ? parseFloat(match[1]) : 0.5;
+                    if (val > 1.0) val = val / 100.0;
+                    root.volumeSnapshotReady(val, isMuted, "");
+                }
+            }
+        }
+    }
+
+    function setVolume(value) {
+        var clamped = Math.max(0, Math.min(1.5, value));
+        var p = setVolumeComponent.createObject(root, { "targetVal": clamped });
+        if (p) p.start();
+    }
+
+    Component {
+        id: setVolumeComponent
+        Process {
+            id: proc
+            property real targetVal: 0.5
+            command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", targetVal.toFixed(2)]
+            onExited: (code, status) => {
+                root.volumeSetFinished(targetVal, code === 0, code === 0 ? "" : "Failed to set volume");
+                proc.destroy();
+            }
+            function start() { proc.running = true; }
+        }
+    }
+
+    // --- System Stats (CPU / RAM) ---
+    function requestSystemStats() {
+        statsProc.running = false;
+        statsProc.running = true;
+    }
+
+    Process {
+        id: statsProc
+        command: ["bash", "-c", "python3 -c \"import psutil; print(f'{psutil.cpu_percent()/100.0:.2f} {psutil.virtual_memory().percent/100.0:.2f}')\" 2>/dev/null || awk '/MemTotal/{t=$2}/MemAvailable/{a=$2}END{printf \\\"0.05 %.2f\\\\n\\\", (t-a)/t}' /proc/meminfo"]
+        stdout: StdioCollector {
+            onTextChanged: {
+                if (text && text.trim().length > 0) {
+                    var parts = text.trim().split(/\s+/);
+                    if (parts.length >= 2) {
+                        var cpu = parseFloat(parts[0]);
+                        var ram = parseFloat(parts[1]);
+                        root.systemStatsReady(isNaN(cpu) ? 0.0 : cpu, isNaN(ram) ? 0.0 : ram, "");
+                    }
+                }
+            }
+        }
+    }
+
+    // --- Power Profiles / TLP ---
+    function requestTlpState() {
+        tlpStateProc.running = false;
+        tlpStateProc.running = true;
+    }
+
+    Process {
+        id: tlpStateProc
+        command: ["bash", "-c", "powerprofilesctl get 2>/dev/null || echo 'balanced'"]
+        stdout: StdioCollector {
+            onTextChanged: {
+                if (text && text.trim().length > 0) {
+                    var profile = text.trim();
+                    root.tlpStateReady(true, profile, profile, "");
+                }
+            }
+        }
+    }
+
+    function cancelTlpApply() {
+        // no-op or cancel active setter
+    }
+
+    function setTlpMode(mode, sudoPassword, ask) {
+        var p = setTlpComponent.createObject(root, { "mode": mode });
+        if (p) p.start();
+    }
+
+    Component {
+        id: setTlpComponent
+        Process {
+            id: proc
+            property string mode: "balanced"
+            command: ["powerprofilesctl", "set", mode]
+            onExited: (code, status) => {
+                root.tlpSetFinished(code === 0, code, mode, code === 0 ? "" : "Failed to set power profile");
+                proc.destroy();
+            }
+            function start() { proc.running = true; }
+        }
+    }
+
+    // --- Hyprland Snapshots ---
     function requestHyprlandSnapshot(requestId, subject) {
         var p = hyprSnapshotComponent.createObject(root, {
             "requestId": requestId,
@@ -67,6 +202,7 @@ Singleton {
         }
     }
 
+    // --- Wallpaper Thumbnails ---
     function generateWallpaperThumbnail(sourcePath, cachePath, cacheDir, targetWidth, targetHeight, quality) {
         var p = thumbnailComponent.createObject(root, {
             "sourcePath": sourcePath,

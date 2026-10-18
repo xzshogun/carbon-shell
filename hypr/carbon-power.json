@@ -1,5 +1,5 @@
 {
-  "profile": "balanced",
+  "profile": "performance",
   "powerButtonAction": "poweroff",
   "sleepButtonAction": "suspend",
   "lidActionBattery": "suspend",

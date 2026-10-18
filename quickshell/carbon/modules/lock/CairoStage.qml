@@ -27,8 +27,7 @@ Item {
 
     onVisibleChanged: {
         if (visible && lyricEngine) {
-            lyricEngine.lastTickWallMs = Date.now()
-            lyricEngine.resetPlaybackClock()
+            lyricEngine.syncBaseTimeFromMpris()
         }
     }
 
@@ -284,6 +283,14 @@ Item {
     // ── 2. Cairo Lyric Engine ─────────────────────────────────────────────
     CairoLyricEngine {
         id: lyricEngine
+        onBeatTriggered: (beatData) => root.handleBeatTriggered(beatData)
+        onClearRequested: root.handleClearRequested()
+        onAllWordsChanged: root.syncInitialCluster()
+        onCurrentWordIndexChanged: {
+            if (!root.hasActiveWords && lyricEngine.currentWordIndex >= 0) {
+                root.syncInitialCluster()
+            }
+        }
     }
 
     // ── 3. Radial Iris Reveal Unlock Controller ──────────────────────────
@@ -360,8 +367,7 @@ Item {
     Component.onCompleted: {
         root.forceActiveFocus()
         if (lyricEngine) {
-            lyricEngine.lastTickWallMs = Date.now()
-            lyricEngine.resetPlaybackClock()
+            lyricEngine.syncBaseTimeFromMpris()
         }
         root.syncInitialCluster()
     }
@@ -714,23 +720,6 @@ Item {
         poolPointer = 3
     }
 
-    Connections {
-        target: lyricEngine
-        function onBeatTriggered(beatData) {
-            root.handleBeatTriggered(beatData)
-        }
-        function onClearRequested() {
-            root.handleClearRequested()
-        }
-        function onAllWordsChanged() {
-            root.syncInitialCluster()
-        }
-        function onCurrentWordIndexChanged() {
-            if (!root.hasActiveWords && lyricEngine.currentWordIndex >= 0) {
-                root.syncInitialCluster()
-            }
-        }
-    }
 
     // ── 6. Standby Fallback (Zero Chrome when no lyrics active) ───────────
     Item {

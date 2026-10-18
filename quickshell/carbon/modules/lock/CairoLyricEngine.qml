@@ -24,73 +24,48 @@ Item {
     readonly property real currentPosition: LyricsService.currentPosition
 
     // ── 1. Live Wall-Clock + MPRIS Sync Engine ──────────────────────────────
+    property double songEpochMs: 0
     property real livePositionMs: 0
-    property double lastTickWallMs: 0
     property real lastRawMprisPosMs: -1
     property int syncOffsetMs: 0 // Neutral 0ms sync so lyrics land precisely on the beat without rushing ahead
 
     readonly property real effectivePositionMs: Math.max(0, root.livePositionMs - root.syncOffsetMs)
     readonly property real effectivePositionSec: root.effectivePositionMs / 1000.0
 
-    function resetPlaybackClock() {
-        root.lastTickWallMs = Date.now()
+    function syncBaseTimeFromMpris() {
         var activePlayer = LyricsService.activePlayer
         var rawPos = activePlayer ? activePlayer.position : 0
-        var mprisMs = (rawPos > 1000000) ? (rawPos / 1000) : (rawPos < 36000 ? rawPos * 1000 : rawPos)
-        root.lastRawMprisPosMs = mprisMs
-        root.livePositionMs = mprisMs
+        var posMs = (rawPos > 1000000) ? (rawPos / 1000) : (rawPos < 36000 ? rawPos * 1000 : rawPos)
+        if (isNaN(posMs) || posMs < 0) posMs = 0
+        root.songEpochMs = Date.now() - posMs
+        root.lastRawMprisPosMs = posMs
+        root.livePositionMs = posMs
         root.updateSync()
+    }
+
+    function resetPlaybackClock() {
+        root.syncBaseTimeFromMpris()
     }
 
     onIsPlayingChanged: {
         if (root.isPlaying) {
-            root.lastTickWallMs = Date.now()
+            root.syncBaseTimeFromMpris()
         }
     }
 
-    // 50ms Live Playback Timer: interpolates livePositionMs via Date.now() so lyrics NEVER freeze
+    // 50ms Live Playback Timer: Pure Date.now() wall-clock stopwatch.
+    // NEVER queries activePlayer.position over D-Bus inside this loop to prevent freezing!
     Timer {
         id: playbackTimer
         interval: 50
         repeat: true
         running: true
         onTriggered: {
-            var nowWall = Date.now()
-            var dt = (root.lastTickWallMs > 0) ? Math.min(200, nowWall - root.lastTickWallMs) : 50
-            root.lastTickWallMs = nowWall
-
-            // Force Quickshell MprisPlayer to refresh its D-Bus position every ~10 ticks (500ms)
             var activePlayer = LyricsService.activePlayer
-            if (activePlayer && typeof activePlayer.positionChanged === "function") {
-                root._pollCounter = (root._pollCounter + 1) % 10
-                if (root._pollCounter === 0) {
-                    activePlayer.positionChanged()
-                }
-            }
-
-            // Read raw MPRIS position (handle seconds vs microseconds/milliseconds automatically):
-            var rawPos = activePlayer ? activePlayer.position : 0
-            var mprisMs = (rawPos > 1000000) ? (rawPos / 1000) : (rawPos < 36000 ? rawPos * 1000 : rawPos)
-
-            // When music is playing, smoothly advance livePositionMs by elapsed time (+dt ~50ms):
             var isPlaying = root.isPlaying || !activePlayer || activePlayer.playbackState === MprisPlaybackState.Playing || activePlayer.isPlaying !== false
-            if (isPlaying) {
-                root.livePositionMs += dt
+            if (root.songEpochMs > 0 && isPlaying) {
+                root.livePositionMs = Math.max(0, Date.now() - root.songEpochMs)
             }
-
-            // ONLY react when MPRIS actually emits a fresh position update:
-            if (mprisMs > 0 && Math.abs(mprisMs - root.lastRawMprisPosMs) > 50) {
-                var mprisDrift = Math.abs(mprisMs - root.livePositionMs)
-                root.lastRawMprisPosMs = mprisMs
-                // If it's a real user seek / scrub / skip (> 800ms drift) or initial sync, snap:
-                if (mprisDrift > 800 || root.livePositionMs <= 0) {
-                    root.livePositionMs = mprisMs
-                } else if (mprisDrift > 120) {
-                    // Small drift nudge: gently align with player clock
-                    root.livePositionMs = (root.livePositionMs * 0.75) + (mprisMs * 0.25)
-                }
-            }
-
             root.updateSync()
         }
     }
@@ -415,6 +390,7 @@ Item {
             root.processLyrics()
         }
         function onTrackTitleChanged() {
+            root.syncBaseTimeFromMpris()
             root.processLyrics()
         }
     }

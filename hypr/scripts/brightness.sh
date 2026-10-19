@@ -39,6 +39,15 @@ notify_user() {
 
 # Change brightness
 change_backlight() {
+	if [ -S /tmp/carbon-shell.sock ]; then
+		if [[ "$1" == "+${step}%" ]]; then
+			~/.config/carbon/scripts/carbon-ipc.sh "controls brightness up" 2>/dev/null || true
+		else
+			~/.config/carbon/scripts/carbon-ipc.sh "controls brightness down" 2>/dev/null || true
+		fi
+		return
+	fi
+
 	local current_brightness
 	current_brightness=$(get_backlight)
 

@@ -1562,35 +1562,45 @@ ShellRoot {
                     else if (cmd === "controls volume up") {
                         if (root.barMode === "nucleus" && root.nucleusHubItem) {
                             root.nucleusHubItem.volumeAction("up")
-                        } else if (Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
-                            var s = Pipewire.defaultAudioSink.audio;
-                            s.muted = false;
-                            s.volume = Math.min(1.5, Math.round((s.volume + root.volumeStepVal) * 100) / 100);
+                        } else {
+                            var vStep = Math.max(1, Math.round(root.volumeStepVal * 100))
+                            Quickshell.execDetached(["wpctl", "set-volume", "-l", "1.5", "@DEFAULT_AUDIO_SINK@", vStep + "%+"])
+                            Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "0"])
                         }
                     }
                     else if (cmd === "controls volume down") {
                         if (root.barMode === "nucleus" && root.nucleusHubItem) {
                             root.nucleusHubItem.volumeAction("down")
-                        } else if (Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
-                            var s = Pipewire.defaultAudioSink.audio;
-                            s.volume = Math.max(0.0, Math.round((s.volume - root.volumeStepVal) * 100) / 100);
+                        } else {
+                            var vStep = Math.max(1, Math.round(root.volumeStepVal * 100))
+                            Quickshell.execDetached(["wpctl", "set-volume", "-l", "1.5", "@DEFAULT_AUDIO_SINK@", vStep + "%-"])
                         }
                     }
                     else if (cmd === "controls volume toggle-mute") {
                         if (root.barMode === "nucleus" && root.nucleusHubItem) {
                             root.nucleusHubItem.volumeAction("toggle-mute")
-                        } else if (Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
-                            Pipewire.defaultAudioSink.audio.muted = !Pipewire.defaultAudioSink.audio.muted;
+                        } else {
+                            Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"])
                         }
                     }
                     else if (cmd === "controls volume open") {
                         if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.volumeAction("open")
                     }
                     else if (cmd === "controls brightness up") {
-                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.brightnessAction("up")
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) {
+                            root.nucleusHubItem.brightnessAction("up")
+                        } else {
+                            var bStep = Math.max(1, Math.round(root.brightnessStepVal * 100))
+                            Quickshell.execDetached(["brightnessctl", "set", "+" + bStep + "%", "-q"])
+                        }
                     }
                     else if (cmd === "controls brightness down") {
-                        if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.brightnessAction("down")
+                        if (root.barMode === "nucleus" && root.nucleusHubItem) {
+                            root.nucleusHubItem.brightnessAction("down")
+                        } else {
+                            var bStep = Math.max(1, Math.round(root.brightnessStepVal * 100))
+                            Quickshell.execDetached(["brightnessctl", "set", bStep + "%-", "-q"])
+                        }
                     }
                     else if (cmd === "controls brightness open") {
                         if (root.barMode === "nucleus" && root.nucleusHubItem) root.nucleusHubItem.brightnessAction("open")

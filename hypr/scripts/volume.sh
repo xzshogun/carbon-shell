@@ -65,18 +65,18 @@ get_volume_step() {
 }
 
 # Increase Volume
+# Increase Volume
 inc_volume() {
     local step=$(get_volume_step)
-    if command -v wpctl &>/dev/null; then
+    if [ -S /tmp/carbon-shell.sock ]; then
+        ~/.config/carbon/scripts/carbon-ipc.sh "controls volume up" 2>/dev/null || true
+    elif command -v wpctl &>/dev/null; then
         wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ "${step}%+"
         wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
+        notify_user
     elif command -v pamixer &>/dev/null; then
         pamixer -u 2>/dev/null || true
         pamixer -i "$step" --allow-boost --set-limit 150
-    fi
-    if [ -S /tmp/carbon-shell.sock ]; then
-        ~/.config/carbon/scripts/carbon-ipc.sh "controls volume up" 2>/dev/null || true
-    else
         notify_user
     fi
 }
@@ -84,28 +84,30 @@ inc_volume() {
 # Decrease Volume
 dec_volume() {
     local step=$(get_volume_step)
-    if command -v wpctl &>/dev/null; then
-        wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ "${step}%-"
-    elif command -v pamixer &>/dev/null; then
-        pamixer -d "$step"
-    fi
     if [ -S /tmp/carbon-shell.sock ]; then
         ~/.config/carbon/scripts/carbon-ipc.sh "controls volume down" 2>/dev/null || true
-    else
+    elif command -v wpctl &>/dev/null; then
+        wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ "${step}%-"
+        notify_user
+    elif command -v pamixer &>/dev/null; then
+        pamixer -d "$step"
         notify_user
     fi
 }
 
 # Toggle Mute
 toggle_mute() {
-    if command -v wpctl &>/dev/null; then
-        wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
-    elif command -v pamixer &>/dev/null; then
-        pamixer -t
-    fi
     if [ -S /tmp/carbon-shell.sock ]; then
         ~/.config/carbon/scripts/carbon-ipc.sh "controls volume toggle-mute" 2>/dev/null || true
-    else
+    elif command -v wpctl &>/dev/null; then
+        wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+        if [ "$(pamixer --get-mute 2>/dev/null)" == "true" ]; then
+            notify-send -e -u low -i "$iDIR/volume-mute.png" " Mute"
+        else
+            notify-send -e -u low -i "$(get_icon)" " Volume:" " Switched ON"
+        fi
+    elif command -v pamixer &>/dev/null; then
+        pamixer -t
         if [ "$(pamixer --get-mute 2>/dev/null)" == "true" ]; then
             notify-send -e -u low -i "$iDIR/volume-mute.png" " Mute"
         else

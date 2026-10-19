@@ -134,6 +134,7 @@ Item {
     }
 
     onShowConditionChanged: {
+        SystemServices.setCavaClientActive(showCondition && isPlaying);
         if (!showCondition) {
             pendingPage = -1;
             pageSettleAnimation.stop();
@@ -177,6 +178,12 @@ Item {
         onTriggered: {
             visualizerPhase += 0.18;
             if (visualizerPhase > Math.PI * 2) visualizerPhase -= Math.PI * 2;
+        }
+    }
+
+    onIsPlayingChanged: {
+        if (showCondition) {
+            SystemServices.setCavaClientActive(isPlaying);
         }
     }
 
@@ -338,12 +345,14 @@ Item {
                                     model: 5
 
                                     delegate: Rectangle {
+                                        readonly property real liveCava: (SystemServices.cavaLevels && SystemServices.cavaLevels.length > index)
+                                            ? SystemServices.cavaLevels[index] : 0
                                         width: 4
                                         height: isPlaying
-                                            ? 6 + (parent.height - 6) * visualizerLevel(index)
-                                            : 6 + (parent.height - 6) * pausedVisualizerLevel(index)
+                                            ? Math.max(6, 6 + (parent.height - 6) * Math.max(liveCava, root.visualizerLevel(index) * (root.visualizerPhase >= 0 ? 1 : 1)))
+                                            : 6 + (parent.height - 6) * root.pausedVisualizerLevel(index)
                                         radius: 2
-                                        color: isPlaying ? "#b56cff" : "#5f4b72"
+                                        color: isPlaying ? Theme.accent : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.4)
                                         anchors.verticalCenter: parent.verticalCenter
 
                                         Behavior on height {

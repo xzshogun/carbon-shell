@@ -12,3 +12,4 @@ singleton UserConfig UserConfig.qml
 singleton CompositorBackend CompositorBackend.qml
 singleton SysBackend SysBackend.qml
 singleton SystemServices SystemServices.qml
+singleton WifiController WifiController.qml

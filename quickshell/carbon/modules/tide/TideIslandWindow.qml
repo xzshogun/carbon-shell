@@ -1222,7 +1222,7 @@ PanelWindow {
             currentWorkspace: islandContainer.currentWs
             customSwipeActive: customSwipeLoader.active
             lyricsCavaActive: islandContainer.lyricsSwipeVisible
-                && islandContainer.rightSwipeProgress > 0.001
+                && islandContainer.currentTrack !== ""
 
             onTransientRequested: function(icon, progress, text) {
                 islandContainer.showTransientCapsule(icon, progress, text);

@@ -8,7 +8,9 @@ import "."
 Singleton {
     id: root
 
-    property var cavaLevels: [0, 0, 0, 0, 0, 0, 0, 0]
+    property var cavaLevels: [0, 0, 0, 0, 0]
+    property int cavaActiveClients: 0
+    readonly property string cavaConfPath: (Quickshell.env("HOME") || "/home/shogun") + "/.config/hypr/cava-island.conf"
 
     signal brightnessSnapshotReady(real value, string errorString)
     signal brightnessSetFinished(real value, bool success, string errorString)
@@ -21,7 +23,36 @@ Singleton {
     signal wallpaperThumbnailFinished(string sourcePath, string finishedCachePath, bool cacheAvailable, bool updated, string errorString)
 
     function setCavaClientActive(clientIdOrActive, active) {
-        // Cava activity handled globally
+        if (typeof clientIdOrActive === "boolean") {
+            if (clientIdOrActive) root.cavaActiveClients = Math.max(1, root.cavaActiveClients + 1);
+            else root.cavaActiveClients = Math.max(0, root.cavaActiveClients - 1);
+        } else {
+            if (active) root.cavaActiveClients = Math.max(1, root.cavaActiveClients + 1);
+            else root.cavaActiveClients = Math.max(0, root.cavaActiveClients - 1);
+        }
+    }
+
+    Process {
+        id: cavaProc
+        command: ["cava", "-p", root.cavaConfPath]
+        running: root.cavaActiveClients > 0
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: line => {
+                var trimmed = line.trim();
+                if (trimmed.length === 0) return;
+                var parts = trimmed.split(";");
+                if (parts.length >= 4) {
+                    var arr = [];
+                    for (var i = 0; i < Math.min(5, parts.length); i++) {
+                        var val = parseFloat(parts[i]) || 0;
+                        arr.push(Math.max(0.0, Math.min(1.0, val / 100.0)));
+                    }
+                    while (arr.length < 5) arr.push(0.0);
+                    root.cavaLevels = arr;
+                }
+            }
+        }
     }
 
     // --- Brightness ---

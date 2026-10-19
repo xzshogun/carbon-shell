@@ -2002,24 +2002,15 @@ ShellRoot {
         target: "overview"
 
         function toggle() {
-            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
-                root.toggleOverviewAll();
-            else
-                root.toggleOverview();
+            root.toggleOverview();
         }
 
         function open() {
-            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
-                root.openOverviewAll();
-            else
-                root.openOverview();
+            root.openOverview();
         }
 
         function close() {
-            if (root.barMode === "minimal" || root.barMode === "minimal_notch")
-                root.closeOverviewAll();
-            else
-                root.closeOverview();
+            root.closeOverview();
         }
 
         function refreshWallpaperCache() {
@@ -4483,7 +4474,7 @@ ShellRoot {
 
     /* Workspaces Overview: full-screen modal overlay */
     Variants {
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch" || !root.overviewOpen) ? [] : Quickshell.screens
+        model: !root.overviewOpen ? [] : Quickshell.screens
 
         PanelWindow {
             id: overviewWindow

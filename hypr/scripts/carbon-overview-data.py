@@ -35,6 +35,13 @@ def get_overview_data():
             "windows": []
         }
 
+    try:
+        monitors = json.loads(subprocess.check_output(["hyprctl", "monitors", "-j"], text=True))
+        mon_w = monitors[0].get("width", 1920) if monitors else 1920
+        mon_h = monitors[0].get("height", 1080) if monitors else 1080
+    except Exception:
+        mon_w, mon_h = 1920, 1080
+
     for c in clients:
         ws_info = c.get("workspace", {})
         wid = ws_info.get("id")
@@ -76,11 +83,13 @@ def get_overview_data():
             "icon": icon_name,
             "floating": bool(c.get("floating", False)),
             "fullscreen": bool(c.get("fullscreen", 0) > 0),
-            "pid": c.get("pid", 0)
+            "pid": c.get("pid", 0),
+            "at": c.get("at", [0, 0]),
+            "size": c.get("size", [mon_w, mon_h])
         })
 
     result = [ws_dict[k] for k in sorted(ws_dict.keys())]
-    return {"activeWorkspace": active_id, "workspaces": result}
+    return {"activeWorkspace": active_id, "monitor": {"width": mon_w, "height": mon_h}, "workspaces": result}
 
 if __name__ == "__main__":
     print(json.dumps(get_overview_data()))

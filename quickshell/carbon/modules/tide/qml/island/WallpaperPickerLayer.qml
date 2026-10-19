@@ -28,7 +28,9 @@ FocusScope {
     property string transitionBezier: nonEmptyString(userConfig.wallpaperTransitionBezier, ".54,0,.34,.99")
     property string transitionWave: nonEmptyString(userConfig.wallpaperTransitionWave, "20,20")
     property bool transitionInvertY: userConfig.wallpaperTransitionInvertY
-    property string wallpaperDir: userConfig.wallpaperLibraryPath
+    property string wallpaperDir: (userConfig && userConfig.wallpaperLibraryPath && String(userConfig.wallpaperLibraryPath).trim() !== "")
+        ? userConfig.wallpaperLibraryPath
+        : ((Quickshell.env("HOME") || "/home/shogun") + "/Pictures/Wallpapers")
     property string targetWallpaperPath: userConfig.wallpaperPath
     property int thumbnailWidth: 640
     property int thumbnailHeight: 360
@@ -733,7 +735,7 @@ FocusScope {
 
                             Image {
                                 anchors.fill: parent
-                                source: root.showCondition && model.thumbnailSource ? model.thumbnailSource : ""
+                                source: root.showCondition ? (model.thumbnailSource && model.thumbnailSource !== "" ? model.thumbnailSource : root.toFileUrl(model.filePath)) : ""
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
                                 cache: false

@@ -32,6 +32,7 @@ Singleton {
     property real islandExclusiveZone: 0
     property var dynamicIslandLeftSwipeItems: ["clock", "lyrics", "custom"]
     property string wallpaperPath: ""
+    property string wallpaperLibraryPath: (Quickshell.env("HOME") || "/home/shogun") + "/Pictures/Wallpapers"
     property bool notchMode: false
 
     FileView {
@@ -72,6 +73,7 @@ Singleton {
                 if (d.islandExclusiveZone !== undefined) root.islandExclusiveZone = Number(d.islandExclusiveZone);
                 if (d.dynamicIslandLeftSwipeItems !== undefined) root.dynamicIslandLeftSwipeItems = d.dynamicIslandLeftSwipeItems;
                 if (d.wallpaperPath !== undefined) root.wallpaperPath = String(d.wallpaperPath);
+                if (d.wallpaperLibraryPath !== undefined) root.wallpaperLibraryPath = String(d.wallpaperLibraryPath);
                 if (d.notchMode !== undefined) root.notchMode = Boolean(d.notchMode);
             }
         } catch (e) {}

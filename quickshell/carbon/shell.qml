@@ -123,7 +123,13 @@ ShellRoot {
         if (keep !== "calendar") { root.calendarOpen = false; root.calendarPinned = false }
         if (keep !== "notif") { root.notifOpen = false; root.notifPinned = false }
         if (keep !== "centerDashboard") { root.centerDashboardOpen = false; root.centerDashboardPinned = false }
-        if (keep !== "controls") { root.controlsVisible = false; root.controlsPinned = false }
+        if (keep !== "controls") {
+            root.controlsVisible = false
+            root.controlsPinned = false
+            if (pillControlCenterLoader.item) {
+                pillControlCenterLoader.item.shouldShow = false
+            }
+        }
     }
 
     property bool smallMusicOpen: false
@@ -812,11 +818,7 @@ ShellRoot {
     onBarModeChanged: {
         console.log("[BAR-MODE CHANGED] New root.barMode is now: " + root.barMode)
         Quickshell.execDetached(["bash", root.home + "/.config/hypr/scripts/carbon-mode-keybinds.sh", root.barMode])
-        if (root.barMode === "pill") {
-            Quickshell.execDetached(["bash", root.home + "/.config/waybar/launch.sh"])
-        } else {
-            Quickshell.execDetached(["bash", "-c", "pkill -x waybar; pkill -x waybar-bin; pkill -x swaync"])
-        }
+        Quickshell.execDetached(["bash", "-c", "pkill -x waybar; pkill -x waybar-bin; pkill -x swaync"])
     }
 
     FileView {
@@ -1162,7 +1164,7 @@ ShellRoot {
 
     readonly property int popupRightMargin: {
         if (root.barMode === "notch") return 12
-        if (root.barMode === "pill") return Math.max(12, Math.round(((Quickshell.screens[0] ? Quickshell.screens[0].width : 1920) - 1000) / 2))
+        if (root.barMode === "pill") return 12
         return 0
     }
 
@@ -1241,11 +1243,7 @@ ShellRoot {
         reloadBarMode()
         applyBarPos(barPosFile.text())
         reloadControlCenterConfig()
-        if (root.barMode === "pill") {
-            Quickshell.execDetached(["bash", root.home + "/.config/waybar/launch.sh"])
-        } else {
-            Quickshell.execDetached(["bash", "-c", "pkill -x waybar; pkill -x waybar-bin; pkill -x swaync"])
-        }
+        Quickshell.execDetached(["bash", "-c", "pkill -x waybar; pkill -x waybar-bin; pkill -x swaync"])
         var _initLyrics = LyricsService.hasTrack
     }
 
@@ -1336,8 +1334,22 @@ ShellRoot {
         root.controlsVisible = true
         controlsLeaveTimer.stop()
     }
-    function closeControls() { root.controlsVisible = false; root.controlsPinned = false }
+    function closeControls() {
+        root.controlsVisible = false
+        root.controlsPinned = false
+        if (pillControlCenterLoader.item) {
+            pillControlCenterLoader.item.shouldShow = false
+        }
+    }
     function toggleControls() {
+        console.log("[TOGGLE CONTROLS] root.barMode:", root.barMode, "item:", pillControlCenterLoader.item)
+        if (root.barMode === "pill") {
+            if (pillControlCenterLoader.item) {
+                pillControlCenterLoader.item.shouldShow = !pillControlCenterLoader.item.shouldShow
+                console.log("[TOGGLE CONTROLS] set shouldShow to:", pillControlCenterLoader.item.shouldShow)
+            }
+            return
+        }
         if (root.barMode === "nucleus") {
             root.closeControls()
             return
@@ -2405,7 +2417,7 @@ ShellRoot {
 
     /* ── Pill Mode: Connected Continuous Full Floating Bar ──────────── */
     Variants {
-        model: root.barMode === "pill_qml" ? Quickshell.screens : []
+        model: (root.barMode === "pill" && !LockState.isLocked) ? Quickshell.screens : []
 
         PanelWindow {
             id: pillFullBarWindow
@@ -2415,8 +2427,8 @@ ShellRoot {
             color: "transparent"
             WlrLayershell.namespace: "carbon-bar-pill-full"
             WlrLayershell.layer: WlrLayer.Top
-            exclusionMode: ExclusionMode.Ignore
-            exclusiveZone: 0
+            exclusionMode: ExclusionMode.Normal
+            exclusiveZone: 42
             aboveWindows: true
             anchors {
                 top: root.mainBarEdge !== "bottom"
@@ -2425,236 +2437,94 @@ ShellRoot {
                 right: true
             }
             margins {
-                top: root.mainBarEdge !== "bottom" ? 8 : 0
-                bottom: root.mainBarEdge === "bottom" ? 8 : 0
+                top: root.mainBarEdge !== "bottom" ? 4 : 0
+                bottom: root.mainBarEdge === "bottom" ? 4 : 0
                 left: 12
                 right: 12
             }
 
-            implicitHeight: root.pillHeight
-            visible: false
+            implicitHeight: 38 + ((pillBarLoader.item && pillBarLoader.item.popupAreaHeight) ? pillBarLoader.item.popupAreaHeight : 0)
+            visible: root.barMode === "pill" && !LockState.isLocked
+
+            WlrLayershell.keyboardFocus: (pillBarLoader.item && pillBarLoader.item.hasPopup) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
             Loader {
-                id: pillFullBarLoader
+                id: pillBarLoader
                 anchors.fill: parent
                 active: root.barMode === "pill" && root.mainBarEdge !== "left" && root.mainBarEdge !== "right"
-                sourceComponent: Rectangle {
-                    id: pillFullCapsule
-                    anchors.fill: parent
-                    radius: root.pillHeight / 2
-                    color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, root.pillOpacity)
-                    border.color: Theme.outline
-                    border.width: 1
+                source: "modules/pillbar/Bar.qml"
 
-                    Item {
-                        anchors.fill: parent
-                        anchors.leftMargin: 8
-                        anchors.rightMargin: 8
-
-                        /* Left: Workspaces & App Launcher (Removed per prompt) */
-                        BarLeft {
-                            id: pillLeftItem
-                            visible: false
-                            width: 0
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            showBackground: false
-                            vertical: false
-                            onOpenLauncher: root.toggleDefaultLauncher()
-                        }
-
-                        /* Center: Clock, Rotating Vinyl Disc, Equalizer & Music Island */
-                        BarCenter {
-                            id: pillCenterItem
-                            anchors.centerIn: parent
-                            barContent: root.musicBarContent
-                            showVinylDisc: root.showVinylDisc
-                            showEqualizer: root.showEqualizer
-                            onOpenCenterDashboard: root.openCenterDashboard()
-                            onCloseCenterDashboard: centerDashboardLeaveTimer.restart()
-                            onToggleCenterDashboard: root.toggleCenterDashboard()
-                            onToggleMusic: root.toggleCenterDashboard()
-                            onOpenMusic: root.openCenterDashboard()
-                            onToggleControls: root.toggleCenterDashboard()
-                        }
-
-                        /* Right: System Tray & Controls */
-                        BarRight {
-                            id: pillRightItem
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            showBackground: false
-                            vertical: false
-                            anchorWindow: pillFullBarWindow
-                            notifCount: (notificationServer && notificationServer.trackedNotifications) ? notificationServer.trackedNotifications.values.length : 0
-                            onOpenMixer: root.openMixer()
-                            onCloseMixer: mixerLeaveTimer.restart()
-                            onToggleMixer: root.toggleMixer()
-                            onOpenBrightness: root.openBrightness()
-                            onCloseBrightness: brightnessLeaveTimer.restart()
-                            onToggleBrightness: root.toggleBrightness()
-                            onOpenBattery: root.openBattery()
-                            onCloseBattery: batteryLeaveTimer.restart()
-                            onToggleBattery: root.toggleBattery()
-                            onOpenTray: root.openTray()
-                            onCloseTray: trayLeaveTimer.restart()
-                            onToggleTray: root.toggleTray()
-                            onToggleNotif: root.toggleNotif()
-                            onToggleControls: root.toggleControls()
-                            onOpenPower: root.openPower()
-                        }
+                onLoaded: {
+                    if (item) {
+                        item.screen = modelData
+                        item.barWindow = pillFullBarWindow
+                        item.launcher = Qt.binding(() => ({
+                            toggle: () => root.toggleDefaultLauncher(),
+                            shouldShow: root.launcherOpen
+                        }))
+                        item.controlCenter = Qt.binding(() => pillControlCenterLoader.item)
+                        item.sidebar = Qt.binding(() => ({
+                            toggle: () => root.toggleNotif(),
+                            shouldShow: root.notifOpen
+                        }))
+                        item.mixer = Qt.binding(() => ({
+                            toggle: () => root.toggleMixer(),
+                            shouldShow: root.mixerOpen
+                        }))
+                        item.dashboard = Qt.binding(() => ({
+                            toggle: () => root.toggleCenterDashboard(),
+                            shouldShow: root.centerDashboardOpen
+                        }))
                     }
                 }
             }
         }
     }
 
-    /* ── Pill Mode: Connected Continuous Full Vertical Floating Bar (Left / Right) ── */
-    Variants {
-        model: root.barMode === "pill_qml" ? Quickshell.screens : []
+    /* ── Pill Mode Control Center (Only active/mounted in Pill Mode) ── */
+    Loader {
+        id: pillControlCenterLoader
+        active: root.barMode === "pill" && !LockState.isLocked
+        source: "modules/pillbar/controlcenter/ControlCenterWindow.qml"
+    }
 
-        PanelWindow {
-            id: pillFullVerticalBarWindow
-            required property var modelData
-
-            screen: modelData
+    /* ── Pill Mode Notification Center (Vanish-Mode Notification Center) ── */
+    Loader {
+        id: pillNotifPanelLoader
+        active: root.barMode === "pill" && !LockState.isLocked
+        sourceComponent: PanelWindow {
+            id: pillNotifWindow
+            screen: Quickshell.screens[0]
             color: "transparent"
-            WlrLayershell.namespace: "carbon-bar-pill-vert"
-            WlrLayershell.layer: WlrLayer.Top
+            WlrLayershell.namespace: "carbon-pill-notifications"
+            WlrLayershell.layer: WlrLayer.Overlay
             exclusionMode: ExclusionMode.Ignore
-            aboveWindows: true
-            anchors {
-                top: true
-                bottom: true
-                left: root.mainBarEdge === "left"
-                right: root.mainBarEdge === "right"
-            }
-            margins {
-                top: 8
-                bottom: 8
-                left: root.mainBarEdge === "left" ? 8 : 0
-                right: root.mainBarEdge === "right" ? 8 : 0
-            }
+            anchors { top: true; right: true }
+            margins { right: 12; top: 46 }
 
-            implicitWidth: 38
-            visible: false
+            implicitWidth: 422
+            implicitHeight: 512
 
-            Rectangle {
-                id: pillFullVertCapsule
-                anchors.fill: parent
-                radius: 19
-                color: Theme.bg
-                border.color: Theme.outline
-                border.width: 1
+            visible: root.notifOpen || vanishNotifPanel.opacity > 0.01
 
-                Item {
-                    anchors.fill: parent
-                    anchors.topMargin: 8
-                    anchors.bottomMargin: 8
+            NotificationPanel {
+                id: vanishNotifPanel
+                anchors.centerIn: parent
+                open: root.notifOpen
+                width: 390
+                implicitWidth: 390
+                onCloseRequested: root.closeNotif()
 
-                    /* Top: Workspaces & App Launcher (Removed per prompt) */
-                    BarLeft {
-                        id: pillVertLeftItem
-                        visible: false
-                        height: 0
-                        anchors.top: parent.top
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        showBackground: false
-                        vertical: true
-                        onOpenLauncher: root.openLauncher()
-                    }
+                opacity: open ? 1.0 : 0.0
+                scale: open ? 1.0 : 0.94
+                transformOrigin: Item.TopRight
 
-                    /* Center: Mini Music & Clock Indicator */
-                    Item {
-                        anchors.centerIn: parent
-                        width: 32
-                        height: 52
-
-                        Column {
-                            anchors.centerIn: parent
-                            spacing: 4
-
-                            Rectangle {
-                                width: 22
-                                height: 22
-                                radius: 11
-                                color: Theme.bgAlt
-                                border.color: Theme.accent
-                                border.width: 1.5
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                clip: true
-
-                                Image {
-                                    anchors.fill: parent
-                                    source: root.mprisArtUrl
-                                    sourceSize: Qt.size(44, 44)
-                                    fillMode: Image.PreserveAspectCrop
-                                    visible: root.mprisHasTrack && root.mprisArtUrl.length > 0
-                                }
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "music_note"
-                                    font.family: Theme.fontIcon
-                                    font.pixelSize: 14
-                                    color: Theme.accent
-                                    visible: !root.mprisHasTrack || root.mprisArtUrl.length === 0
-                                }
-                            }
-
-                            Text {
-                                text: {
-                                    let d = new Date()
-                                    let h = d.getHours() % 12
-                                    if (h === 0) h = 12
-                                    let m = d.getMinutes()
-                                    return (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m
-                                }
-                                font.family: Theme.font
-                                font.pixelSize: Theme.fontPx(9)
-                                font.weight: Font.Bold
-                                color: Theme.fg
-                                anchors.horizontalCenter: parent.horizontalCenter
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: false
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.toggleMusic()
-                        }
-                    }
-
-                    /* Bottom: System Controls */
-                    BarRight {
-                        id: pillVertRightItem
-                        anchors.bottom: parent.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        showBackground: false
-                        vertical: true
-                        anchorWindow: pillFullVerticalBarWindow
-                        notifCount: (notificationServer && notificationServer.trackedNotifications) ? notificationServer.trackedNotifications.values.length : 0
-                        onOpenMixer: root.openMixer()
-                        onCloseMixer: mixerLeaveTimer.restart()
-                        onToggleMixer: root.toggleMixer()
-                        onOpenBrightness: root.openBrightness()
-                        onCloseBrightness: brightnessLeaveTimer.restart()
-                        onToggleBrightness: root.toggleBrightness()
-                        onOpenBattery: root.openBattery()
-                        onCloseBattery: batteryLeaveTimer.restart()
-                        onToggleBattery: root.toggleBattery()
-                        onOpenTray: root.openTray()
-                        onCloseTray: trayLeaveTimer.restart()
-                        onToggleTray: root.toggleTray()
-                        onToggleNotif: root.toggleNotif()
-                        onToggleControls: root.toggleControls()
-                        onOpenPower: root.openPower()
-                    }
-                }
+                Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
             }
         }
     }
+
 
     /* ── Minimal Notch Mode: Tide Island ── */
     Variants {
@@ -2670,7 +2540,7 @@ ShellRoot {
 
     /* ── Small Music Overlay Window (Compact Dropdown Below Island) ── */
     Variants {
-        model: (root.barMode === "notch" || root.barMode === "pill") ? Quickshell.screens : []
+        model: (root.barMode === "notch") ? Quickshell.screens : []
 
         PanelWindow {
             id: smallMusicWindow
@@ -2744,7 +2614,7 @@ ShellRoot {
      * resolves its real width; the pill self-centres inside it and the mask
      * Region confines pointer input to the pill. */
     Variants {
-        model: (root.barMode === "notch" || root.barMode === "pill" || root.barMode === "bar") ? Quickshell.screens : []
+        model: (root.barMode === "notch" || root.barMode === "bar") ? Quickshell.screens : []
 
         PanelWindow {
             id: musicWindow
@@ -3712,14 +3582,12 @@ ShellRoot {
 
                 MixerMod {
                     id: mixerItem
-                    x: (root.barMode === "pill")
-                       ? Math.round(((parent.width > 0 ? parent.width : (mixerWindow.screen ? mixerWindow.screen.width : 1920)) - 1000) / 2)
-                       : (root.barMode === "minimal")
+                    x: (root.barMode === "minimal")
                        ? Math.round(((parent.width > 0 ? parent.width : (mixerWindow.screen ? mixerWindow.screen.width : 1920)) - width) / 2)
                        : ((parent.width > 0 ? parent.width : (mixerWindow.screen ? mixerWindow.screen.width : 1920)) - width - root.popupRightMargin)
                     y: root.mainBarEdge === "bottom"
                        ? (parent.height - height - root.popupBottomMargin)
-                       : (root.barMode === "pill" ? (root.popupTopMargin > 0 ? root.popupTopMargin + 6 : 14) : root.popupTopMargin)
+                       : (root.barMode === "pill" ? 46 : root.popupTopMargin)
                     width: mixerItem.implicitWidth
                     height: mixerItem.implicitHeight
                     barMode: root.barMode
@@ -4076,7 +3944,7 @@ ShellRoot {
 
     /* Notification popup: (Positioned beneath notch in notch mode, right-anchored in bar mode) */
     Variants {
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch" || root.barMode === "pill") ? [] : (Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : [])
 
         PanelWindow {
             id: notifWindow
@@ -4503,7 +4371,7 @@ ShellRoot {
     /* Quick-settings panel: now-playing strip over the quick toggles, positioned
      * dynamically according to root.controlsCorner ("bottom_right", "top_left", or "bottom_left"). */
     Variants {
-        model: (root.barMode === "minimal" || root.barMode === "minimal_notch") ? [] : [Quickshell.screens[0]]
+        model: (root.barMode === "minimal" || root.barMode === "minimal_notch" || root.barMode === "pill") ? [] : [Quickshell.screens[0]]
 
         PanelWindow {
             id: controlsWindow

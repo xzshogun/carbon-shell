@@ -24,9 +24,9 @@ Rectangle {
     property bool open: false
     signal closeRequested()
 
-    width: 340
-    implicitWidth: 340
-    implicitHeight: Math.min(450, (root.parent ? root.parent.height : 768) - 48)
+    width: 390
+    implicitWidth: 390
+    implicitHeight: 480
     height: implicitHeight
     radius: 26
     color: Qt.rgba(Theme.m3surfaceContainer.r, Theme.m3surfaceContainer.g, Theme.m3surfaceContainer.b, 0.88)
@@ -484,7 +484,7 @@ Rectangle {
 
                                 onDismissRequested: (item) => {
                                     NotificationService.dismiss(item.id)
-                                    if (root.hoveredCardItem === cardDelegate) {
+                                    if (typeof root !== "undefined" && root.hoveredCardItem === cardDelegate) {
                                         root.hoveredCardItem = null
                                     }
                                 }

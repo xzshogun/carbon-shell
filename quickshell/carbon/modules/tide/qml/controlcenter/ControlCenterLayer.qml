@@ -147,10 +147,10 @@ Item {
     readonly property color moduleColor: Theme.isDark ? StyleTokens.module : "#ffffff"
     readonly property color moduleHover: Theme.isDark ? StyleTokens.moduleHover : Theme.bgHover
     readonly property color trackColor: Theme.isDark ? StyleTokens.track : Qt.rgba(0, 0, 0, 0.08)
-    readonly property color textPrimary: Theme.isDark ? StyleTokens.textPrimary : "#111418"
-    readonly property color textPrimaryBright: Theme.isDark ? StyleTokens.textPrimaryBright : "#111418"
-    readonly property color textSecondary: Theme.isDark ? StyleTokens.textSecondary : "#44474f"
-    readonly property color textMuted: Theme.isDark ? StyleTokens.textMuted : "#60646c"
+    readonly property color textPrimary: Theme.fg
+    readonly property color textPrimaryBright: Theme.fg
+    readonly property color textSecondary: StyleTokens.textSecondary
+    readonly property color textMuted: StyleTokens.textMuted
     readonly property color cardAccent: Theme.accent
     readonly property color cardAccentPressed: Qt.darker(Theme.accent, 1.15)
     readonly property color cardFillActive: Theme.accent

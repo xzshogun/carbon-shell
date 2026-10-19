@@ -65,6 +65,15 @@ Rectangle {
             clip: true
 
             Rectangle {
+                width: root.value <= 0.001
+                    ? 0
+                    : Math.max(34, Math.min(sliderTrack.width, sliderTrack.width * root.value + 1))
+                height: parent.height
+                radius: parent.radius
+                color: Theme.accent
+            }
+
+            Rectangle {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.leftMargin: 10
@@ -72,23 +81,15 @@ Rectangle {
                 height: 18
                 radius: 9
                 color: StyleTokens.transparent
+                z: 2
 
                 Text {
                     anchors.centerIn: parent
                     text: root.iconText
-                    color: root.textSecondary
+                    color: root.value > 0.12 ? (Theme.accentContrast || StyleTokens.white) : root.textSecondary
                     font.pixelSize: 13
                     font.family: root.iconFontFamily
                 }
-            }
-
-            Rectangle {
-                width: root.value <= 0.001
-                    ? 0
-                    : Math.max(34, Math.min(sliderTrack.width, sliderTrack.width * root.value + 1))
-                height: parent.height
-                radius: parent.radius
-                color: Theme.accent
             }
 
             Rectangle {

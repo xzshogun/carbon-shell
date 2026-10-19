@@ -14,8 +14,10 @@ Singleton {
     property real islandPositionX: 50
     property real islandBackgroundOpacity: 96
     readonly property string userConfigPath: (Quickshell.env("HOME") || "") + "/.config/tide-island/userconfig.json"
-    property string dynamicIslandPrimaryButton: "none"
-    property string dynamicIslandSecondaryButton: "none"
+    property string dynamicIslandPrimaryButton: "left"
+    property string dynamicIslandPrimaryAction: "toggleExpandedPlayer"
+    property string dynamicIslandSecondaryButton: "right"
+    property string dynamicIslandSecondaryAction: "toggleControlCenter"
     property string hoverExpandAction: "expand"
     property bool islandAutoHideEnabled: false
     property int islandAutoHideDelayMs: 2000
@@ -56,7 +58,9 @@ Singleton {
                 if (d.islandTopMargin !== undefined) root.islandTopMargin = Number(d.islandTopMargin);
                 if (d.islandBackgroundOpacity !== undefined) root.islandBackgroundOpacity = Number(d.islandBackgroundOpacity);
                 if (d.dynamicIslandPrimaryButton !== undefined) root.dynamicIslandPrimaryButton = String(d.dynamicIslandPrimaryButton);
+                if (d.dynamicIslandPrimaryAction !== undefined) root.dynamicIslandPrimaryAction = String(d.dynamicIslandPrimaryAction);
                 if (d.dynamicIslandSecondaryButton !== undefined) root.dynamicIslandSecondaryButton = String(d.dynamicIslandSecondaryButton);
+                if (d.dynamicIslandSecondaryAction !== undefined) root.dynamicIslandSecondaryAction = String(d.dynamicIslandSecondaryAction);
                 if (d.hoverExpandAction !== undefined) root.hoverExpandAction = String(d.hoverExpandAction);
                 if (d.islandAutoHideEnabled !== undefined) root.islandAutoHideEnabled = Boolean(d.islandAutoHideEnabled);
                 if (d.islandAutoHideDelayMs !== undefined) root.islandAutoHideDelayMs = Number(d.islandAutoHideDelayMs);

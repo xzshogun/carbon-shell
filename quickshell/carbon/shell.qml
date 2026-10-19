@@ -1397,7 +1397,7 @@ ShellRoot {
     Binding {
         target: LyricsService
         property: "enabled"
-        value: (root.barMode !== "minimal" && root.barMode !== "minimal_notch")
+        value: true
     }
 
     Binding {

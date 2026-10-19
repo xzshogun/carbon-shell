@@ -354,7 +354,10 @@ PanelWindow {
         userConfig.dynamicIslandSecondaryButton
     ])
     readonly property int configuredHoverExpandAction: {
-        const action = Number(userConfig.hoverExpandAction);
+        const raw = String(userConfig.hoverExpandAction || "").toLowerCase();
+        if (raw === "expand" || raw === "player") return 1;
+        if (raw === "control_center" || raw === "cc") return 2;
+        const action = Number(raw);
         return isNaN(action) ? 0 : Math.max(0, Math.min(2, Math.round(action)));
     }
     readonly property real baseExclusiveZone: userConfig.islandExclusiveZone

@@ -476,6 +476,7 @@ Item {
                 contentHeight: height
                 boundsBehavior: Flickable.StopAtBounds
                 flickableDirection: Flickable.HorizontalFlick
+                interactive: !root.isDragging
 
                 Row {
                     id: filmstripRow
@@ -573,19 +574,87 @@ Item {
                                 anchors.bottom: parent.bottom
                                 anchors.bottomMargin: 8
                                 radius: 8
+                                z: 2
                                 color: Qt.rgba(0.04, 0.04, 0.06, 0.55)
                                 border.width: 1
                                 border.color: Qt.rgba(1, 1, 1, 0.05)
                                 clip: true
 
-                                // Miniature Proportional Window Rectangles
+                                // Miniature preview area background click & fallback drag
+                                MouseArea {
+                                    id: miniPreviewBgMouse
+                                    anchors.fill: parent
+                                    z: 0
+                                    cursorShape: Qt.PointingHandCursor
+                                    preventStealing: true
+
+                                    property real pressX: 0
+                                    property real pressY: 0
+                                    property bool dragInitiated: false
+
+                                    onPressed: (mouse) => {
+                                        pressX = mouse.x
+                                        pressY = mouse.y
+                                        dragInitiated = false
+                                    }
+
+                                    onPositionChanged: (mouse) => {
+                                        if (pressed) {
+                                            var dx = mouse.x - pressX
+                                            var dy = mouse.y - pressY
+                                            var distSq = dx * dx + dy * dy
+
+                                            var pt = miniPreviewBgMouse.mapToItem(root, mouse.x, mouse.y)
+                                            root.targetMouseX = pt.x
+                                            root.targetMouseY = pt.y
+
+                                            if (!dragInitiated && distSq > 36 && wsCard.wsWindows.length > 0) {
+                                                dragInitiated = true
+                                                var firstWin = wsCard.wsWindows[0]
+                                                var origPt = miniPreviewArea.mapToItem(root, 0, 0)
+                                                root.startDrag(firstWin, wsCard.wsId, pt.x, pt.y, origPt.x, origPt.y)
+                                            }
+
+                                            if (root.isDragging) {
+                                                root.hitTestTopFilmstrip(pt.x, pt.y)
+                                            }
+                                        }
+                                    }
+
+                                    onReleased: (mouse) => {
+                                        if (dragInitiated) {
+                                            dragInitiated = false
+                                            root.executeDrop()
+                                        } else {
+                                            root.selectedWorkspaceId = wsCard.wsId
+                                        }
+                                    }
+
+                                    onDoubleClicked: {
+                                        if (!dragInitiated) {
+                                            root.jumpToWorkspace(wsCard.wsId)
+                                        }
+                                    }
+
+                                    onCanceled: {
+                                        if (dragInitiated) {
+                                            dragInitiated = false
+                                            root.cancelDrag()
+                                        }
+                                    }
+                                }
+
+                                // Miniature Proportional Window Rectangles (App Previews)
                                 Repeater {
                                     model: wsCard.wsWindows
 
                                     delegate: Rectangle {
+                                        id: miniWinRect
+                                        z: 1
                                         readonly property var win: modelData
                                         readonly property real pW: miniPreviewArea.width
                                         readonly property real pH: miniPreviewArea.height
+                                        readonly property bool isBeingDragged: (root.isDragging && root.draggingWindow && root.draggingWindow.address === win.address)
 
                                         x: {
                                             if (win.at && root.monitorWidth > 0) {
@@ -611,12 +680,21 @@ Item {
                                             }
                                             return Math.max(14, pH - 8)
                                         }
-                                        radius: 3
-                                        color: (wsCard.isCurrent || wsCard.isDropTarget)
-                                               ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.40)
-                                               : Qt.rgba(1, 1, 1, 0.16)
-                                        border.width: 1
-                                        border.color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.60)
+                                        radius: 4
+                                        color: isBeingDragged
+                                               ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.20)
+                                               : ((wsCard.isCurrent || wsCard.isDropTarget || miniWinMouse.containsMouse)
+                                                  ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.45)
+                                                  : Qt.rgba(1, 1, 1, 0.16))
+                                        border.width: (isBeingDragged || miniWinMouse.containsMouse) ? 1.5 : 1
+                                        border.color: (isBeingDragged || miniWinMouse.containsMouse)
+                                                      ? Qt.lighter(root.accentColor, 1.30)
+                                                      : Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.60)
+
+                                        scale: isBeingDragged ? 0.90 : (miniWinMouse.containsMouse ? 1.08 : 1.0)
+                                        opacity: isBeingDragged ? 0.35 : 1.0
+                                        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                                        Behavior on opacity { NumberAnimation { duration: 140 } }
 
                                         Image {
                                             anchors.centerIn: parent
@@ -624,8 +702,71 @@ Item {
                                             height: width
                                             source: Quickshell.iconPath(win.icon || win.class || "", "application-x-executable")
                                             fillMode: Image.PreserveAspectFit
-                                            opacity: 0.88
+                                            opacity: 0.90
                                             visible: width >= 8
+                                        }
+
+                                        // Drag-and-drop MouseArea on the app preview
+                                        MouseArea {
+                                            id: miniWinMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: dragInitiated ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+                                            preventStealing: true
+
+                                            property real pressX: 0
+                                            property real pressY: 0
+                                            property bool dragInitiated: false
+
+                                            onPressed: (mouse) => {
+                                                pressX = mouse.x
+                                                pressY = mouse.y
+                                                dragInitiated = false
+                                            }
+
+                                            onPositionChanged: (mouse) => {
+                                                if (pressed) {
+                                                    var dx = mouse.x - pressX
+                                                    var dy = mouse.y - pressY
+                                                    var distSq = dx * dx + dy * dy
+
+                                                    var pt = miniWinMouse.mapToItem(root, mouse.x, mouse.y)
+                                                    root.targetMouseX = pt.x
+                                                    root.targetMouseY = pt.y
+
+                                                    if (!dragInitiated && distSq > 36) {
+                                                        dragInitiated = true
+                                                        var origPt = miniWinRect.mapToItem(root, 0, 0)
+                                                        root.startDrag(win, wsCard.wsId, pt.x, pt.y, origPt.x, origPt.y)
+                                                    }
+
+                                                    if (root.isDragging) {
+                                                        root.hitTestTopFilmstrip(pt.x, pt.y)
+                                                    }
+                                                }
+                                            }
+
+                                            onReleased: (mouse) => {
+                                                if (dragInitiated) {
+                                                    dragInitiated = false
+                                                    root.executeDrop()
+                                                } else {
+                                                    root.selectedWorkspaceId = wsCard.wsId
+                                                }
+                                            }
+
+                                            onDoubleClicked: (mouse) => {
+                                                if (!dragInitiated) {
+                                                    root.focusWindow(wsCard.wsId, win.address)
+                                                }
+                                            }
+
+                                            onCanceled: {
+                                                if (dragInitiated) {
+                                                    dragInitiated = false
+                                                    root.cancelDrag()
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -640,9 +781,10 @@ Item {
                                 }
                             }
 
-                            // Card Click MouseArea
+                            // Card Click MouseArea (Card Header & Edges)
                             MouseArea {
                                 anchors.fill: parent
+                                z: 1
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     root.selectedWorkspaceId = wsCard.wsId
@@ -1025,7 +1167,7 @@ Item {
         }
     }
 
-    // ── Hit-Testing Engine for Top Deck Filmstrip ───────────────────────
+    // ── Hit-Testing Engine for Top Deck Filmstrip & Center Stage ────────
     function hitTestTopFilmstrip(cursorX, cursorY) {
         var hoveredId = -1
         for (var i = 0; i < 10; i++) {
@@ -1036,6 +1178,13 @@ Item {
                     hoveredId = i + 1
                     break
                 }
+            }
+        }
+        // If not hovering over a filmstrip card, check if cursor is over the center stage
+        if (hoveredId === -1 && centerStage) {
+            var stagePt = centerStage.mapFromItem(root, cursorX, cursorY)
+            if (stagePt.x >= 0 && stagePt.x <= centerStage.width && stagePt.y >= 0 && stagePt.y <= centerStage.height) {
+                hoveredId = root.selectedWorkspaceId
             }
         }
         root.hoveredWorkspaceId = hoveredId
@@ -1141,6 +1290,9 @@ Item {
                         text: {
                             if (root.hoveredWorkspaceId > 0) {
                                 var prefix = root.hoveredWorkspaceId < 10 ? "0" : ""
+                                if (centerStage && root.targetMouseY >= centerStage.y) {
+                                    return "DROP TO STAGE (WS " + prefix + root.hoveredWorkspaceId + ")"
+                                }
                                 return "DROP TO WORKSPACE " + prefix + root.hoveredWorkspaceId
                             }
                             return "DRAGGING WINDOW"

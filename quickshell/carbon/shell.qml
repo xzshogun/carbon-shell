@@ -2138,6 +2138,16 @@ ShellRoot {
                 root.toggleControls();
         }
 
+        function toggleBatteryDrawer() {
+            if (root.barMode === "minimal" || root.barMode === "minimal_notch") {
+                root.forFocusedTideWindow((w) => {
+                    if (w.controlCenterRef) {
+                        w.controlCenterRef.toggleBatteryDrawer();
+                    }
+                });
+            }
+        }
+
         function togglePowerMenu() {
             if (root.barMode === "minimal" || root.barMode === "minimal_notch")
                 root.forFocusedTideWindow((w) => w.togglePowerMenuWindow());

@@ -438,9 +438,9 @@ Singleton {
     readonly property real moduleMargin: 5
 
     /* Typography */
-    readonly property string font: "Plus Jakarta Sans, Google Sans Flex, Inter, Rubik, JetBrainsMono Nerd Font, sans-serif"
-    readonly property string fontFamily: "Plus Jakarta Sans, Google Sans Flex, Inter, Rubik, JetBrainsMono Nerd Font, sans-serif"
-    readonly property string fontMono: "JetBrainsMono Nerd Font, monospace"
+    readonly property string font: "Plus Jakarta Sans"
+    readonly property string fontFamily: "Plus Jakarta Sans"
+    readonly property string fontMono: "JetBrainsMono Nerd Font"
 
 /* ── Global Font Scale — the single knob ────────────────────────── */
     // Edit this ONE number to resize every text element in the shell.

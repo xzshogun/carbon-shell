@@ -62,8 +62,8 @@ Item {
 
     property bool showCondition: false
     property string iconFontFamily: userConfig.iconFontFamily
-    property string textFontFamily: userConfig.textFontFamily
-    property string heroFontFamily: userConfig.heroFontFamily
+    property string textFontFamily: (userConfig && userConfig.textFontFamily) ? userConfig.textFontFamily : (Theme.font || "Plus Jakarta Sans")
+    property string heroFontFamily: (userConfig && userConfig.heroFontFamily) ? userConfig.heroFontFamily : (Theme.font || "Plus Jakarta Sans")
     // ... rest of properties ...
 
     scale: showCondition ? 1.0 : (opacity > 0.05 ? 1.0 : 0.96)
@@ -1545,73 +1545,86 @@ Item {
                 }
             }
 
-            Row {
+            Item {
                 anchors.right: parent.right
                 anchors.rightMargin: 2
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 5
+                width: batteryHeaderRow.width
+                height: batteryHeaderRow.height
 
-                Text {
-                    text: controlCenter.chargingIconGlyph
-                    color: controlCenter.textPrimary
-                    font.pixelSize: 13
-                    font.family: iconFontFamily
-                    visible: isCharging
-                    anchors.verticalCenter: parent.verticalCenter
-                }
+                Row {
+                    id: batteryHeaderRow
+                    anchors.centerIn: parent
+                    spacing: 5
 
-                Text {
-                    text: batteryCapacity + "%"
-                    color: controlCenter.textPrimary
-                    font.pixelSize: 13
-                    font.family: textFontFamily
-                    font.weight: Font.DemiBold
-                    anchors.verticalCenter: parent.verticalCenter
-                }
+                    Text {
+                        text: controlCenter.chargingIconGlyph
+                        color: controlCenter.textPrimary
+                        font.pixelSize: 13
+                        font.family: iconFontFamily
+                        visible: isCharging
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
 
-                Item {
-                    width: 28
-                    height: 14
-                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                        text: batteryCapacity + "%"
+                        color: controlCenter.textPrimary
+                        font.pixelSize: 13
+                        font.family: textFontFamily
+                        font.weight: Font.DemiBold
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
 
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.rightMargin: 2
-                        radius: 4
-                        color: StyleTokens.transparent
-                        border.color: controlCenter.textSecondary
-                        border.width: 1
+                    Item {
+                        width: 28
+                        height: 14
+                        anchors.verticalCenter: parent.verticalCenter
 
                         Rectangle {
-                            anchors.left: parent.left
-                            anchors.top: parent.top
-                            anchors.bottom: parent.bottom
-                            anchors.margins: 2
-                            radius: 2
-                            width: (parent.width - 4) * (batteryCapacity / 100.0)
-                            color: {
-                                if (batteryCapacity <= 10) return StyleTokens.danger;
-                                if (batteryCapacity <= 20) return StyleTokens.warning;
-                                return StyleTokens.success;
-                            }
+                            anchors.fill: parent
+                            anchors.rightMargin: 2
+                            radius: 4
+                            color: StyleTokens.transparent
+                            border.color: controlCenter.textSecondary
+                            border.width: 1
 
-                            Behavior on width {
-                                NumberAnimation {
-                                    duration: 300
-                                    easing.type: Easing.OutCubic
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.top: parent.top
+                                anchors.bottom: parent.bottom
+                                anchors.margins: 2
+                                radius: 2
+                                width: (parent.width - 4) * (batteryCapacity / 100.0)
+                                color: {
+                                    if (batteryCapacity <= 10) return StyleTokens.danger;
+                                    if (batteryCapacity <= 20) return StyleTokens.warning;
+                                    return StyleTokens.success;
+                                }
+
+                                Behavior on width {
+                                    NumberAnimation {
+                                        duration: 300
+                                        easing.type: Easing.OutCubic
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    Rectangle {
-                        width: 2
-                        height: 6
-                        radius: 1
-                        color: controlCenter.textSecondary
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
+                        Rectangle {
+                            width: 2
+                            height: 6
+                            radius: 1
+                            color: controlCenter.textSecondary
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
                     }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: controlCenter.toggleBatteryDrawer()
                 }
             }
         }
@@ -1920,20 +1933,6 @@ Item {
                     font.weight: Font.DemiBold
                 }
 
-                Text {
-                    anchors.right: parent.right
-                    anchors.rightMargin: 12
-                    anchors.top: parent.top
-                    anchors.topMargin: 12
-                    width: Math.max(0, parent.width - 100)
-                    text: controlCenter.powerProfileLabel(controlCenter.currentPowerProfile)
-                    color: cardAccent
-                    horizontalAlignment: Text.AlignRight
-                    font.pixelSize: 10
-                    font.family: textFontFamily
-                    font.weight: Font.DemiBold
-                    elide: Text.ElideRight
-                }
 
                 Row {
                     anchors.left: parent.left

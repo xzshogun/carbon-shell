@@ -20,13 +20,13 @@ Singleton {
     property bool islandAutoHideEnabled: false
     property int islandAutoHideDelayMs: 2000
     property string clockFormat: "24h"
-    property string timeFontFamily: (Theme && (Theme.fontFamily || Theme.font)) ? (Theme.fontFamily || Theme.font) : "Plus Jakarta Sans, Google Sans Flex, Inter, sans-serif"
+    property string timeFontFamily: (Theme && (Theme.fontFamily || Theme.font)) ? (Theme.fontFamily || Theme.font) : "Plus Jakarta Sans"
     property int bodyFontSize: 13
     property int titleFontSize: 14
     property int iconFontSize: 16
-    property string heroFontFamily: (Theme && (Theme.fontFamily || Theme.font)) ? (Theme.fontFamily || Theme.font) : "Plus Jakarta Sans, Google Sans Flex, Inter, sans-serif"
-    property string textFontFamily: (Theme && (Theme.fontFamily || Theme.font)) ? (Theme.fontFamily || Theme.font) : "Plus Jakarta Sans, Google Sans Flex, Inter, sans-serif"
-    property string iconFontFamily: (Theme && Theme.fontIcon) ? Theme.fontIcon : "Material Symbols Rounded, JetBrainsMono Nerd Font"
+    property string heroFontFamily: (Theme && (Theme.fontFamily || Theme.font)) ? (Theme.fontFamily || Theme.font) : "Plus Jakarta Sans"
+    property string textFontFamily: (Theme && (Theme.fontFamily || Theme.font)) ? (Theme.fontFamily || Theme.font) : "Plus Jakarta Sans"
+    property string iconFontFamily: (Theme && Theme.fontIcon) ? Theme.fontIcon : "Material Symbols Rounded"
     property bool disableAutoExpandOnTrackChange: false
     property bool wallpaperCustomCommandEnabled: false
     property real islandExclusiveZone: 0
@@ -61,6 +61,9 @@ Singleton {
                 if (d.islandAutoHideDelayMs !== undefined) root.islandAutoHideDelayMs = Number(d.islandAutoHideDelayMs);
                 if (d.clockFormat !== undefined) root.clockFormat = String(d.clockFormat);
                 if (d.timeFontFamily !== undefined) root.timeFontFamily = String(d.timeFontFamily);
+                if (d.heroFontFamily !== undefined) root.heroFontFamily = String(d.heroFontFamily);
+                if (d.textFontFamily !== undefined) root.textFontFamily = String(d.textFontFamily);
+                if (d.iconFontFamily !== undefined) root.iconFontFamily = String(d.iconFontFamily);
                 if (d.bodyFontSize !== undefined) root.bodyFontSize = Number(d.bodyFontSize);
                 if (d.titleFontSize !== undefined) root.titleFontSize = Number(d.titleFontSize);
                 if (d.iconFontSize !== undefined) root.iconFontSize = Number(d.iconFontSize);

@@ -763,7 +763,7 @@ Item {
 
                 Text {
                     text: root.pickerMode === "wifi" ? "Wi-Fi Networks" : "Bluetooth Devices"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(11)
                     font.weight: Font.Bold
                     color: Theme.fg
@@ -773,7 +773,7 @@ Item {
                     text: root.pickerMode === "wifi"
                           ? (root.wifiScanning ? "Scanning wireless networks…" : (root.wifiList.length + " networks in range"))
                           : (!root.btPowered ? "Bluetooth turned off" : (root.btScanning ? "Scanning nearby devices…" : (root.btList.length + " devices available")))
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(7.5)
                     color: Theme.fgDim
                 }
@@ -811,7 +811,7 @@ Item {
                             }
                             Text {
                                 text: "Wi-Fi"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(7)
                                 font.weight: root.pickerMode === "wifi" ? Font.Bold : Font.Normal
                                 color: root.pickerMode === "wifi" ? (Theme.isDark ? "#101116" : "#ffffff") : Theme.fgDim
@@ -843,7 +843,7 @@ Item {
                             }
                             Text {
                                 text: "BT"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(7)
                                 font.weight: root.pickerMode === "bluetooth" ? Font.Bold : Font.Normal
                                 color: root.pickerMode === "bluetooth" ? (Theme.isDark ? "#101116" : "#ffffff") : Theme.fgDim
@@ -1217,7 +1217,7 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.maximumWidth: 336
                 text: root.currentItem ? (root.currentItem.name || root.currentItem.ssid || "") : (root.pickerMode === "wifi" ? (root.wifiScanning ? "Scanning for networks…" : "No networks found") : (root.btScanning ? "Discovering devices…" : "No devices found"))
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(12)
                 font.bold: true
                 color: Theme.fg
@@ -1244,7 +1244,7 @@ Item {
                         return typeStr + " · " + stateStr + (batStr ? " · " + batStr : "") + " · " + posStr
                     }
                 }
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(8.5)
                 color: Theme.fgDim
             }
@@ -1291,7 +1291,7 @@ Item {
                             return "Pair"
                         }
                     }
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(9.5)
                     font.bold: true
                     color: Theme.isDark ? "#101116" : "#FFFFFF"
@@ -1321,7 +1321,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.forgetPending ? "Sure?" : "Forget"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(9)
                     font.bold: root.forgetPending
                     color: root.forgetPending ? Theme.err : Theme.fg
@@ -1387,7 +1387,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 visible: root.passwordInput.length === 0
                                 text: "password"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(9.5)
                                 color: Theme.fgDim
                                 opacity: 0.6
@@ -1400,7 +1400,7 @@ Item {
 
                                 Text {
                                     text: root.showPassword ? root.passwordInput : "●".repeat(root.passwordInput.length)
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: root.showPassword ? Theme.fontPx(9.5) : 10
                                     color: Theme.fg
                                 }
@@ -1408,7 +1408,7 @@ Item {
                                 Text {
                                     visible: root.caretVisible
                                     text: "|"
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: 14
                                     color: Theme.accentLit
                                 }
@@ -1466,7 +1466,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: "Cancel"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(8)
                     color: Theme.fgDim
                 }
@@ -1501,7 +1501,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.pendingPasskey
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(13)
                     font.bold: true
                     color: Theme.fg
@@ -1520,7 +1520,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: "Confirm"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(8.5)
                         font.bold: true
                         color: Theme.isDark ? "#101116" : "#FFFFFF"
@@ -1544,7 +1544,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: "Cancel"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(8.5)
                         color: Theme.fg
                     }
@@ -1568,7 +1568,7 @@ Item {
         anchors.topMargin: 4
         opacity: listRowLayer.listProgress
         text: root.statusText
-        font.family: "JetBrainsMono Nerd Font"
+        font.family: Theme.font
         font.pixelSize: Theme.fontPx(8.5)
         color: root.isStatusError ? Theme.err : Theme.fgDim
     }
@@ -1615,7 +1615,7 @@ Item {
 
         Text {
             text: "scan"
-            font.family: "JetBrainsMono Nerd Font"
+            font.family: Theme.font
             font.pixelSize: Theme.fontPx(8)
             color: Theme.fgDim
         }

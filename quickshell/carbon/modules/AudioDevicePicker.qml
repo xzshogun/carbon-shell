@@ -260,7 +260,7 @@ Item {
 
                 Text {
                     text: "Sound Options"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(11)
                     font.weight: Font.Bold
                     color: Theme.fg
@@ -268,7 +268,7 @@ Item {
 
                 Text {
                     text: root.activeTab === 0 ? "Output devices & ports" : "Input devices & ports"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(7.5)
                     color: Theme.fgDim
                 }
@@ -307,7 +307,7 @@ Item {
                             }
                             Text {
                                 text: "Out"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(7.5)
                                 font.weight: root.activeTab === 0 ? Font.Bold : Font.Normal
                                 color: root.activeTab === 0 ? (Theme.isDark ? "#101116" : "#ffffff") : Theme.fgDim
@@ -343,7 +343,7 @@ Item {
                             }
                             Text {
                                 text: "In"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(7.5)
                                 font.weight: root.activeTab === 1 ? Font.Bold : Font.Normal
                                 color: root.activeTab === 1 ? (Theme.isDark ? "#101116" : "#ffffff") : Theme.fgDim
@@ -441,7 +441,7 @@ Item {
                                 return root.defaultSource ? root.nodeName(root.defaultSource) : "No input source"
                             }
                         }
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(8.5)
                         font.weight: Font.Bold
                         color: Theme.fg
@@ -508,7 +508,7 @@ Item {
                         const r = topVolTrack.curRatio
                         return Math.round(r * 100) + "%"
                     }
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(7.5)
                     font.weight: Font.Bold
                     color: Theme.fgDim
@@ -552,7 +552,7 @@ Item {
                         visible: root.outputPorts.length > 0
                         width: parent.width
                         text: "Outputs"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(9)
                         font.weight: Font.Bold
                         color: Theme.fgDim
@@ -616,7 +616,7 @@ Item {
                                         Layout.fillWidth: true
                                         Layout.preferredWidth: 1
                                         text: modelData.desc
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(9.5)
                                         font.weight: isActive ? Font.DemiBold : Font.Normal
                                         color: isActive ? Theme.fg : Theme.fgDim
@@ -648,7 +648,7 @@ Item {
                         visible: root.sinks.length > 0
                         width: parent.width
                         text: "Devices"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(9)
                         font.weight: Font.Bold
                         color: Theme.fgDim
@@ -719,7 +719,7 @@ Item {
                                         Layout.fillWidth: true
                                         Layout.preferredWidth: 1
                                         text: root.nodeName(node)
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(9.5)
                                         font.weight: isCurDefault ? Font.DemiBold : Font.Normal
                                         color: isCurDefault ? Theme.fg : Theme.fgDim
@@ -754,7 +754,7 @@ Item {
                         visible: root.streams.length > 0
                         width: parent.width
                         text: "Applications"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(9)
                         font.weight: Font.Bold
                         color: Theme.fgDim
@@ -784,7 +784,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 1
                                 text: root.nodeName(node)
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(9.5)
                                 color: node.muted ? Theme.fgFaint : Theme.fg
                                 elide: Text.ElideRight
@@ -816,7 +816,7 @@ Item {
                         visible: root.inputPorts.length > 0
                         width: parent.width
                         text: "Inputs"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(9)
                         font.weight: Font.Bold
                         color: Theme.fgDim
@@ -880,7 +880,7 @@ Item {
                                         Layout.fillWidth: true
                                         Layout.preferredWidth: 1
                                         text: modelData.desc
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(9.5)
                                         font.weight: isActive ? Font.DemiBold : Font.Normal
                                         color: isActive ? Theme.fg : Theme.fgDim
@@ -912,7 +912,7 @@ Item {
                         visible: root.sources.length > 0
                         width: parent.width
                         text: "Devices"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(9)
                         font.weight: Font.Bold
                         color: Theme.fgDim
@@ -982,7 +982,7 @@ Item {
                                         Layout.fillWidth: true
                                         Layout.preferredWidth: 1
                                         text: root.nodeName(node)
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(9.5)
                                         font.weight: isCurDefault ? Font.DemiBold : Font.Normal
                                         color: isCurDefault ? Theme.fg : Theme.fgDim

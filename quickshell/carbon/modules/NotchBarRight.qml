@@ -175,14 +175,14 @@ NotchContainer {
                         spacing: 3
                         Text {
                             text: "CPU"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(8)
                             font.weight: Font.Medium
                             color: Theme.fgFaint
                         }
                         Text {
                             text: root.cpuUsage + "%"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(8)
                             font.weight: Font.Bold
                             color: root.cpuUsage > 80 ? Theme.err : (root.cpuUsage > 50 ? Theme.warn : Theme.fgDim)
@@ -193,14 +193,14 @@ NotchContainer {
                         spacing: 3
                         Text {
                             text: "RAM"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(10)
                             font.weight: Font.Bold
                             color: Theme.fg
                         }
                         Text {
                             text: root.ramUsageGB + "G"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(10)
                             font.weight: Font.Bold
                             color: root.ramPct > 85 ? Theme.warn : Theme.accent
@@ -303,7 +303,7 @@ NotchContainer {
                 Text {
                     visible: root.notifCount > 0
                     text: String(root.notifCount)
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(7.5)
                     font.weight: Font.Bold
                     color: Theme.accentLit

@@ -70,7 +70,7 @@ Item {
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(11)
                 font.weight: Font.Bold
                 color: HudService.muted ? Theme.error : Theme.fg
@@ -119,7 +119,7 @@ Item {
 
                 Text {
                     text: "NOW PLAYING"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(7)
                     font.weight: Font.Bold
                     color: Theme.accent
@@ -127,7 +127,7 @@ Item {
 
                 Text {
                     text: HudService.title
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(10)
                     font.weight: Font.Bold
                     color: Theme.fg
@@ -158,7 +158,7 @@ Item {
 
                 Text {
                     text: HudService.title
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(9)
                     font.weight: Font.Bold
                     color: Theme.fg
@@ -166,7 +166,7 @@ Item {
 
                 Text {
                     text: HudService.subText
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(8)
                     color: Theme.fgDim
                     visible: text.length > 0

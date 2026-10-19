@@ -306,7 +306,7 @@ Item {
             }
             Text {
                 text: "Bluetooth"
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(14)
                 font.weight: Font.Bold
                 color: Theme.fg
@@ -316,7 +316,7 @@ Item {
                 text: root.btName.length > 0 ? root.btName
                      : (root.powerOn ? (deviceModel.count === 0 ? "No devices" : "On")
                                      : "Off")
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(11)
                 elide: Text.ElideRight
                 horizontalAlignment: Text.AlignRight
@@ -432,7 +432,7 @@ Item {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                             text: model.name.length > 0 ? model.name : model.mac
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(12)
                             font.weight: model.connected ? Font.Bold : Font.Normal
                             color: model.connected ? Theme.accentLit : Theme.fg
@@ -440,7 +440,7 @@ Item {
                         Text {
                             Layout.fillWidth: true
                             text: model.connected ? "Connected" : (model.paired ? "Paired" : "Ready to pair")
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(9.5)
                             color: model.connected ? Theme.accentLit : Theme.fgDim
                         }
@@ -479,7 +479,7 @@ Item {
             anchors.centerIn: devList
             visible: root.powerOn && deviceModel.count === 0 && !root.scanning
             text: "No paired devices found"
-            font.family: "JetBrainsMono Nerd Font"
+            font.family: Theme.font
             font.pixelSize: Theme.fontPx(11)
             color: Theme.fgFaint
         }
@@ -488,7 +488,7 @@ Item {
             anchors.centerIn: devList
             visible: !root.powerOn
             text: "Bluetooth is disabled"
-            font.family: "JetBrainsMono Nerd Font"
+            font.family: Theme.font
             font.pixelSize: Theme.fontPx(11)
             color: Theme.fgFaint
         }
@@ -529,7 +529,7 @@ Item {
                         : !root.powerOn ? "Bluetooth is off"
                         : deviceModel.count === 0 ? "No known devices"
                         : "Tap a device to connect"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(11)
                     color: root.status.length > 0 ? Theme.accentLit : Theme.fgFaint
                 }

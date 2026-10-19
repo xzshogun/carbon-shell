@@ -181,7 +181,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: "Pomodoro"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(11)
                     font.weight: Font.Bold
                     color: root.mode === "pomo" ? "#0e0e12" : Theme.fgDim
@@ -203,7 +203,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: "Stopwatch"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(11)
                     font.weight: Font.Bold
                     color: root.mode === "stop" ? "#0e0e12" : Theme.fgDim
@@ -238,7 +238,7 @@ Item {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignHCenter
             text: root.mode === "pomo" ? root.fmt(root.remaining) : root.fmt(root.elapsed)
-            font.family: "JetBrainsMono Nerd Font"
+            font.family: Theme.font
             font.pixelSize: Theme.fontPx(32)
             font.weight: Font.Bold
             color: root.running ? Theme.accentLit : Theme.fg
@@ -270,7 +270,7 @@ Item {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "session " + ((root.cycles % 4) || 4) + " of 4"
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(9)
                 color: Theme.fgFaint
             }
@@ -345,7 +345,7 @@ Item {
                         }
                         Text {
                             text: root.running ? "PAUSE" : "START"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(11)
                             font.weight: Font.Bold
                             color: root.running ? Theme.fg : Theme.accentContrast

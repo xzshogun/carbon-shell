@@ -772,7 +772,7 @@ Item {
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: (root.letterCounts[niagaraWaveBar.activeLetter] || 0) > 0 ? (root.letterCounts[niagaraWaveBar.activeLetter] + " apps") : ""
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(8)
                     font.weight: Font.Medium
                     color: Theme.fgFaint
@@ -1029,7 +1029,7 @@ Item {
 
             Text {
                 text: root.mode === "actions" ? "Commands" : (root.allApps.length + " apps")
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(10)
                 font.weight: Font.DemiBold
                 color: Theme.fgFaint

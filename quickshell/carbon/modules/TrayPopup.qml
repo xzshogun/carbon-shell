@@ -387,7 +387,7 @@ Item {
 
                 Text {
                     text: "Background Apps"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(9.5)
                     font.weight: Font.Bold
                     color: Theme.fg
@@ -405,7 +405,7 @@ Item {
                         id: countTxt
                         anchors.centerIn: parent
                         text: root.allItems.length + " active"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(7)
                         font.weight: Font.Bold
                         color: Theme.accentLit
@@ -479,7 +479,7 @@ Item {
                             }
                             Text {
                                 text: "No background apps running"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(8.5)
                                 color: Theme.fgFaint
                             }
@@ -564,7 +564,7 @@ Item {
                                         Text {
                                             Layout.fillWidth: true
                                             text: modelData.name || ""
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(8.5)
                                             font.weight: Font.Bold
                                             color: appItemDelegate.isSelected ? Theme.accent : Theme.fg
@@ -574,7 +574,7 @@ Item {
                                         Text {
                                             Layout.fillWidth: true
                                             text: modelData.sub || ""
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7)
                                             color: appItemDelegate.isSelected ? Theme.accentLit : Theme.fgDim
                                             elide: Text.ElideRight
@@ -679,7 +679,7 @@ Item {
                                                 Text {
                                                     Layout.fillWidth: true
                                                     text: modelData.label || ""
-                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.family: Theme.font
                                                     font.pixelSize: Theme.fontPx(7.5)
                                                     font.weight: modelData.danger ? Font.Bold : Font.Normal
                                                     color: modelData.danger ? Theme.err : (actMA.containsMouse ? Theme.fg : Theme.fgDim)

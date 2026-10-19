@@ -625,7 +625,7 @@ Item {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: root.captionLine1
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(11)
                 font.bold: true
                 color: "#FFFFFF"
@@ -634,7 +634,7 @@ Item {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: root.captionLine2
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(9)
                 color: Qt.rgba(1.0, 1.0, 1.0, 0.60)
                 elide: Text.ElideMiddle

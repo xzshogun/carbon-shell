@@ -269,7 +269,7 @@ Item {
                     Text {
                         visible: root.notifCount > 0
                         text: String(root.notifCount)
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(7.5)
                         font.weight: Font.Bold
                         color: Theme.accentLit

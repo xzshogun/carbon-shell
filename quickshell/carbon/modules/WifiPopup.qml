@@ -356,7 +356,7 @@ Item {
             }
             Text {
                 text: "Wi-Fi"
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(15)
                 font.weight: Font.Bold
                 color: Theme.fg
@@ -364,7 +364,7 @@ Item {
             Text {
                 Layout.fillWidth: true
                 text: root.wifiName.length > 0 ? root.wifiName : (root.powerOn ? "Not connected" : "Off")
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(12)
                 font.weight: root.wifiName.length > 0 ? Font.Bold : Font.Normal
                 elide: Text.ElideRight
@@ -479,7 +479,7 @@ Item {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                             text: model.ssid
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(14)
                             font.weight: model.inUse ? Font.Bold : Font.Normal
                             color: model.inUse ? Theme.accentLit : Theme.fg
@@ -489,7 +489,7 @@ Item {
                             visible: model.inUse || model.isSaved
                             elide: Text.ElideRight
                             text: model.inUse ? "Connected" : (model.isSaved ? "Saved" : "")
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(11)
                             font.weight: model.inUse ? Font.DemiBold : Font.Normal
                             color: model.inUse ? Theme.accent : Theme.fgDim
@@ -553,7 +553,7 @@ Item {
                     Layout.preferredWidth: 1
                     elide: Text.ElideRight
                     text: statusText()
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(12)
                     color: root.status.length > 0 ? Theme.accentLit : Theme.fgFaint
                 }
@@ -583,7 +583,7 @@ Item {
                 Text {
                     elide: Text.ElideRight
                     text: root.pwSsid
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(12)
                     color: Theme.fgDim
                     Layout.maximumWidth: 80
@@ -604,7 +604,7 @@ Item {
                         anchors.leftMargin: 8
                         anchors.rightMargin: 8
                         verticalAlignment: Text.AlignVCenter
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(12)
                         color: Theme.fg
                         echoMode: TextInput.Password

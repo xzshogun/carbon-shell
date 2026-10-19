@@ -20,13 +20,13 @@ Singleton {
     property bool islandAutoHideEnabled: false
     property int islandAutoHideDelayMs: 2000
     property string clockFormat: "24h"
-    property string timeFontFamily: (Theme && Theme.fontFamily) ? Theme.fontFamily : "JetBrainsMono Nerd Font"
+    property string timeFontFamily: (Theme && (Theme.fontFamily || Theme.font)) ? (Theme.fontFamily || Theme.font) : "Plus Jakarta Sans, Google Sans Flex, Inter, sans-serif"
     property int bodyFontSize: 13
     property int titleFontSize: 14
     property int iconFontSize: 16
-    property string heroFontFamily: (Theme && Theme.fontFamily) ? Theme.fontFamily : "JetBrainsMono Nerd Font"
-    property string textFontFamily: (Theme && Theme.fontFamily) ? Theme.fontFamily : "JetBrainsMono Nerd Font"
-    property string iconFontFamily: (Theme && Theme.fontFamily) ? Theme.fontFamily : "JetBrainsMono Nerd Font"
+    property string heroFontFamily: (Theme && (Theme.fontFamily || Theme.font)) ? (Theme.fontFamily || Theme.font) : "Plus Jakarta Sans, Google Sans Flex, Inter, sans-serif"
+    property string textFontFamily: (Theme && (Theme.fontFamily || Theme.font)) ? (Theme.fontFamily || Theme.font) : "Plus Jakarta Sans, Google Sans Flex, Inter, sans-serif"
+    property string iconFontFamily: (Theme && Theme.fontIcon) ? Theme.fontIcon : "Material Symbols Rounded, JetBrainsMono Nerd Font"
     property bool disableAutoExpandOnTrackChange: false
     property bool wallpaperCustomCommandEnabled: false
     property real islandExclusiveZone: 0

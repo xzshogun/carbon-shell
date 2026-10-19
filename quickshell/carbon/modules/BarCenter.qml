@@ -252,7 +252,7 @@ Item {
 
                 Text {
                     text: root.hasTrack ? root.trackTitle : "Nothing Playing"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(10)
                     font.weight: Font.Bold
                     color: root.hasTrack ? Theme.fg : Theme.fgDim
@@ -262,7 +262,7 @@ Item {
 
                 Text {
                     text: root.hasTrack ? root.trackArtist : ""
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(8)
                     font.weight: Font.Medium
                     color: Theme.fgDim

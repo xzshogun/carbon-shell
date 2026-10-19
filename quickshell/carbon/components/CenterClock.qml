@@ -156,7 +156,7 @@ Item {
 
                 Text {
                     text: root.hourStr
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(12)
                     font.weight: Font.Black
                     color: Theme.fg
@@ -164,7 +164,7 @@ Item {
 
                 Text {
                     text: root.minStr
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(12)
                     font.weight: Font.Black
                     color: Theme.accent
@@ -181,7 +181,7 @@ Item {
 
             Text {
                 text: root.hourStr
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(13)
                 font.weight: Font.Bold
                 color: Theme.fg
@@ -197,7 +197,7 @@ Item {
 
             Text {
                 text: root.minStr
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(13)
                 font.weight: Font.Bold
                 color: Theme.accentLit
@@ -222,7 +222,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.hourStr
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(12)
                     font.weight: Font.Bold
                     color: Theme.fg
@@ -231,7 +231,7 @@ Item {
 
             Text {
                 text: ":"
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(12)
                 font.weight: Font.Black
                 color: Theme.accent
@@ -248,7 +248,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.minStr
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(12)
                     font.weight: Font.Bold
                     color: Theme.accentLit
@@ -265,7 +265,7 @@ Item {
 
             Text {
                 text: "["
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(13)
                 font.weight: Font.Bold
                 color: Theme.accent
@@ -273,7 +273,7 @@ Item {
 
             Text {
                 text: root.hourStr
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(12)
                 font.weight: Font.Black
                 color: Theme.fg
@@ -281,7 +281,7 @@ Item {
 
             Text {
                 text: ":"
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(12)
                 font.weight: Font.Black
                 color: Theme.accent
@@ -289,7 +289,7 @@ Item {
 
             Text {
                 text: root.minStr
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(12)
                 font.weight: Font.Black
                 color: Theme.fg
@@ -297,7 +297,7 @@ Item {
 
             Text {
                 text: "]"
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(13)
                 font.weight: Font.Bold
                 color: Theme.accent
@@ -325,7 +325,7 @@ Item {
 
                 Text {
                     text: root.hourStr
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(12)
                     font.weight: Font.Bold
                     color: Theme.fg
@@ -333,7 +333,7 @@ Item {
 
                 Text {
                     text: ":"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(12)
                     font.weight: Font.Black
                     color: Theme.accent
@@ -341,7 +341,7 @@ Item {
 
                 Text {
                     text: root.minStr
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(12)
                     font.weight: Font.Bold
                     color: Theme.accentLit

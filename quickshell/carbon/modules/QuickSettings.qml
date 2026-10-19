@@ -664,14 +664,14 @@ Item {
                     spacing: 5
                     Text {
                         text: root.timeStr
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(12)
                         font.weight: Font.Bold
                         color: Theme.fg
                     }
                     Text {
                         text: "· " + root.dateStr
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(8)
                         font.weight: Font.Medium
                         color: Theme.fgDim
@@ -837,7 +837,7 @@ Item {
                                 }
                                 Text {
                                     text: modelData.label
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(7.5)
                                     font.weight: root.mode === index ? Font.Bold : Font.Normal
                                     color: root.mode === index ? (Theme.isDark ? "#101116" : "#ffffff") : Theme.fgDim
@@ -970,7 +970,7 @@ Item {
                                             text: root.wifiOn
                                                 ? ("Wi-Fi: " + (root.wifiName.length > 0 ? root.wifiName : "Connected"))
                                                 : "Wi-Fi: Disconnected"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7.5)
                                             font.weight: Font.Medium
                                             color: Theme.fg
@@ -1057,7 +1057,7 @@ Item {
                                             text: root.btOn
                                                 ? ("Bluetooth: " + (root.btName.length > 0 ? root.btName : "Ready"))
                                                 : "Bluetooth: Off"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7.5)
                                             font.weight: Font.Medium
                                             color: Theme.fg
@@ -1125,7 +1125,7 @@ Item {
                                         delay: 350
                                         contentItem: Text {
                                             text: root.micMuted ? "Microphone: Muted" : "Microphone: Live (Active)"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7.5)
                                             font.weight: Font.Medium
                                             color: Theme.fg
@@ -1193,7 +1193,7 @@ Item {
                                         delay: 350
                                         contentItem: Text {
                                             text: root.nightOn ? "Night Light: Active" : "Night Light: Off"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7.5)
                                             font.weight: Font.Medium
                                             color: Theme.fg
@@ -1261,7 +1261,7 @@ Item {
                                         delay: 350
                                         contentItem: Text {
                                             text: root.gameModeOn ? "Game Mode: Active (Direct Scanout)" : "Game Mode: Off"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7.5)
                                             font.weight: Font.Medium
                                             color: Theme.fg
@@ -1329,7 +1329,7 @@ Item {
                                         delay: 350
                                         contentItem: Text {
                                             text: root.dndOn ? "Do Not Disturb: Active" : "Do Not Disturb: Off"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7.5)
                                             font.weight: Font.Medium
                                             color: Theme.fg
@@ -1378,7 +1378,7 @@ Item {
                                                     if (!root.audioSink) return "Audio Output"
                                                     return String(root.audioSink.description || root.audioSink.name || "Default Output")
                                                 }
-                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.family: Theme.font
                                                 font.pixelSize: Theme.fontPx(7.5)
                                                 font.weight: Font.DemiBold
                                                 color: devChipHov.containsMouse ? Theme.accent : Theme.fgDim
@@ -1387,7 +1387,7 @@ Item {
 
                                             Text {
                                                 text: "Devices & Ports"
-                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.family: Theme.font
                                                 font.pixelSize: Theme.fontPx(7.0)
                                                 color: devChipHov.containsMouse ? Theme.accent : Qt.rgba(Theme.fgDim.r, Theme.fgDim.g, Theme.fgDim.b, 0.7)
                                             }
@@ -1497,7 +1497,7 @@ Item {
                                             Layout.preferredWidth: 28
                                             horizontalAlignment: Text.AlignRight
                                             text: Math.round((root.isMuted ? 0 : root.volRatio) * 100) + "%"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7.5)
                                             font.weight: Font.Bold
                                             color: Theme.fgDim
@@ -1574,7 +1574,7 @@ Item {
                                         Layout.preferredWidth: 28
                                         horizontalAlignment: Text.AlignRight
                                         text: Math.round(root.brightRatio * 100) + "%"
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(7.5)
                                         font.weight: Font.Bold
                                         color: Theme.fgDim
@@ -1660,7 +1660,7 @@ Item {
                                         Layout.preferredWidth: 28
                                         horizontalAlignment: Text.AlignRight
                                         text: Math.round(root.nightRatio * 100) + "%"
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(7.5)
                                         font.weight: Font.Bold
                                         color: "#ff9f43"
@@ -1720,7 +1720,7 @@ Item {
                                     Text {
                                         Layout.fillWidth: true
                                         text: root.trackTitle.length > 0 ? root.trackTitle : "No Media Playing"
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(9)
                                         font.weight: Font.Bold
                                         color: Theme.fg
@@ -1730,7 +1730,7 @@ Item {
                                     Text {
                                         Layout.fillWidth: true
                                         text: root.trackArtist.length > 0 ? root.trackArtist : (root.activePlayer ? "Standby" : "Idle")
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(7.5)
                                         color: Theme.fgDim
                                         elide: Text.ElideRight
@@ -1984,14 +1984,14 @@ Item {
                                         spacing: 2
                                         Text {
                                             text: "System Battery"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(9.5)
                                             font.weight: Font.Bold
                                             color: Theme.fg
                                         }
                                         Text {
                                             text: root.batteryTimeStr
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7.5)
                                             font.weight: Font.Medium
                                             color: Theme.fgDim
@@ -2008,7 +2008,7 @@ Item {
                                         Layout.alignment: Qt.AlignRight
                                         text: Math.round(root.batteryPct * 100) + "%"
                                         visible: root.showBatteryPercent
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(22)
                                         font.weight: Font.Bold
                                         color: Theme.fg
@@ -2024,7 +2024,7 @@ Item {
                                             id: horizStatusText
                                             anchors.centerIn: parent
                                             text: root.isCharging ? "Charging" : (root.isFull ? "Plugged In" : "Discharging")
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7)
                                             font.weight: Font.Bold
                                             color: root.isCharging ? Theme.accentLit : Theme.fgDim
@@ -2037,7 +2037,7 @@ Item {
                         /* Power Profile Header */
                         Text {
                             text: "POWER PROFILE"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(8)
                             font.weight: Font.Bold
                             font.letterSpacing: 1.0
@@ -2080,14 +2080,14 @@ Item {
                                         spacing: 2
                                         Text {
                                             text: "Power Saving"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(8.5)
                                             font.weight: Font.Bold
                                             color: parent.parent.parent.isActive ? Theme.accentLit : Theme.fg
                                         }
                                         Text {
                                             text: "Reduced Power"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7)
                                             color: Theme.fgDim
                                         }
@@ -2131,14 +2131,14 @@ Item {
                                         spacing: 2
                                         Text {
                                             text: "Balance"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(8.5)
                                             font.weight: Font.Bold
                                             color: parent.parent.parent.isActive ? Theme.accentLit : Theme.fg
                                         }
                                         Text {
                                             text: "Dynamic Balance"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7)
                                             color: Theme.fgDim
                                         }
@@ -2182,14 +2182,14 @@ Item {
                                         spacing: 2
                                         Text {
                                             text: "Performance"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(8.5)
                                             font.weight: Font.Bold
                                             color: parent.parent.parent.isActive ? Theme.accentLit : Theme.fg
                                         }
                                         Text {
                                             text: "Maximum Clocks"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7)
                                             color: Theme.fgDim
                                         }
@@ -2233,14 +2233,14 @@ Item {
                                         spacing: 2
                                         Text {
                                             text: "Ultra (Game)"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(8.5)
                                             font.weight: Font.Bold
                                             color: parent.parent.parent.isActive ? Theme.accentLit : Theme.fg
                                         }
                                         Text {
                                             text: "Direct Scanout"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(7)
                                             color: Theme.fgDim
                                         }
@@ -2361,7 +2361,7 @@ Item {
 
                                     Text {
                                         text: "Battery"
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(9.5)
                                         font.weight: Font.DemiBold
                                         color: Theme.fg
@@ -2379,7 +2379,7 @@ Item {
                                     Text {
                                         text: Math.round(root.batteryPct * 100) + "%"
                                         visible: root.showBatteryPercent
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(22)
                                         font.weight: Font.Bold
                                         color: Theme.fg
@@ -2387,7 +2387,7 @@ Item {
 
                                     Text {
                                         text: root.isCharging ? "Charging" : (root.isFull ? "Full" : "Discharging")
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(8)
                                         font.weight: Font.Medium
                                         color: Theme.fgDim
@@ -2395,7 +2395,7 @@ Item {
 
                                     Text {
                                         text: root.batteryTimeStr
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(6.5)
                                         color: Theme.fgFaint
                                         elide: Text.ElideRight
@@ -2413,7 +2413,7 @@ Item {
 
                             Text {
                                 text: "POWER PROFILE"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(8)
                                 font.weight: Font.Bold
                                 font.letterSpacing: 1.0
@@ -2449,14 +2449,14 @@ Item {
                                         spacing: 1
                                         Text {
                                             text: "Power Saving"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(8)
                                             font.weight: Font.Bold
                                             color: parent.parent.parent.isActive ? Theme.accentLit : Theme.fg
                                         }
                                         Text {
                                             text: "Reduced Power"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(6.5)
                                             color: Theme.fgDim
                                         }
@@ -2500,14 +2500,14 @@ Item {
                                         spacing: 1
                                         Text {
                                             text: "Balance"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(8)
                                             font.weight: Font.Bold
                                             color: parent.parent.parent.isActive ? Theme.accentLit : Theme.fg
                                         }
                                         Text {
                                             text: "Dynamic Balance"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(6.5)
                                             color: Theme.fgDim
                                         }
@@ -2551,14 +2551,14 @@ Item {
                                         spacing: 1
                                         Text {
                                             text: "Performance"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(8)
                                             font.weight: Font.Bold
                                             color: parent.parent.parent.isActive ? Theme.accentLit : Theme.fg
                                         }
                                         Text {
                                             text: "Maximum Clocks"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(6.5)
                                             color: Theme.fgDim
                                         }
@@ -2602,14 +2602,14 @@ Item {
                                         spacing: 1
                                         Text {
                                             text: "Ultra (Game)"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(8)
                                             font.weight: Font.Bold
                                             color: parent.parent.parent.isActive ? Theme.accentLit : Theme.fg
                                         }
                                         Text {
                                             text: "Direct Scanout"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(6.5)
                                             color: Theme.fgDim
                                         }
@@ -2683,7 +2683,7 @@ Item {
                             Text {
                                 Layout.fillWidth: true
                                 text: root.monthNames[root.calMonth] + " " + root.calYear
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(11)
                                 font.weight: Font.Bold
                                 font.letterSpacing: 1.0
@@ -2757,7 +2757,7 @@ Item {
                                     Text {
                                         anchors.centerIn: parent
                                         text: modelData
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(8.5)
                                         font.weight: Font.DemiBold
                                         color: Theme.fgDim
@@ -2843,7 +2843,7 @@ Item {
                                         Text {
                                             anchors.centerIn: parent
                                             text: dayNum
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(9.5)
                                             font.weight: (isToday || isSelected || dayMouseArea.containsMouse) ? Font.Bold : Font.Normal
                                             color: isToday
@@ -2883,7 +2883,7 @@ Item {
                             Layout.preferredHeight: 18
                             horizontalAlignment: Text.AlignHCenter
                             text: new Date(root.calYear, root.calMonth, root.selectedDay).toLocaleDateString(Qt.locale(), "dddd, MMMM d, yyyy")
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(8)
                             font.weight: Font.Medium
                             color: Theme.accentLit

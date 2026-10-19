@@ -198,7 +198,7 @@ Item {
                 // Percentage Text
                 Text {
                     Layout.alignment: Qt.AlignVCenter
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(11)
                     font.weight: Font.Bold
                     color: root.muted ? (Theme.err ? Theme.err : "#f38ba8") : Theme.fg

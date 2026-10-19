@@ -2610,7 +2610,7 @@ ShellRoot {
                                     let m = d.getMinutes()
                                     return (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m
                                 }
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(9)
                                 font.weight: Font.Bold
                                 color: Theme.fg

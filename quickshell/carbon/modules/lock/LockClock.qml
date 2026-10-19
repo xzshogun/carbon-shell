@@ -231,7 +231,7 @@ Item {
                     Text {
                         id: charTextLabel
                         text: charWrapper.charText
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(68)
                         font.weight: Font.Bold
                         color: "#FFFFFF"
@@ -332,7 +332,7 @@ Item {
                 id: dateText
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.dateStr
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(16)
                 font.weight: Font.Medium
                 color: "#CBD5E1"

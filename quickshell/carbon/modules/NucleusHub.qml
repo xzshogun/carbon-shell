@@ -2645,7 +2645,7 @@ Item {
 
                             Text {
                                 text: LyricsService.trackTitle || "Playing Track"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(12)
                                 font.bold: true
                                 color: "#FFFFFF"
@@ -2656,7 +2656,7 @@ Item {
 
                             Text {
                                 text: LyricsService.trackArtist || "Unknown Artist"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(10)
                                 color: root.colFgDim
                                 elide: Text.ElideRight
@@ -2688,7 +2688,7 @@ Item {
                     // Elapsed Time Readout
                     Text {
                         text: LyricsService.formatTime(LyricsService.currentPosition)
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(9)
                         color: root.colFgDim
                     }
@@ -2801,7 +2801,7 @@ Item {
                     // Total Duration Readout
                     Text {
                         text: (LyricsService.totalLength > 0) ? LyricsService.formatTime(LyricsService.totalLength) : "--:--"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(9)
                         color: root.colFgDim
                     }
@@ -2851,7 +2851,7 @@ Item {
 
                     Text {
                         text: root.dateCaptionStr
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(12)
                         font.bold: true
                         color: root.colFgDim
@@ -2884,7 +2884,7 @@ Item {
 
                     Text {
                         text: "♪"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(11)
                         font.bold: true
                         color: root.colTeal
@@ -2902,7 +2902,7 @@ Item {
                             }
                             return "No Synced Lyrics"
                         }
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(12)
                         font.bold: true
                         color: (LyricsService.hasLyrics && LyricsService.currentLine.trim().length > 0) ? root.colTeal : root.colFgDim
@@ -2928,7 +2928,7 @@ Item {
 
                     Text {
                         text: "♪"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(11)
                         font.bold: true
                         color: root.colTeal
@@ -2947,7 +2947,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: (connectivityPicker && connectivityPicker.captionText) ? connectivityPicker.captionText : ""
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(12)
                     font.bold: true
                     color: root.colFgDim
@@ -2987,7 +2987,7 @@ Item {
                         if (root.hoveredPowerOrb === "shutdown") return "Shut down — hold to confirm"
                         return "power actions / tap nucleus or Esc to return"
                     }
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(12)
                     font.bold: true
                     color: (root.powerErrorMessage.length > 0) ? root.colCoral : root.colFgDim
@@ -3105,7 +3105,7 @@ Item {
                                 id: appSearchInput
                                 Layout.fillWidth: true
                                 Layout.alignment: Qt.AlignVCenter
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(14)
                                 font.weight: Font.Medium
                                 color: "#ffffff"
@@ -3119,7 +3119,7 @@ Item {
                                         if (root.launcherTab === "commands") return "Search system commands..."
                                         return "Search apps, math (=2+2), or >cmd..."
                                     }
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(13)
                                     color: Qt.rgba(1, 1, 1, 0.35)
                                     visible: !appSearchInput.text && !appSearchInput.inputMethodComposing
@@ -3703,7 +3703,7 @@ Item {
                                         Text {
                                             Layout.fillWidth: true
                                             text: model.name || ""
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(13)
                                             font.weight: isSelected ? Font.DemiBold : Font.Normal
                                             color: isSelected ? "#ffffff" : Qt.rgba(1, 1, 1, 0.88)
@@ -3714,7 +3714,7 @@ Item {
                                             Layout.fillWidth: true
                                             visible: text.length > 0
                                             text: model.comment || ""
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(10)
                                             color: Qt.rgba(1, 1, 1, 0.45)
                                             elide: Text.ElideRight
@@ -3754,7 +3754,7 @@ Item {
                                 Text {
                                     Layout.alignment: Qt.AlignHCenter
                                     text: "No applications found"
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(12)
                                     color: Qt.rgba(1, 1, 1, 0.4)
                                 }
@@ -3773,14 +3773,14 @@ Item {
                             spacing: 3
                             Text {
                                 text: "↑↓"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(11)
                                 font.bold: true
                                 color: Qt.rgba(1, 1, 1, 0.45)
                             }
                             Text {
                                 text: "Navigate"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(10)
                                 color: Qt.rgba(1, 1, 1, 0.35)
                             }
@@ -3790,14 +3790,14 @@ Item {
                             spacing: 3
                             Text {
                                 text: "↵"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(11)
                                 font.bold: true
                                 color: root.colPurple
                             }
                             Text {
                                 text: "Launch"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(10)
                                 color: Qt.rgba(1, 1, 1, 0.35)
                             }
@@ -3807,14 +3807,14 @@ Item {
                             spacing: 3
                             Text {
                                 text: "ESC"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(10)
                                 font.bold: true
                                 color: Qt.rgba(1, 1, 1, 0.45)
                             }
                             Text {
                                 text: "Back"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(10)
                                 color: Qt.rgba(1, 1, 1, 0.35)
                             }

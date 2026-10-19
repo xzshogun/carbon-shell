@@ -310,14 +310,14 @@ Item {
                     spacing: 2
                     Text {
                         text: "Workspaces & Tasks"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(20)
                         font.weight: Font.Bold
                         color: Theme.fg
                     }
                     Text {
                         text: "Active Workspace " + root.activeWsId + " • Swipe down or ESC to dismiss"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(12)
                         color: Theme.fgDim
                     }
@@ -351,14 +351,14 @@ Item {
                         spacing: 8
                         Text {
                             text: "+"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(18)
                             font.weight: Font.Bold
                             color: (root.isDragging && root.hoveredNewWs) ? (Theme.isDark ? "#111111" : "#ffffff") : Theme.accent
                         }
                         Text {
                             text: (root.isDragging && root.hoveredNewWs) ? "Drop to Move Here" : "New Workspace"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(13)
                             font.weight: Font.DemiBold
                             color: (root.isDragging && root.hoveredNewWs) ? (Theme.isDark ? "#111111" : "#ffffff") : Theme.fg
@@ -509,7 +509,7 @@ Item {
                                     Text {
                                         anchors.centerIn: parent
                                         text: String(modelData.id)
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(13)
                                         font.weight: Font.Bold
                                         color: cardDelegate.isCurrent ? (Theme.isDark ? "#111111" : "#ffffff") : Theme.fg
@@ -521,14 +521,14 @@ Item {
                                     Layout.fillWidth: true
                                     Text {
                                         text: modelData.name || ("Workspace " + modelData.id)
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(15)
                                         font.weight: Font.Bold
                                         color: Theme.fg
                                     }
                                     Text {
                                         text: cardDelegate.winList.length > 0 ? (cardDelegate.winList.length + (cardDelegate.winList.length === 1 ? " application" : " applications")) : "Empty"
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(11)
                                         color: Theme.fgDim
                                     }
@@ -554,7 +554,7 @@ Item {
                                         }
                                         Text {
                                             text: "ACTIVE"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(9)
                                             font.weight: Font.Black
                                             color: Theme.isDark ? "#111111" : "#ffffff"
@@ -680,7 +680,7 @@ Item {
 
                                                     Text {
                                                         text: modelData.appName || modelData.class
-                                                        font.family: "JetBrainsMono Nerd Font"
+                                                        font.family: Theme.font
                                                         font.pixelSize: Theme.fontPx(13)
                                                         font.weight: Font.Bold
                                                         color: Theme.fg
@@ -690,7 +690,7 @@ Item {
 
                                                     Text {
                                                         text: modelData.title || ""
-                                                        font.family: "JetBrainsMono Nerd Font"
+                                                        font.family: Theme.font
                                                         font.pixelSize: Theme.fontPx(11)
                                                         color: Theme.fgDim
                                                         elide: Text.ElideRight
@@ -749,7 +749,7 @@ Item {
                                             Text {
                                                 Layout.alignment: Qt.AlignHCenter
                                                 text: "No open applications"
-                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.family: Theme.font
                                                 font.pixelSize: Theme.fontPx(13)
                                                 font.weight: Font.DemiBold
                                                 color: Theme.fgDim
@@ -758,7 +758,7 @@ Item {
                                             Text {
                                                 Layout.alignment: Qt.AlignHCenter
                                                 text: "Click to switch here"
-                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.family: Theme.font
                                                 font.pixelSize: Theme.fontPx(11)
                                                 color: Theme.fgFaint
                                             }
@@ -781,7 +781,7 @@ Item {
                                 Text {
                                     anchors.centerIn: parent
                                     text: cardDelegate.isCurrent ? "Current Workspace" : "Switch to Workspace " + cardDelegate.modelData.id
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(12)
                                     font.weight: Font.Bold
                                     color: switchMouse.containsMouse && !cardDelegate.isCurrent ? (Theme.isDark ? "#111111" : "#ffffff") : Theme.fg
@@ -823,7 +823,7 @@ Item {
                                 Text {
                                     Layout.alignment: Qt.AlignHCenter
                                     text: "Move " + (root.draggingWindow ? root.draggingWindow.appName : "Window")
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(16)
                                     font.weight: Font.Bold
                                     color: Theme.fg
@@ -840,7 +840,7 @@ Item {
                                         id: dropBadgeText
                                         anchors.centerIn: parent
                                         text: "Workspace " + cardDelegate.modelData.id
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(12)
                                         font.weight: Font.Black
                                         color: Theme.isDark ? "#111111" : "#ffffff"
@@ -904,7 +904,7 @@ Item {
 
                     Text {
                         text: root.draggingWindow ? (root.draggingWindow.appName || root.draggingWindow.class) : ""
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(13)
                         font.weight: Font.Bold
                         color: Theme.fg
@@ -916,7 +916,7 @@ Item {
                         text: root.hoveredNewWs ? "Release to move to New Workspace" :
                               (root.hoveredTargetWsId !== -1 ? ("Drop into Workspace " + root.hoveredTargetWsId) :
                               ("Moving from Workspace " + (root.draggingWindow ? root.draggingWindow.sourceWsId : "")))
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(11)
                         font.weight: (root.hoveredTargetWsId !== -1 || root.hoveredNewWs) ? Font.Bold : Font.Normal
                         color: (root.hoveredTargetWsId !== -1 || root.hoveredNewWs) ? Theme.accent : Theme.fgDim

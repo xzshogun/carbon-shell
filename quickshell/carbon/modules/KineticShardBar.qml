@@ -173,7 +173,7 @@ Item {
                         anchors.centerIn: parent
                         rotation: -45
                         text: "⌘"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(11)
                         font.weight: Font.Bold
                         color: launcherBtnMouse.containsMouse ? Theme.accentFg : Theme.fg
@@ -228,7 +228,7 @@ Item {
                                     anchors.centerIn: parent
                                     rotation: -45
                                     text: modelData
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: isCurrent ? 9 : 8
                                     font.weight: Font.Bold
                                     color: isCurrent ? Theme.accentFg : Theme.fgDim
@@ -334,7 +334,7 @@ Item {
                 // Digital Time Readout
                 Text {
                     text: root.timeStr
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(15)
                     font.weight: Font.Bold
                     color: Theme.fg
@@ -355,7 +355,7 @@ Item {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                     text: root.isPlaying ? ("♫ " + root.trackTitle) : "SHARD · KINETIC"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(10)
                     font.weight: Font.Bold
                     color: root.isPlaying ? Theme.accent : Theme.fgDim
@@ -460,7 +460,7 @@ Item {
 
                     Text {
                         text: root.volumePct + "%"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(10)
                         font.weight: Font.Bold
                         color: Theme.fgDim
@@ -490,7 +490,7 @@ Item {
 
                     Text {
                         text: root.batteryPct + "%"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(10)
                         font.weight: Font.Bold
                         color: Theme.fgDim

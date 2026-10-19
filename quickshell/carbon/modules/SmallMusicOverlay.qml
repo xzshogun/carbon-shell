@@ -163,7 +163,7 @@ Item {
                     Text {
                         Layout.fillWidth: true
                         text: root.deviceName
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(10)
                         font.weight: Font.DemiBold
                         color: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.78)
@@ -208,7 +208,7 @@ Item {
                     Text {
                         Layout.fillWidth: true
                         text: root.hasTrack ? LyricsService.trackTitle : "No Media Playing"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(13)
                         font.weight: Font.Bold
                         color: Theme.fg
@@ -218,7 +218,7 @@ Item {
                     Text {
                         Layout.fillWidth: true
                         text: root.hasTrack ? (LyricsService.trackArtist || "Unknown Artist") : "Waiting for playback..."
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(10)
                         font.weight: Font.Normal
                         color: Theme.accent

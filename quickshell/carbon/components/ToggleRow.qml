@@ -61,7 +61,7 @@ Item {
             Text {
                 Layout.fillWidth: true
                 text: root.label + (root.disabled ? " · missing" : "")
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(15)
                 color: root.disabled ? Theme.fgFaint : Theme.fg
                 elide: Text.ElideRight
@@ -71,7 +71,7 @@ Item {
                 Layout.fillWidth: true
                 visible: root.subtitle
                 text: root.subText
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(12)
                 color: root.disabled ? Theme.fgFaint : Theme.fgDim
                 elide: Text.ElideRight

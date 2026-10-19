@@ -352,7 +352,7 @@ Item {
             Text {
                 Layout.fillWidth: true
                 text: root.hasTrack ? root.trackTitle : "Nothing Playing"
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(14)
                 font.weight: Font.DemiBold
                 color: root.hasTrack ? "#F4F6FB" : "#94A3B8"
@@ -364,7 +364,7 @@ Item {
             Text {
                 Layout.fillWidth: true
                 text: root.hasTrack ? root.trackArtist : "No media active"
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(11)
                 font.weight: Font.Normal
                 color: root.hasTrack ? "#9CA3AF" : "#5A6578"
@@ -425,7 +425,7 @@ Item {
 
                 Text {
                     text: root.hasTrack ? root.formatTime(root.currentPosition) : "0:00"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(9)
                     color: "#8E9AA8"
                 }
@@ -434,7 +434,7 @@ Item {
 
                 Text {
                     text: (root.hasTrack && root.totalLength > 0) ? root.formatTime(root.totalLength) : "--:--"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(9)
                     color: "#8E9AA8"
                 }

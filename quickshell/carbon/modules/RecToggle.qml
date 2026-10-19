@@ -46,7 +46,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 text: root.label
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(10)
                 color: root.checked ? Theme.fg : Theme.fgDim
                 elide: Text.ElideRight

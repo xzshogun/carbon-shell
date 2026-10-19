@@ -161,7 +161,7 @@ Item {
         Text {
             anchors.centerIn: parent
             text: String(root.currentWs)
-            font.family: "Valley Sans, Rubik, JetBrains Mono Nerd Font, sans-serif"
+            font.family: Theme.font
             font.pixelSize: 16
             font.bold: true
             color: root.colTextDark

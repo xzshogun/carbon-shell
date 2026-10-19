@@ -165,7 +165,7 @@ Item {
 
                 Text {
                     text: "Notifications"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(11)
                     font.weight: Font.Bold
                     color: Theme.fg
@@ -183,7 +183,7 @@ Item {
                         id: countText
                         anchors.centerIn: parent
                         text: String(root.total)
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(7.5)
                         font.weight: Font.Bold
                         color: Theme.isDark ? "#101116" : "#ffffff"
@@ -214,7 +214,7 @@ Item {
                         }
                         Text {
                             text: "Clear"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(7.5)
                             color: clearMouse.containsMouse ? Theme.accent : Theme.fgDim
                         }
@@ -282,7 +282,7 @@ Item {
                     Text {
                         Layout.alignment: Qt.AlignHCenter
                         text: "No Notifications"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(10)
                         font.weight: Font.DemiBold
                         color: Theme.fgDim
@@ -291,7 +291,7 @@ Item {
                     Text {
                         Layout.alignment: Qt.AlignHCenter
                         text: "You're all caught up!"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(7.5)
                         color: Theme.fgFaint
                     }
@@ -460,7 +460,7 @@ Item {
                                                 ? cardItem.modelData.summary
                                                 : cardItem.modelData.appName
                                         }
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(9)
                                         font.weight: Font.Bold
                                         color: Theme.fg
@@ -497,7 +497,7 @@ Item {
                                 Text {
                                     Layout.fillWidth: true
                                     text: cardItem.modelData ? String(cardItem.modelData.body || "") : ""
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(7.5)
                                     color: Theme.fgDim
                                     wrapMode: Text.Wrap
@@ -507,7 +507,7 @@ Item {
 
                                 Text {
                                     text: cardItem.modelData ? String(cardItem.modelData.appName || "") : ""
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(6.5)
                                     color: Theme.accentLit
                                     elide: Text.ElideRight

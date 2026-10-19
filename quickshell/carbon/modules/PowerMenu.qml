@@ -206,7 +206,7 @@ Item {
                         anchors.topMargin: 12
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: btnRoot.modelData.label
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(13)
                         font.weight: btnRoot.isHovered ? Font.Bold : Font.Medium
                         color: btnRoot.isHovered ? btnRoot.modelData.accentColor : Theme.fgDim

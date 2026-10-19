@@ -179,7 +179,7 @@ Item {
 
             Text {
                 text: "Hub"
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(10)
                 font.weight: Font.Bold
                 color: backMouse.containsMouse ? Theme.accentLit : Theme.fg
@@ -297,7 +297,7 @@ Item {
 
                     Text {
                         text: Math.round(root.batteryPct * 100) + "%"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(22)
                         font.weight: Font.Bold
                         color: Theme.fg
@@ -317,7 +317,7 @@ Item {
                             id: stateLabel
                             anchors.centerIn: parent
                             text: root.isCharging ? "CHARGING" : (root.isFull ? "FULL" : "ON BATTERY")
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(8)
                             font.weight: Font.Bold
                             color: root.statusColor
@@ -328,7 +328,7 @@ Item {
                 // Middle: Time estimate
                 Text {
                     text: root.timeEstimateStr
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(11)
                     font.weight: Font.Medium
                     color: Theme.fg
@@ -339,7 +339,7 @@ Item {
                     text: (battery && battery.energyRate > 0)
                         ? ("Discharge Rate: " + battery.energyRate.toFixed(1) + " W")
                         : "Battery Health: 100%"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(8.5)
                     color: Theme.fgDim
                 }
@@ -405,7 +405,7 @@ Item {
                         Text {
                             Layout.alignment: Qt.AlignHCenter
                             text: modelData.label
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(8.5)
                             font.weight: Font.Bold
                             color: modeCard.isActive ? Theme.accentLit : Theme.fg
@@ -414,7 +414,7 @@ Item {
                         Text {
                             Layout.alignment: Qt.AlignHCenter
                             text: modelData.sub
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(7)
                             color: modeCard.isActive ? Theme.accent : Theme.fgDim
                         }

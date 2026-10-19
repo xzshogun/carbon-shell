@@ -537,7 +537,7 @@ Item {
                     id: searchInput
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(15)
                     font.weight: Font.Medium
                     color: Theme.fg
@@ -548,7 +548,7 @@ Item {
                     Text {
                         anchors.fill: parent
                         text: root.currentTab === "clipboard" ? "Search clipboard history..." : (root.currentTab === "commands" ? "Search commands..." : "Search apps, type / for commands...")
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(15)
                         color: Theme.fgFaint
                         visible: !searchInput.text && !searchInput.inputMethodComposing
@@ -590,7 +590,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: "?"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(13)
                         font.bold: true
                         color: Theme.fgDim
@@ -998,7 +998,7 @@ Item {
                             id: tabAppsText
                             anchors.centerIn: parent
                             text: "Applications"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(10)
                             font.weight: root.currentTab === "apps" ? Font.Bold : Font.Normal
                             color: root.currentTab === "apps" ? Theme.accent : Theme.fgDim
@@ -1025,7 +1025,7 @@ Item {
                             id: tabClipText
                             anchors.centerIn: parent
                             text: "Clipboard"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(10)
                             font.weight: root.currentTab === "clipboard" ? Font.Bold : Font.Normal
                             color: root.currentTab === "clipboard" ? Theme.accent : Theme.fgDim
@@ -1051,7 +1051,7 @@ Item {
                             id: tabCmdText
                             anchors.centerIn: parent
                             text: "Commands"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(10)
                             font.weight: root.currentTab === "commands" ? Font.Bold : Font.Normal
                             color: root.currentTab === "commands" ? Theme.accent : Theme.fgDim
@@ -1108,7 +1108,7 @@ Item {
 
                         Text {
                             text: root.calcResult
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(16)
                             font.weight: Font.Bold
                             color: Theme.fg
@@ -1118,7 +1118,7 @@ Item {
 
                         Text {
                             text: "Press Enter to copy result to clipboard"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(9)
                             color: Theme.fgDim
                         }
@@ -1134,7 +1134,7 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             text: "↵ Copy"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(10)
                             font.weight: Font.Bold
                             color: Theme.accent
@@ -1223,7 +1223,7 @@ Item {
 
                             Text {
                                 text: rowDelegate.title
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(12)
                                 font.weight: resultsList.currentIndex === rowDelegate.index ? Font.Bold : Font.Medium
                                 color: resultsList.currentIndex === rowDelegate.index ? Theme.accent : Theme.fg
@@ -1233,7 +1233,7 @@ Item {
 
                             Text {
                                 text: rowDelegate.subTitle
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(9)
                                 color: Theme.fgDim
                                 elide: Text.ElideRight
@@ -1244,7 +1244,7 @@ Item {
                         /* Enter hint on selected item */
                         Text {
                             text: "↵"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(13)
                             color: Theme.accent
                             visible: resultsList.currentIndex === rowDelegate.index
@@ -1275,7 +1275,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.currentTab === "clipboard" ? "Clipboard is empty" : (root.currentTab === "commands" ? "No commands found" : "No applications found")
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(12)
                     color: Theme.fgDim
                 }
@@ -1289,7 +1289,7 @@ Item {
 
                 Text {
                     text: resultsModel.count === 1 ? "1 result" : (resultsModel.count + " results")
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(9)
                     color: Theme.fgFaint
                 }

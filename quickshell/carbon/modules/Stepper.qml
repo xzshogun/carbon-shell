@@ -45,7 +45,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: "\u2212"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(13)
                     color: root.disabled ? Theme.fgFaint : Theme.fgDim
                 }
@@ -63,7 +63,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 text: root.minutes + "m"
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: Theme.font
                 font.pixelSize: Theme.fontPx(12)
                 font.weight: Font.Bold
                 color: root.disabled ? Theme.fgFaint : Theme.fg
@@ -78,7 +78,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: "\u002b"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(13)
                     color: root.disabled ? Theme.fgFaint : Theme.fgDim
                 }

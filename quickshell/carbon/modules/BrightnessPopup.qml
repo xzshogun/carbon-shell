@@ -199,7 +199,7 @@ Item {
 
                 Text {
                     text: "Brightness"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(13)
                     font.weight: Font.Bold
                     color: Theme.fg
@@ -209,7 +209,7 @@ Item {
 
                 Text {
                     text: Math.round(root.brightRatio * 100) + "%"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(13)
                     font.weight: Font.DemiBold
                     color: Theme.fgDim

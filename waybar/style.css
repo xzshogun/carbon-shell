@@ -3,7 +3,7 @@
 /* Universal reset */
 * {
     all: unset;
-    font-family: "Rubik", "Google Sans Flex", "JetBrainsMono Nerd Font", "Iosevka Nerd Font Propo", monospace;
+    font-family: "Plus Jakarta Sans", "Google Sans Flex", "Inter", "Rubik", "JetBrainsMono Nerd Font", sans-serif;
 }
 
 /* Main bar container pill using dynamic background and border */

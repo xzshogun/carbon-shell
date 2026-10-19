@@ -133,7 +133,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.timeStr
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(16)
                     font.weight: Font.Bold
                     color: Theme.fg

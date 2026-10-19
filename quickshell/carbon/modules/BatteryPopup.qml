@@ -328,7 +328,7 @@ Item {
 
                         Text {
                             text: "Battery"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(12)
                             font.weight: Font.DemiBold
                             color: Theme.fg
@@ -345,7 +345,7 @@ Item {
 
                         Text {
                             text: Math.round(root.batteryPct * 100) + "%"
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(22)
                             font.weight: Font.Bold
                             color: Theme.fg
@@ -353,7 +353,7 @@ Item {
 
                         Text {
                             text: root.isCharging ? "Charging" : (root.isFull ? "Full" : "Discharging")
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(10)
                             font.weight: Font.Medium
                             color: Theme.fgDim
@@ -382,7 +382,7 @@ Item {
                             id: stateLabel
                             anchors.centerIn: parent
                             text: root.isCharging ? "CHARGING" : (root.isFull ? "FULL" : "ON BATTERY")
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(8)
                             font.weight: Font.Bold
                             color: root.statusColor
@@ -397,7 +397,7 @@ Item {
 
                     Text {
                         text: root.timeEstimateStr
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(11)
                         font.weight: Font.DemiBold
                         color: Theme.fg
@@ -409,7 +409,7 @@ Item {
                         text: (battery && battery.energyRate > 0)
                             ? ("Draw: " + battery.energyRate.toFixed(2) + " W")
                             : "Health: 100%"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(9)
                         color: Theme.fgDim
                     }
@@ -418,7 +418,7 @@ Item {
                         text: (battery && battery.voltage > 0)
                             ? ("Voltage: " + battery.voltage.toFixed(2) + " V")
                             : "DELL CYMGM8A"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(9)
                         color: Theme.fgFaint
                     }
@@ -433,7 +433,7 @@ Item {
                 /* Power Profiles selector */
                 Text {
                     text: "Power Profile"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(9)
                     font.weight: Font.Bold
                     color: Theme.fgDim
@@ -489,7 +489,7 @@ Item {
 
                 Text {
                     text: "Li-ion Battery"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(8)
                     color: Theme.fgFaint
                     Layout.alignment: Qt.AlignRight

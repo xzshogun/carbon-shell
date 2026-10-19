@@ -195,7 +195,7 @@ PanelWindow {
                                 text: "Welcome to Carbon Shell"
                                 font.pixelSize: 22
                                 font.weight: Font.Bold
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 color: "#ffffff"
                             }
 
@@ -213,7 +213,7 @@ PanelWindow {
                                     text: "v2.5 Next-Gen"
                                     font.pixelSize: 11
                                     font.weight: Font.Medium
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     color: "#38bdf8"
                                 }
                             }
@@ -222,7 +222,7 @@ PanelWindow {
                         Text {
                             text: "Adaptive, Atomic & Ultra-Fast Wayland Desktop Environment"
                             font.pixelSize: 13
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             color: "#94a3b8"
                         }
                     }
@@ -293,7 +293,7 @@ PanelWindow {
                                 Text {
                                     text: modelData.icon
                                     font.pixelSize: 16
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     color: rootWindow.currentTab === modelData.id ? "#38bdf8" : "#94a3b8"
                                 }
 
@@ -301,7 +301,7 @@ PanelWindow {
                                     text: modelData.title
                                     font.pixelSize: 13
                                     font.weight: rootWindow.currentTab === modelData.id ? Font.Bold : Font.Normal
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     color: rootWindow.currentTab === modelData.id ? "#ffffff" : "#94a3b8"
                                 }
                             }
@@ -325,7 +325,7 @@ PanelWindow {
                             Text {
                                 text: "Select your primary desktop bar layout. You can switch anytime using the Config Editor."
                                 font.pixelSize: 13
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 color: "#cbd5e1"
                             }
 
@@ -351,8 +351,8 @@ PanelWindow {
 
                                         RowLayout {
                                             spacing: 10
-                                            Text { text: "󱐋"; font.pixelSize: 22; font.family: "JetBrainsMono Nerd Font"; color: "#f43f5e" }
-                                            Text { text: "Vanish Mode (Nucleus)"; font.pixelSize: 16; font.weight: Font.Bold; font.family: "JetBrainsMono Nerd Font"; color: "#ffffff" }
+                                            Text { text: "󱐋"; font.pixelSize: 22; font.family: Theme.font; color: "#f43f5e" }
+                                            Text { text: "Vanish Mode (Nucleus)"; font.pixelSize: 16; font.weight: Font.Bold; font.family: Theme.font; color: "#ffffff" }
                                             Item { Layout.fillWidth: true }
                                             Rectangle {
                                                 width: 60; height: 20; radius: 10
@@ -364,7 +364,7 @@ PanelWindow {
                                         Text {
                                             text: "Barless atomic desktop with animated central clock orb, radial satellites, and gesture navigation. Zero clutter."
                                             font.pixelSize: 12
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             color: "#94a3b8"
                                             wrapMode: Text.WordWrap
                                             Layout.fillWidth: true
@@ -386,8 +386,8 @@ PanelWindow {
 
                                         RowLayout {
                                             spacing: 10
-                                            Text { text: "󰍹"; font.pixelSize: 22; font.family: "JetBrainsMono Nerd Font"; color: "#38bdf8" }
-                                            Text { text: "Notch Mode"; font.pixelSize: 16; font.weight: Font.Bold; font.family: "JetBrainsMono Nerd Font"; color: "#ffffff" }
+                                            Text { text: "󰍹"; font.pixelSize: 22; font.family: Theme.font; color: "#38bdf8" }
+                                            Text { text: "Notch Mode"; font.pixelSize: 16; font.weight: Font.Bold; font.family: Theme.font; color: "#ffffff" }
                                             Item { Layout.fillWidth: true }
                                             Rectangle {
                                                 width: 60; height: 20; radius: 10
@@ -399,7 +399,7 @@ PanelWindow {
                                         Text {
                                             text: "Dynamic camera-notch bar pinned to the top screen edge with animated music wave, status indicators, and popouts."
                                             font.pixelSize: 12
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             color: "#94a3b8"
                                             wrapMode: Text.WordWrap
                                             Layout.fillWidth: true
@@ -421,8 +421,8 @@ PanelWindow {
 
                                         RowLayout {
                                             spacing: 10
-                                            Text { text: "󰹍"; font.pixelSize: 22; font.family: "JetBrainsMono Nerd Font"; color: "#a855f7" }
-                                            Text { text: "Pill Capsule"; font.pixelSize: 16; font.weight: Font.Bold; font.family: "JetBrainsMono Nerd Font"; color: "#ffffff" }
+                                            Text { text: "󰹍"; font.pixelSize: 22; font.family: Theme.font; color: "#a855f7" }
+                                            Text { text: "Pill Capsule"; font.pixelSize: 16; font.weight: Font.Bold; font.family: Theme.font; color: "#ffffff" }
                                             Item { Layout.fillWidth: true }
                                             Rectangle {
                                                 width: 60; height: 20; radius: 10
@@ -434,7 +434,7 @@ PanelWindow {
                                         Text {
                                             text: "Floating rounded capsule island with smooth expanding lobes, quick controls, and integrated workspace switcher."
                                             font.pixelSize: 12
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             color: "#94a3b8"
                                             wrapMode: Text.WordWrap
                                             Layout.fillWidth: true
@@ -456,8 +456,8 @@ PanelWindow {
 
                                         RowLayout {
                                             spacing: 10
-                                            Text { text: "󰇄"; font.pixelSize: 22; font.family: "JetBrainsMono Nerd Font"; color: "#2dd4bf" }
-                                            Text { text: "Minimal Island"; font.pixelSize: 16; font.weight: Font.Bold; font.family: "JetBrainsMono Nerd Font"; color: "#ffffff" }
+                                            Text { text: "󰇄"; font.pixelSize: 22; font.family: Theme.font; color: "#2dd4bf" }
+                                            Text { text: "Minimal Island"; font.pixelSize: 16; font.weight: Font.Bold; font.family: Theme.font; color: "#ffffff" }
                                             Item { Layout.fillWidth: true }
                                             Rectangle {
                                                 width: 60; height: 20; radius: 10
@@ -469,7 +469,7 @@ PanelWindow {
                                         Text {
                                             text: "Micro-sized distraction-free island displaying only essential status icons. Expands on hover for low profile setups."
                                             font.pixelSize: 12
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             color: "#94a3b8"
                                             wrapMode: Text.WordWrap
                                             Layout.fillWidth: true
@@ -489,7 +489,7 @@ PanelWindow {
                             Text {
                                 text: "Theme and color palettes adapt dynamically to your active wallpaper using Material Design 3."
                                 font.pixelSize: 13
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 color: "#cbd5e1"
                             }
 
@@ -507,9 +507,9 @@ PanelWindow {
                                     ColumnLayout {
                                         anchors.centerIn: parent
                                         spacing: 8
-                                        Text { text: "󰔎"; font.pixelSize: 28; font.family: "JetBrainsMono Nerd Font"; color: "#38bdf8"; Layout.alignment: Qt.AlignHCenter }
-                                        Text { text: "Obsidian Dark Mode"; font.pixelSize: 14; font.weight: Font.Bold; font.family: "JetBrainsMono Nerd Font"; color: "#ffffff"; Layout.alignment: Qt.AlignHCenter }
-                                        Text { text: "High-contrast dark glass"; font.pixelSize: 11; font.family: "JetBrainsMono Nerd Font"; color: "#94a3b8"; Layout.alignment: Qt.AlignHCenter }
+                                        Text { text: "󰔎"; font.pixelSize: 28; font.family: Theme.font; color: "#38bdf8"; Layout.alignment: Qt.AlignHCenter }
+                                        Text { text: "Obsidian Dark Mode"; font.pixelSize: 14; font.weight: Font.Bold; font.family: Theme.font; color: "#ffffff"; Layout.alignment: Qt.AlignHCenter }
+                                        Text { text: "High-contrast dark glass"; font.pixelSize: 11; font.family: Theme.font; color: "#94a3b8"; Layout.alignment: Qt.AlignHCenter }
                                     }
                                 }
 
@@ -523,9 +523,9 @@ PanelWindow {
                                     ColumnLayout {
                                         anchors.centerIn: parent
                                         spacing: 8
-                                        Text { text: "󰖨"; font.pixelSize: 28; font.family: "JetBrainsMono Nerd Font"; color: "#f59e0b"; Layout.alignment: Qt.AlignHCenter }
-                                        Text { text: "Luminous Light Mode"; font.pixelSize: 14; font.weight: Font.Bold; font.family: "JetBrainsMono Nerd Font"; color: "#ffffff"; Layout.alignment: Qt.AlignHCenter }
-                                        Text { text: "Clean frosted daylight"; font.pixelSize: 11; font.family: "JetBrainsMono Nerd Font"; color: "#94a3b8"; Layout.alignment: Qt.AlignHCenter }
+                                        Text { text: "󰖨"; font.pixelSize: 28; font.family: Theme.font; color: "#f59e0b"; Layout.alignment: Qt.AlignHCenter }
+                                        Text { text: "Luminous Light Mode"; font.pixelSize: 14; font.weight: Font.Bold; font.family: Theme.font; color: "#ffffff"; Layout.alignment: Qt.AlignHCenter }
+                                        Text { text: "Clean frosted daylight"; font.pixelSize: 11; font.family: Theme.font; color: "#94a3b8"; Layout.alignment: Qt.AlignHCenter }
                                     }
                                 }
                             }
@@ -534,7 +534,7 @@ PanelWindow {
                                 text: "Bundled Wallpaper Presets"
                                 font.pixelSize: 14
                                 font.weight: Font.Bold
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 color: "#ffffff"
                             }
 
@@ -580,13 +580,13 @@ PanelWindow {
                                                 text: modelData.title
                                                 font.pixelSize: 12
                                                 font.weight: Font.Bold
-                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.family: Theme.font
                                                 color: "#ffffff"
                                             }
                                             Text {
                                                 text: modelData.sub
                                                 font.pixelSize: 10
-                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.family: Theme.font
                                                 color: "#94a3b8"
                                             }
                                         }
@@ -605,7 +605,7 @@ PanelWindow {
                             Text {
                                 text: "Essential keybindings to navigate Carbon Shell seamlessly."
                                 font.pixelSize: 13
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 color: "#cbd5e1"
                             }
 
@@ -651,7 +651,7 @@ PanelWindow {
                                                     text: modelData.key
                                                     font.pixelSize: 11
                                                     font.weight: Font.Bold
-                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.family: Theme.font
                                                     color: "#38bdf8"
                                                 }
                                             }
@@ -659,7 +659,7 @@ PanelWindow {
                                             Text {
                                                 text: modelData.desc
                                                 font.pixelSize: 12
-                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.family: Theme.font
                                                 color: "#e2e8f0"
                                                 Layout.fillWidth: true
                                                 elide: Text.ElideRight
@@ -680,7 +680,7 @@ PanelWindow {
                             Text {
                                 text: "Configure initial audio and brightness levels, and toggle essential desktop services."
                                 font.pixelSize: 13
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 color: "#cbd5e1"
                             }
 
@@ -698,10 +698,10 @@ PanelWindow {
                                         anchors.fill: parent
                                         spacing: 8
                                         RowLayout {
-                                            Text { text: "󰕾"; font.pixelSize: 16; font.family: "JetBrainsMono Nerd Font"; color: "#38bdf8" }
-                                            Text { text: "Master Audio Volume"; font.pixelSize: 13; font.weight: Font.Bold; font.family: "JetBrainsMono Nerd Font"; color: "#ffffff" }
+                                            Text { text: "󰕾"; font.pixelSize: 16; font.family: Theme.font; color: "#38bdf8" }
+                                            Text { text: "Master Audio Volume"; font.pixelSize: 13; font.weight: Font.Bold; font.family: Theme.font; color: "#ffffff" }
                                             Item { Layout.fillWidth: true }
-                                            Text { text: "75%"; font.pixelSize: 12; font.family: "JetBrainsMono Nerd Font"; color: "#38bdf8" }
+                                            Text { text: "75%"; font.pixelSize: 12; font.family: Theme.font; color: "#38bdf8" }
                                         }
                                         ProgressBar {
                                             Layout.fillWidth: true
@@ -720,10 +720,10 @@ PanelWindow {
                                         anchors.fill: parent
                                         spacing: 8
                                         RowLayout {
-                                            Text { text: "󰃠"; font.pixelSize: 16; font.family: "JetBrainsMono Nerd Font"; color: "#f59e0b" }
-                                            Text { text: "Display Brightness"; font.pixelSize: 13; font.weight: Font.Bold; font.family: "JetBrainsMono Nerd Font"; color: "#ffffff" }
+                                            Text { text: "󰃠"; font.pixelSize: 16; font.family: Theme.font; color: "#f59e0b" }
+                                            Text { text: "Display Brightness"; font.pixelSize: 13; font.weight: Font.Bold; font.family: Theme.font; color: "#ffffff" }
                                             Item { Layout.fillWidth: true }
-                                            Text { text: "85%"; font.pixelSize: 12; font.family: "JetBrainsMono Nerd Font"; color: "#f59e0b" }
+                                            Text { text: "85%"; font.pixelSize: 12; font.family: Theme.font; color: "#f59e0b" }
                                         }
                                         ProgressBar {
                                             Layout.fillWidth: true
@@ -737,7 +737,7 @@ PanelWindow {
                                 text: "Desktop Integration Services"
                                 font.pixelSize: 14
                                 font.weight: Font.Bold
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 color: "#ffffff"
                             }
 
@@ -762,11 +762,11 @@ PanelWindow {
                                         RowLayout {
                                             anchors.centerIn: parent
                                             spacing: 10
-                                            Text { text: modelData.icon; font.pixelSize: 20; font.family: "JetBrainsMono Nerd Font"; color: modelData.color }
+                                            Text { text: modelData.icon; font.pixelSize: 20; font.family: Theme.font; color: modelData.color }
                                             ColumnLayout {
                                                 spacing: 2
-                                                Text { text: modelData.name; font.pixelSize: 12; font.weight: Font.Bold; font.family: "JetBrainsMono Nerd Font"; color: "#ffffff" }
-                                                Text { text: modelData.active ? "Enabled" : "Disabled"; font.pixelSize: 10; font.family: "JetBrainsMono Nerd Font"; color: "#94a3b8" }
+                                                Text { text: modelData.name; font.pixelSize: 12; font.weight: Font.Bold; font.family: Theme.font; color: "#ffffff" }
+                                                Text { text: modelData.active ? "Enabled" : "Disabled"; font.pixelSize: 10; font.family: Theme.font; color: "#94a3b8" }
                                             }
                                         }
                                     }
@@ -811,7 +811,7 @@ PanelWindow {
                         Text {
                             text: "Don't show this screen again on startup"
                             font.pixelSize: 12
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             color: "#94a3b8"
 
                             MouseArea {
@@ -842,7 +842,7 @@ PanelWindow {
                             anchors.centerIn: parent
                             text: "Skip"
                             font.pixelSize: 13
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             color: skipHover.containsMouse ? "#ffffff" : "#cbd5e1"
                         }
 
@@ -894,7 +894,7 @@ PanelWindow {
                                 text: "Get Started"
                                 font.pixelSize: 14
                                 font.weight: Font.Bold
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 color: "#ffffff"
                             }
                             Text {

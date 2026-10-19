@@ -249,7 +249,7 @@ Item {
 
                     Text {
                         text: root.toastApp
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(10)
                         font.weight: Font.Medium
                         color: Theme.accent ? Theme.accent : "#00F0FF"
@@ -260,7 +260,7 @@ Item {
 
                     Text {
                         text: "Just now"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(9)
                         color: "#66FFFFFF"
                     }
@@ -269,7 +269,7 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: root.toastSummary
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(12)
                     font.weight: Font.DemiBold
                     color: "#FFFFFF"
@@ -280,7 +280,7 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: root.toastBody
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(11)
                     color: "#A0FFFFFF"
                     elide: Text.ElideRight
@@ -373,7 +373,7 @@ Item {
 
                 Text {
                     text: "Notifications"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(13)
                     font.weight: Font.DemiBold
                     color: "#FFFFFF"
@@ -381,7 +381,7 @@ Item {
 
                 Text {
                     text: "(" + root.notifCount + ")"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(11)
                     font.weight: Font.Medium
                     color: "#77FFFFFF"
@@ -403,7 +403,7 @@ Item {
                         id: clearText
                         anchors.centerIn: parent
                         text: "Clear all"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(10)
                         font.weight: Font.Medium
                         color: clearBtnHover.hovered ? "#FFFFFF" : "#B0FFFFFF"
@@ -444,7 +444,7 @@ Item {
                     Text {
                         Layout.alignment: Qt.AlignHCenter
                         text: "No notifications"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(12)
                         font.weight: Font.Medium
                         color: "#66FFFFFF"
@@ -516,7 +516,7 @@ Item {
                                 text: delegateCard.modelData
                                     ? (delegateCard.modelData.summary || delegateCard.modelData.appName || "Notification")
                                     : ""
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(11)
                                 font.weight: Font.DemiBold
                                 color: "#FFFFFF"
@@ -526,7 +526,7 @@ Item {
 
                             Text {
                                 text: delegateCard.modelData ? (delegateCard.modelData.body || "") : ""
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(10)
                                 color: "#99FFFFFF"
                                 elide: Text.ElideRight

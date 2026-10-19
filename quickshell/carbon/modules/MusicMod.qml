@@ -417,7 +417,7 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: root.hasTrack ? (root.trackArtist !== "" ? root.trackArtist : root.trackAlbum) : "Idle"
-                    font.family: "JetBrainsMono Nerd Font"
+                    font.family: Theme.font
                     font.pixelSize: Theme.fontPx(9)
                     font.weight: Font.Medium
                     color: Theme.fgDim
@@ -565,7 +565,7 @@ Item {
                             Text {
                                 anchors.centerIn: parent
                                 text: "\u2039"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(18)
                                 color: Theme.fg
                             }
@@ -586,7 +586,7 @@ Item {
                                 Layout.fillWidth: true
                                 horizontalAlignment: Text.AlignHCenter
                                 text: root.monthNames[root.calMonth]
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(13)
                                 font.weight: Font.Bold
                                 color: Theme.fg
@@ -596,7 +596,7 @@ Item {
                                 Layout.fillWidth: true
                                 horizontalAlignment: Text.AlignHCenter
                                 text: String(root.calYear)
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(10)
                                 color: Theme.fgDim
                             }
@@ -610,7 +610,7 @@ Item {
                             Text {
                                 anchors.centerIn: parent
                                 text: "\u203A"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(18)
                                 color: Theme.fg
                             }
@@ -637,7 +637,7 @@ Item {
                             width: 260 / 7
                             horizontalAlignment: Text.AlignHCenter
                             text: modelData
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(10)
                             font.weight: Font.Bold
                             color: Theme.fgDim
@@ -667,7 +667,7 @@ Item {
                             Text {
                                 anchors.centerIn: parent
                                 text: String(modelData.day)
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(11)
                                 font.weight: modelData.isToday ? Font.Bold : Font.Normal
                                 color: modelData.isToday ? Theme.bg
@@ -818,7 +818,7 @@ Item {
 
                         Text {
                             text: root.playerIdentity
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(10)
                             font.weight: Font.Medium
                             color: Theme.fgDim
@@ -844,7 +844,7 @@ Item {
                         Layout.maximumWidth: 263
                         horizontalAlignment: Text.AlignHCenter
                         text: root.hasTrack ? root.trackTitle : "Nothing Playing"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(14)
                         font.weight: Font.Bold
                         color: Theme.fg
@@ -857,7 +857,7 @@ Item {
                         Layout.maximumWidth: 263
                         horizontalAlignment: Text.AlignHCenter
                         text: root.hasTrack ? (root.trackArtist + (root.trackAlbum !== "" ? " · " + root.trackAlbum : "")) : "Idle"
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(11)
                         color: Theme.fgDim
                         elide: Text.ElideRight
@@ -879,7 +879,7 @@ Item {
 
                     Text {
                         text: root.formatTime(root.currentPosition)
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(10)
                         color: Theme.fgDim
                     }
@@ -897,7 +897,7 @@ Item {
 
                     Text {
                         text: root.formatTime(root.totalLength)
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(10)
                         color: Theme.fgDim
                     }

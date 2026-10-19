@@ -465,7 +465,7 @@ Item {
                         Text {
                             Layout.fillWidth: true
                             text: root.monthNames[root.calMonth] + " " + root.calYear
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(11)
                             font.weight: Font.Bold
                             font.letterSpacing: 1.0
@@ -534,7 +534,7 @@ Item {
                                 Text {
                                     anchors.centerIn: parent
                                     text: modelData
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(9)
                                     font.weight: Font.DemiBold
                                     color: Theme.fgDim
@@ -623,7 +623,7 @@ Item {
                                         anchors.centerIn: parent
                                         anchors.verticalCenterOffset: dayHasEvent ? -2 : 0
                                         text: dayNum
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(10)
                                         font.weight: (isToday || isSelected || dayMouseArea.containsMouse) ? Font.Bold : Font.Normal
                                         color: isToday
@@ -729,7 +729,7 @@ Item {
                             spacing: 0
                             Text {
                                 text: root.selectedDay + " " + root.monthNames[root.calMonth].substring(0, 3) + " " + root.calYear
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(11)
                                 font.weight: Font.Bold
                                 color: Theme.fg
@@ -737,7 +737,7 @@ Item {
                             }
                             Text {
                                 text: root.getSelectedDateWeekday()
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(9)
                                 color: Theme.accentLit
                             }
@@ -791,7 +791,7 @@ Item {
 
                             Text {
                                 text: root.editingEventId.length > 0 ? "Edit Event" : "New Event"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(11)
                                 font.weight: Font.Bold
                                 color: Theme.accentLit
@@ -811,14 +811,14 @@ Item {
                                     anchors.leftMargin: 8
                                     anchors.rightMargin: 8
                                     verticalAlignment: Text.AlignVCenter
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(11)
                                     color: Theme.fg
                                     clip: true
                                     Text {
                                         text: "Event title…"
                                         color: Theme.fgFaint
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(11)
                                         anchors.fill: parent
                                         verticalAlignment: Text.AlignVCenter
@@ -841,14 +841,14 @@ Item {
                                     anchors.leftMargin: 8
                                     anchors.rightMargin: 8
                                     verticalAlignment: Text.AlignVCenter
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(11)
                                     color: Theme.fg
                                     clip: true
                                     Text {
                                         text: "Time (e.g. 15:30 or All day)…"
                                         color: Theme.fgFaint
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(11)
                                         anchors.fill: parent
                                         verticalAlignment: Text.AlignVCenter
@@ -871,7 +871,7 @@ Item {
                                     Text {
                                         anchors.centerIn: parent
                                         text: "Cancel"
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(10)
                                         color: Theme.fgDim
                                     }
@@ -894,7 +894,7 @@ Item {
                                     Text {
                                         anchors.centerIn: parent
                                         text: "Save"
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(10)
                                         font.weight: Font.Bold
                                         color: Theme.isDark ? "#0E0E12" : "#ffffff"
@@ -953,7 +953,7 @@ Item {
                                         Text {
                                             width: parent.width
                                             text: modelData.title
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(10)
                                             font.weight: Font.DemiBold
                                             color: modelData.type === "festival" ? "#ffb86c" : Theme.fg
@@ -963,7 +963,7 @@ Item {
                                         Text {
                                             width: parent.width
                                             text: modelData.type === "festival" ? (modelData.category === "national" ? "National Holiday" : "Indian Festival") : (modelData.time || "All day")
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(8)
                                             color: Theme.fgDim
                                             elide: Text.ElideRight
@@ -1046,7 +1046,7 @@ Item {
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: "No events on this day"
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(10)
                                         color: Theme.fgDim
                                     }
@@ -1063,7 +1063,7 @@ Item {
                                         Text {
                                             anchors.centerIn: parent
                                             text: "+ Add Event"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(9)
                                             font.weight: Font.Bold
                                             color: addEmptyHov.containsMouse ? (Theme.isDark ? "#0E0E12" : "#ffffff") : Theme.accentLit
@@ -1227,7 +1227,7 @@ Item {
 
                         Text {
                             text: root.hourStr
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(42)
                             font.weight: Font.Bold
                             color: Theme.fg
@@ -1244,7 +1244,7 @@ Item {
 
                         Text {
                             text: root.minStr
-                            font.family: "JetBrainsMono Nerd Font"
+                            font.family: Theme.font
                             font.pixelSize: Theme.fontPx(42)
                             font.weight: Font.Bold
                             color: Theme.fg
@@ -1255,7 +1255,7 @@ Item {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: root.fullDateStr
                         visible: root.showDateInClock
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: Theme.font
                         font.pixelSize: Theme.fontPx(9)
                         font.weight: Font.DemiBold
                         font.letterSpacing: 1.0
@@ -1293,7 +1293,7 @@ Item {
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: centerCol.displayedSecStr
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(13)
                                 font.weight: Font.Black
                                 color: Theme.isDark ? "#121118" : "#ffffff"
@@ -1302,7 +1302,7 @@ Item {
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: "SEC"
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: Theme.font
                                 font.pixelSize: Theme.fontPx(6)
                                 font.weight: Font.Bold
                                 font.letterSpacing: 0.8
@@ -1416,7 +1416,7 @@ Item {
                                 Text {
                                     Layout.fillWidth: true
                                     text: root.weatherDayTitle
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(10)
                                     font.weight: Font.Bold
                                     font.letterSpacing: 1.2
@@ -1469,7 +1469,7 @@ Item {
 
                                     Text {
                                         text: root.weatherTemp
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(28)
                                         font.weight: Font.Bold
                                         color: Theme.fg
@@ -1480,7 +1480,7 @@ Item {
                                         spacing: 4
                                         Text {
                                             text: root.weatherCond
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(10)
                                             font.weight: Font.Medium
                                             color: Theme.fgDim
@@ -1488,7 +1488,7 @@ Item {
                                         Text {
                                             visible: WeatherService.city.length > 0
                                             text: "• " + WeatherService.city
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(10)
                                             color: Theme.fgFaint
                                             elide: Text.ElideRight
@@ -1555,7 +1555,7 @@ Item {
                                     text: (Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.description && Pipewire.defaultAudioSink.description.length > 0)
                                         ? Pipewire.defaultAudioSink.description
                                         : (root.mprisPlayer && root.mprisPlayer.identity ? root.mprisPlayer.identity : "Audio Output")
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(9)
                                     font.weight: Font.DemiBold
                                     color: Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.75)
@@ -1575,7 +1575,7 @@ Item {
                                     Text {
                                         Layout.fillWidth: true
                                         text: root.hasMusicTrack ? root.musicTitle : "No Media Playing"
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(11)
                                         font.weight: Font.Bold
                                         color: Theme.fg
@@ -1585,7 +1585,7 @@ Item {
                                     Text {
                                         Layout.fillWidth: true
                                         text: root.hasMusicTrack ? (root.musicArtist || "Unknown Artist") : "Waiting for playback..."
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(8)
                                         font.weight: Font.Normal
                                         color: Theme.accent
@@ -1849,7 +1849,7 @@ Item {
                                 Text {
                                     Layout.fillWidth: true
                                     text: LyricsService.hasTrack ? LyricsService.trackTitle : "Lyrics"
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(9)
                                     font.weight: Font.Bold
                                     color: Theme.fg
@@ -1859,7 +1859,7 @@ Item {
                                 Text {
                                     visible: LyricsService.hasTrack && LyricsService.trackArtist.length > 0
                                     text: LyricsService.trackArtist
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.family: Theme.font
                                     font.pixelSize: Theme.fontPx(8)
                                     color: Theme.fgDim
                                     elide: Text.ElideRight
@@ -1891,7 +1891,7 @@ Item {
                                     Text {
                                         Layout.fillWidth: true
                                         text: LyricsService.prevLine || ""
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(8)
                                         font.weight: Font.Normal
                                         color: Qt.alpha(Theme.fg, 0.35)
@@ -1912,7 +1912,7 @@ Item {
                                             anchors.centerIn: parent
                                             width: parent.width - 10
                                             text: LyricsService.currentLine || "♪ ♫ ♪"
-                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(11)
                                             font.weight: Font.Bold
                                             color: Theme.accentLit
@@ -1927,7 +1927,7 @@ Item {
                                     Text {
                                         Layout.fillWidth: true
                                         text: LyricsService.nextLine || ""
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(8)
                                         font.weight: Font.Normal
                                         color: Qt.alpha(Theme.fg, 0.40)
@@ -1957,7 +1957,7 @@ Item {
                                     Text {
                                         Layout.fillWidth: true
                                         text: LyricsService.trackTitle
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(9)
                                         font.weight: Font.Bold
                                         color: Theme.fg
@@ -1968,7 +1968,7 @@ Item {
                                     Text {
                                         Layout.fillWidth: true
                                         text: "No synced lyrics available"
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(8)
                                         color: Theme.fgDim
                                         horizontalAlignment: Text.AlignHCenter
@@ -1993,7 +1993,7 @@ Item {
                                     Text {
                                         Layout.fillWidth: true
                                         text: "Nothing Playing"
-                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.family: Theme.font
                                         font.pixelSize: Theme.fontPx(9)
                                         font.weight: Font.Bold
                                         color: Theme.fgDim

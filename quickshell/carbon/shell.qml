@@ -2242,7 +2242,7 @@ ShellRoot {
             required property var modelData
 
             screen: modelData
-            color: "#000000"
+            color: "transparent"
             WlrLayershell.namespace: "carbon-cairo-lock"
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: (LockState.isLocked && ShellConfig.cairoModeEnabled) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None

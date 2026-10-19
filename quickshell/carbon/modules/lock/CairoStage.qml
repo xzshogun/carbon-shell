@@ -54,6 +54,7 @@ Item {
         color: "#000000"
         border.width: 0
         z: 0
+        opacity: root.enterProgress * (1.0 - root.exitProgress)
     }
 
     // ── 1a. ReactBits Pure 3D Radial Z-Depth Starfield Background ───────
@@ -61,7 +62,7 @@ Item {
         id: spaceShowerCanvas
         anchors.fill: parent
         z: 1
-        opacity: 0.90
+        opacity: 0.90 * root.enterProgress * Math.max(0.0, 1.0 - Math.pow(root.exitProgress, 1.6))
 
         property color accentColor: highlightColor // Bound to live Matugen primary color
         // Optional speed boost when fast syllables fire, with smooth decay back to chill cruise speed:
@@ -173,6 +174,7 @@ Item {
         id: cairoAmbientBorder
         anchors.fill: parent
         z: 999
+        opacity: root.enterProgress * Math.max(0.0, 1.0 - root.exitProgress * 1.5)
 
         property color glowColor: root.highlightColor
         property real beatPulse: 0.4
@@ -267,35 +269,91 @@ Item {
         }
     }
 
-    // ── 3. Radial Iris Reveal Unlock Controller ──────────────────────────
+    // ── 3. Smooth Cinematic Enter & Exit Animation Controller ───────────
+    property real enterProgress: 0.0
+    property real exitProgress: 0.0
     property real irisRadius: 0.0
     property bool unlocking: false
 
     signal unlocked()
 
-    function triggerUnlock() {
-        if (root.unlocking) return
-        root.unlocking = true
-        irisAnim.restart()
+    // Smooth Entrance Sequence
+    ParallelAnimation {
+        id: enterAnim
+        running: true
+
+        NumberAnimation {
+            target: root
+            property: "enterProgress"
+            from: 0.0
+            to: 1.0
+            duration: 440
+            easing.type: Easing.OutCubic
+        }
+
+        NumberAnimation {
+            target: spaceShowerCanvas
+            property: "warpSpeed"
+            from: 0.024
+            to: 0.0065
+            duration: 650
+            easing.type: Easing.OutQuad
+        }
     }
 
-    NumberAnimation {
-        id: irisAnim
-        target: root
-        property: "irisRadius"
-        from: 0.0
-        to: 950.0
-        duration: 480
-        easing.type: Easing.InOutCubic
+    // Smooth Exit (Unlock) Sequence
+    ParallelAnimation {
+        id: exitAnim
+
+        NumberAnimation {
+            target: root
+            property: "exitProgress"
+            from: 0.0
+            to: 1.0
+            duration: 420
+            easing.type: Easing.InOutCubic
+        }
+
+        NumberAnimation {
+            target: root
+            property: "irisRadius"
+            from: 0.0
+            to: Math.max(root.width, root.height) * 1.35
+            duration: 420
+            easing.type: Easing.OutCubic
+        }
+
+        NumberAnimation {
+            target: spaceShowerCanvas
+            property: "warpSpeed"
+            from: 0.0065
+            to: 0.048
+            duration: 420
+            easing.type: Easing.InQuad
+        }
+
         onFinished: {
             root.unlocked()
             LockState.finishUnlock()
         }
     }
 
+    function triggerUnlock() {
+        if (root.unlocking) return
+        root.unlocking = true
+        exitAnim.restart()
+    }
+
+    Connections {
+        target: LockState
+        function onRequestUnlock() {
+            root.triggerUnlock()
+        }
+    }
+
     property bool readyToUnlock: false
     Timer {
-        interval: 350
+        interval: 220
         running: true
         repeat: false
         onTriggered: root.readyToUnlock = true
@@ -324,7 +382,7 @@ Item {
             event.accepted = true
             lyricEngine.syncOffsetMs += 50
             root.showOffsetToast(lyricEngine.syncOffsetMs)
-        } else if (root.readyToUnlock && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
+        } else if (root.readyToUnlock && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space || event.key === Qt.Key_Escape)) {
             event.accepted = true
             root.triggerUnlock()
         }
@@ -570,8 +628,11 @@ Item {
         id: stageContainer
         anchors.fill: parent
         z: 2
-        visible: (lyricEngine.hasLyrics || root.hasActiveWords) && root.irisRadius < 900
-        opacity: root.unlocking ? Math.max(0.0, 1.0 - root.irisRadius / 400.0) : 1.0
+        visible: (lyricEngine.hasLyrics || root.hasActiveWords) && opacity > 0.005
+        opacity: root.enterProgress * Math.max(0.0, 1.0 - root.exitProgress * 2.2)
+        scale: (0.94 + 0.06 * root.enterProgress) * (1.0 + root.exitProgress * 0.12)
+        transformOrigin: Item.Center
+        y: (1.0 - root.enterProgress) * 18
 
         CairoWordDelegate { id: d0 }
         CairoWordDelegate { id: d1 }
@@ -700,8 +761,11 @@ Item {
         id: standbyFallback
         anchors.centerIn: parent
         z: 1
-        visible: !root.hasActiveWords && root.irisRadius < 900
-        opacity: root.unlocking ? Math.max(0.0, 1.0 - root.irisRadius / 400.0) : (root.hasActiveWords ? 0.0 : 0.88)
+        visible: !root.hasActiveWords && opacity > 0.005
+        opacity: root.hasActiveWords ? 0.0 : (0.88 * root.enterProgress * Math.max(0.0, 1.0 - root.exitProgress * 2.2))
+        scale: (0.94 + 0.06 * root.enterProgress) * (1.0 + root.exitProgress * 0.12)
+        transformOrigin: Item.Center
+        y: (1.0 - root.enterProgress) * 18
 
         Behavior on opacity { NumberAnimation { duration: 250 } }
 
@@ -743,30 +807,20 @@ Item {
         }
     }
 
-    // ── 7. Radial Iris Reveal Cutout Surface ──────────────────────────────
-    Canvas {
-        id: irisCanvas
-        anchors.fill: parent
-        z: 25
-        visible: root.irisRadius > 0.1
-
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.clearRect(0, 0, width, height)
-            if (root.irisRadius <= 0.1) return
-
-            ctx.save()
-            ctx.fillStyle = "#000000"
-            ctx.beginPath()
-            ctx.rect(0, 0, width, height)
-            ctx.arc(root.cx, root.cy, root.irisRadius, 0, 2 * Math.PI, true)
-            ctx.closePath()
-            ctx.fill()
-            ctx.restore()
-        }
+    // ── 7. Native GPU Hardware-Accelerated Iris Shockwave Ring ───────────
+    Rectangle {
+        id: exitApertureRing
+        anchors.centerIn: parent
+        width: root.irisRadius * 2
+        height: width
+        radius: width / 2
+        color: "transparent"
+        border.width: Math.max(0, (1.0 - root.exitProgress) * 4)
+        border.color: root.highlightColor
+        opacity: Math.sin(Math.min(1.0, root.exitProgress * 1.35) * Math.PI) * 0.85
+        visible: root.unlocking && opacity > 0.01
+        z: 15
     }
-
-    onIrisRadiusChanged: irisCanvas.requestPaint()
 
     // ── 8. Sync Offset OSD Toast ──────────────────────────────────────────
     Rectangle {

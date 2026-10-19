@@ -89,16 +89,32 @@ Singleton {
         }
     }
 
+    signal requestUnlock()
+
+    Timer {
+        id: fallbackUnlockTimer
+        interval: 650
+        repeat: false
+        onTriggered: {
+            if (root.isLocked) {
+                root.finishUnlock()
+            }
+        }
+    }
+
     function lock() {
         root.isLocked = true
         console.log("[LockState] Cairo lock activated (RAM lazy-load start)")
     }
 
     function unlock() {
-        root.finishUnlock()
+        if (!root.isLocked) return
+        root.requestUnlock()
+        fallbackUnlockTimer.restart()
     }
 
     function finishUnlock() {
+        fallbackUnlockTimer.stop()
         root.isLocked = false
         console.log("[LockState] Cairo unlocked -> Loader destroyed (0 MB RAM)")
     }

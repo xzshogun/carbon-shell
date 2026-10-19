@@ -789,17 +789,12 @@ ShellRoot {
     /* ── Mode Transitions ───────────────────────────────────────────── */
     signal triggerWallpaperTransition()
     property bool nucleusTransitionActive: false
-    property bool nucleusTransitionEnabled: true
+    property bool nucleusTransitionEnabled: false
     property string nucleusTransitionWord: "Wooshh!!"
     property string nucleusTransitionAnimation: "quantum"
 
     function startNucleusTransition(force) {
-        if (!force && !root.nucleusTransitionEnabled) {
-            root.barMode = "nucleus"
-            return
-        }
-        root.nucleusTransitionActive = true
-        root.triggerWallpaperTransition()
+        root.barMode = "nucleus"
     }
 
     function finishNucleusTransition() {
@@ -889,9 +884,7 @@ ShellRoot {
             if (txt.length > 0) {
                 const d = JSON.parse(txt)
                 if (d.nucleus) {
-                    if (d.nucleus.transition !== undefined) {
-                        root.nucleusTransitionEnabled = Boolean(d.nucleus.transition)
-                    }
+                    root.nucleusTransitionEnabled = false
                     if (d.nucleus.transitionWord) {
                         root.nucleusTransitionWord = String(d.nucleus.transitionWord)
                     }
@@ -943,10 +936,6 @@ ShellRoot {
         if (m === "vanish") m = "nucleus"
         if (m === "island") m = "notch"
         if (m === "minimal_notch") m = "minimal"
-        if (m === "nucleus" && root.barMode !== "nucleus" && root.nucleusTransitionEnabled) {
-            root.startNucleusTransition(false)
-            return
-        }
         root._switchingBarMode = true
         switchGuardTimer.restart()
         root.barMode = m
@@ -3438,9 +3427,9 @@ ShellRoot {
         }
     }
 
-    /* ── Nucleus Mode-Switch Transition Overlay Window (~2.3s) ── */
+    /* ── Nucleus Mode-Switch Transition Overlay Window (Disabled) ── */
     Variants {
-        model: root.nucleusTransitionActive ? Quickshell.screens : []
+        model: []
 
         PanelWindow {
             id: nucleusTransitionWindow

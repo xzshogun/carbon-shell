@@ -56,69 +56,59 @@ Item {
         z: 0
     }
 
-    // ── 1a. ReactBits Deep Space Starfield & Meteor Shower Background ────
+    // ── 1a. ReactBits Pure 3D Radial Z-Depth Starfield Background ───────
     Canvas {
         id: spaceShowerCanvas
         anchors.fill: parent
         z: 1
-        opacity: 0.85
+        opacity: 0.90
 
-        property color starColor: "#ffffff"
-        property color meteorAccent: root.highlightColor // Bound to live Matugen primary color
+        property color accentColor: highlightColor // Bound to live Matugen primary color
+        // Optional speed boost when fast syllables fire, with smooth decay back to chill cruise speed:
+        property real warpSpeed: 0.0065
         property var stars: []
-        property var meteors: []
-        property real tickPhase: 0.0
 
-        function initSpace() {
-            var s = [];
-            for (var i = 0; i < 48; i++) {
-                s.push({
-                    x: Math.random(),
-                    y: Math.random(),
-                    r: 0.7 + Math.random() * 1.3,
-                    baseAlpha: 0.12 + Math.random() * 0.28,
-                    speed: 0.8 + Math.random() * 2.2,
-                    offset: Math.random() * 6.28
-                });
-            }
-            stars = s;
-
-            var m = [];
-            for (var j = 0; j < 3; j++) {
-                m.push(spawnMeteor(true));
-            }
-            meteors = m;
-        }
-
-        function spawnMeteor(randomProgress) {
+        function spawnStar(randomDepth) {
+            // Spawn in a ring outside the dead-center 6% so stars never pop directly inside the Stage 0 text:
+            var angle = Math.random() * Math.PI * 2;
+            var radius = 0.06 + Math.random() * 0.44;
             return {
-                x: 0.15 + Math.random() * 0.85,
-                y: randomProgress ? Math.random() * 0.8 : (-0.05 - Math.random() * 0.25),
-                len: 95 + Math.random() * 85,
-                speed: 0.0045 + Math.random() * 0.0035,
-                alpha: 0.45 + Math.random() * 0.45,
-                delay: randomProgress ? 0 : Math.floor(Math.random() * 90)
+                x: Math.cos(angle) * radius,
+                y: Math.sin(angle) * radius,
+                z: randomDepth ? (0.12 + Math.random() * 0.88) : 1.0,
+                pz: 1.0,
+                size: 0.65 + Math.random() * 1.15,
+                isAccent: Math.random() < 0.28 // 28% of stars carry a soft Matugen accent tint
             };
         }
 
-        Component.onCompleted: initSpace()
+        function initWarpStars() {
+            var arr = [];
+            for (var i = 0; i < 95; i++) {
+                var st = spawnStar(true);
+                st.pz = st.z;
+                arr.push(st);
+            }
+            stars = arr;
+        }
+
+        Component.onCompleted: initWarpStars()
 
         Timer {
             interval: 16
             running: spaceShowerCanvas.visible
             repeat: true
             onTriggered: {
-                spaceShowerCanvas.tickPhase += 0.035;
-                for (var i = 0; i < spaceShowerCanvas.meteors.length; i++) {
-                    var m = spaceShowerCanvas.meteors[i];
-                    if (m.delay > 0) {
-                        m.delay -= 1;
-                        continue;
-                    }
-                    m.x -= m.speed * 0.78; // Diagonal 215-degree ReactBits meteor angle
-                    m.y += m.speed;
-                    if (m.x < -0.15 || m.y > 1.15) {
-                        spaceShowerCanvas.meteors[i] = spaceShowerCanvas.spawnMeteor(false);
+                var sList = spaceShowerCanvas.stars;
+                var spd = spaceShowerCanvas.warpSpeed;
+                for (var i = 0; i < sList.length; i++) {
+                    var st = sList[i];
+                    st.pz = st.z;
+                    st.z -= spd;
+
+                    if (st.z <= 0.04) {
+                        var fresh = spaceShowerCanvas.spawnStar(false);
+                        sList[i] = fresh;
                     }
                 }
                 spaceShowerCanvas.requestPaint();
@@ -129,45 +119,50 @@ Item {
             var ctx = getContext("2d");
             ctx.clearRect(0, 0, width, height);
 
-            // 1. Subtle twinkling deep-space dust stars (kept subtle so lyrics stay 100% readable)
+            var cx = width * 0.5;
+            var cy = height * 0.5;
+            var ar = Math.round(accentColor.r * 255);
+            var ag = Math.round(accentColor.g * 255);
+            var ab = Math.round(accentColor.b * 255);
+
             for (var i = 0; i < stars.length; i++) {
                 var st = stars[i];
-                var tw = st.baseAlpha * (0.55 + 0.45 * Math.sin(tickPhase * st.speed + st.offset));
-                ctx.fillStyle = "rgba(255, 255, 255, " + tw.toFixed(3) + ")";
-                ctx.beginPath();
-                ctx.arc(st.x * width, st.y * height, st.r, 0, Math.PI * 2);
-                ctx.fill();
-            }
 
-            // 2. ReactBits-style diagonal shooting meteors with tapered glowing tails
-            for (var j = 0; j < meteors.length; j++) {
-                var m = meteors[j];
-                if (m.delay > 0) continue;
-                var headX = m.x * width;
-                var headY = m.y * height;
-                var tailX = headX + m.len * 0.78;
-                var tailY = headY - m.len;
+                // 3D perspective projection from center (cx, cy)
+                var sx = cx + (st.x / st.z) * width;
+                var sy = cy + (st.y / st.z) * height;
 
-                var mr = Math.round(meteorAccent.r * 255);
-                var mg = Math.round(meteorAccent.g * 255);
-                var mb = Math.round(meteorAccent.b * 255);
-                var grad = ctx.createLinearGradient(headX, headY, tailX, tailY);
-                grad.addColorStop(0.0, "rgba(255, 255, 255, " + m.alpha.toFixed(3) + ")");
-                grad.addColorStop(0.25, "rgba(" + mr + ", " + mg + ", " + mb + ", " + (m.alpha * 0.75).toFixed(3) + ")");
-                grad.addColorStop(1.0, "rgba(0, 0, 0, 0.0)");
+                // Recycle immediately if projected outside screen bounds
+                if (sx < -20 || sx > width + 20 || sy < -20 || sy > height + 20) {
+                    stars[i] = spawnStar(false);
+                    continue;
+                }
 
-                ctx.strokeStyle = grad;
-                ctx.lineWidth = 1.8;
+                // Previous depth position for the subtle radial motion tail
+                var tailZ = Math.min(1.0, st.z + warpSpeed * 2.8);
+                var px = cx + (st.x / tailZ) * width;
+                var py = cy + (st.y / tailZ) * height;
+
+                // Smooth fade-in from deep space (z=1.0 -> alpha=0) to foreground (z=0.1 -> alpha=0.85)
+                var depthProgress = Math.max(0.0, Math.min(1.0, 1.0 - st.z));
+                var alpha = Math.pow(depthProgress, 1.5) * 0.82;
+                var radius = st.size * (0.45 + depthProgress * 1.45);
+
+                var colorRgb = st.isAccent ? (ar + "," + ag + "," + ab) : "255,255,255";
+
+                // Subtle radial warp streak line behind each star
+                ctx.strokeStyle = "rgba(" + colorRgb + "," + (alpha * 0.52).toFixed(3) + ")";
+                ctx.lineWidth = Math.max(0.6, radius * 0.75);
                 ctx.lineCap = "round";
                 ctx.beginPath();
-                ctx.moveTo(headX, headY);
-                ctx.lineTo(tailX, tailY);
+                ctx.moveTo(px, py);
+                ctx.lineTo(sx, sy);
                 ctx.stroke();
 
-                // Glowing meteor head spark
-                ctx.fillStyle = "rgba(255, 255, 255, " + Math.min(1.0, m.alpha + 0.2).toFixed(3) + ")";
+                // Crisp star head
+                ctx.fillStyle = "rgba(255,255,255," + Math.min(0.95, alpha * 1.15).toFixed(3) + ")";
                 ctx.beginPath();
-                ctx.arc(headX, headY, 1.9, 0, Math.PI * 2);
+                ctx.arc(sx, sy, radius * 0.7, 0, Math.PI * 2);
                 ctx.fill();
             }
         }

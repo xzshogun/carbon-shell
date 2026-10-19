@@ -38,7 +38,7 @@ hl.bind(mainMod .. " + " .. "SHIFT" .. " + Q", hl.dsp.exec_cmd("~/.config/hypr/s
 -- dynamically from ~/.config/hypr/current-mode-keybinds.lua
 -- ==============================================================================
 -- Carbon Config Editor GUI (Settings)
-hl.bind(mainMod .. " + comma", hl.dsp.exec_cmd("/home/shogun/.config/hypr/scripts/carbon-config-editor"))
+hl.bind(mainMod .. " + comma", hl.dsp.exec_cmd("~/.config/hypr/scripts/carbon-config-editor"))
 
 -- Carbon Pomodoro Timer
 hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("~/.config/hypr/scripts/carbon-pomodoro"))
@@ -114,7 +114,7 @@ hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 -- ==============================================================================
 -- HARDWARE & MEDIA KEYS
 -- ==============================================================================
-local homeDir = os.getenv("HOME") or "/home/shogun"
+local homeDir = os.getenv("HOME") or ("/home/" .. (os.getenv("USER") or "user"))
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(homeDir .. "/.config/hypr/scripts/volume.sh --inc"), { repeating = true, locked = true })
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(homeDir .. "/.config/hypr/scripts/volume.sh --dec"), { repeating = true, locked = true })
 hl.bind("XF86AudioMute", hl.dsp.exec_cmd(homeDir .. "/.config/hypr/scripts/volume.sh --toggle"), { repeating = true, locked = true })

@@ -34,7 +34,7 @@ Singleton {
     property real islandExclusiveZone: 0
     property var dynamicIslandLeftSwipeItems: ["clock", "lyrics", "custom"]
     property string wallpaperPath: ""
-    property string wallpaperLibraryPath: (Quickshell.env("HOME") || "/home/shogun") + "/Pictures/Wallpapers"
+    property string wallpaperLibraryPath: (Quickshell.env("HOME") || "") + "/Pictures/Wallpapers"
     property bool notchMode: false
 
     FileView {

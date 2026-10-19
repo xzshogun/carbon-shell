@@ -11,7 +11,7 @@ if [ "$1" != "--force" ] && [ -f "$DONE_FILE" ]; then
     exit 0
 fi
 
-QS_BIN="/home/shogun/.local/bin/quickshell"
+QS_BIN="$HOME/.local/bin/quickshell"
 if ! command -v "$QS_BIN" &>/dev/null; then
     QS_BIN="quickshell"
 fi

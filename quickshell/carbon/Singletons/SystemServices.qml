@@ -10,7 +10,7 @@ Singleton {
 
     property var cavaLevels: [0, 0, 0, 0, 0]
     property int cavaActiveClients: 0
-    readonly property string cavaConfPath: (Quickshell.env("HOME") || "/home/shogun") + "/.config/hypr/cava-island.conf"
+    readonly property string cavaConfPath: (Quickshell.env("HOME") || "") + "/.config/hypr/cava-island.conf"
 
     signal brightnessSnapshotReady(real value, string errorString)
     signal brightnessSetFinished(real value, bool success, string errorString)

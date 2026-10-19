@@ -707,7 +707,7 @@ PanelWindow {
             "if [ -z \"$WP\" ]; then exit 1; fi\n" +
             "APPLY_SCRIPT=\"$HOME/.config/carbon/scripts/wp-apply.sh\"\n" +
             "[ -f \"$APPLY_SCRIPT\" ] || APPLY_SCRIPT=\"$HOME/.config/hypr/scripts/wp-apply.sh\"\n" +
-            "[ -f \"$APPLY_SCRIPT\" ] || APPLY_SCRIPT=\"/home/shogun/carbon-shell/hypr/scripts/wp-apply.sh\"\n" +
+            "[ -f \"$APPLY_SCRIPT\" ] || APPLY_SCRIPT=\"$HOME/carbon-shell/hypr/scripts/wp-apply.sh\"\n" +
             "if [ -f \"$APPLY_SCRIPT\" ]; then\n" +
             "    exec bash \"$APPLY_SCRIPT\" \"$WP\"\n" +
             "else\n" +

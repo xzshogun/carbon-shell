@@ -65,59 +65,60 @@ import sys, os
 
 mode = sys.argv[1]
 lua_file = sys.argv[2]
+home = os.environ.get("HOME", os.path.expanduser("~"))
 
 lua_bindings = {
-    "minimal": """-- Active Mode: Minimal Notch / Tide Island
-hl.bind("SUPER + SHIFT + E", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call tide toggleControlCenter"))
-hl.bind("SUPER + R", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call tide toggleApplicationLauncher"))
-hl.bind("SUPER + M", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call tide togglePlayer"))
-hl.bind("SUPER + N", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call tide toggleWallpaperPicker"))
-hl.bind("SUPER + SHIFT + N", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call tide toggleNotificationCenter"))
-hl.bind("SUPER + SHIFT + P", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call tide togglePowerMenu"))
-hl.bind("SUPER + Tab", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call overview toggle"))
-hl.bind("SUPER + Down", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call tide showClock"))
-hl.bind("SUPER + Right", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call tide swipeRight"))
-hl.bind("SUPER + Left", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call tide swipeLeft"))
-hl.bind("SUPER + B", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p /home/shogun/.local/share/quickshell/carbon call tide toggle"))
-hl.bind("SUPER + Up", hl.dsp.focus({ direction = "up" }))
-hl.bind("SUPER + ALT + Left", hl.dsp.focus({ direction = "left" }))
-hl.bind("SUPER + ALT + Right", hl.dsp.focus({ direction = "right" }))
-hl.bind("SUPER + ALT + Up", hl.dsp.focus({ direction = "up" }))
-hl.bind("SUPER + ALT + Down", hl.dsp.focus({ direction = "down" }))
+    "minimal": f"""-- Active Mode: Minimal Notch / Tide Island
+hl.bind("SUPER + SHIFT + E", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p {home}/.local/share/quickshell/carbon call tide toggleControlCenter"))
+hl.bind("SUPER + R", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p {home}/.local/share/quickshell/carbon call tide toggleApplicationLauncher"))
+hl.bind("SUPER + M", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p {home}/.local/share/quickshell/carbon call tide togglePlayer"))
+hl.bind("SUPER + N", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p {home}/.local/share/quickshell/carbon call tide toggleWallpaperPicker"))
+hl.bind("SUPER + SHIFT + N", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p {home}/.local/share/quickshell/carbon call tide toggleNotificationCenter"))
+hl.bind("SUPER + SHIFT + P", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p {home}/.local/share/quickshell/carbon call tide togglePowerMenu"))
+hl.bind("SUPER + Tab", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p {home}/.local/share/quickshell/carbon call overview toggle"))
+hl.bind("SUPER + Down", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p {home}/.local/share/quickshell/carbon call tide showClock"))
+hl.bind("SUPER + Right", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p {home}/.local/share/quickshell/carbon call tide swipeRight"))
+hl.bind("SUPER + Left", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p {home}/.local/share/quickshell/carbon call tide swipeLeft"))
+hl.bind("SUPER + B", hl.dsp.exec_cmd("/usr/bin/quickshell ipc --any-display -p {home}/.local/share/quickshell/carbon call tide toggle"))
+hl.bind("SUPER + Up", hl.dsp.focus({{ direction = "up" }}))
+hl.bind("SUPER + ALT + Left", hl.dsp.focus({{ direction = "left" }}))
+hl.bind("SUPER + ALT + Right", hl.dsp.focus({{ direction = "right" }}))
+hl.bind("SUPER + ALT + Up", hl.dsp.focus({{ direction = "up" }}))
+hl.bind("SUPER + ALT + Down", hl.dsp.focus({{ direction = "down" }}))
 """,
-    "notch": """-- Active Mode: Carbon Notch
-hl.bind("SUPER + B", hl.dsp.exec_cmd("/home/shogun/.config/hypr/scripts/carbon-ipc.sh center-dashboard"))
-hl.bind("SUPER + K", hl.dsp.exec_cmd("/home/shogun/.config/hypr/scripts/carbon-ipc.sh spotlight"))
+    "notch": f"""-- Active Mode: Carbon Notch
+hl.bind("SUPER + B", hl.dsp.exec_cmd("{home}/.config/hypr/scripts/carbon-ipc.sh center-dashboard"))
+hl.bind("SUPER + K", hl.dsp.exec_cmd("{home}/.config/hypr/scripts/carbon-ipc.sh spotlight"))
 hl.bind("SUPER + C", hl.dsp.exec_cmd("hyprpicker -a"))
-hl.bind("SUPER + SHIFT + B", hl.dsp.exec_cmd("/home/shogun/.config/hypr/scripts/carbon-ipc.sh controls"))
-hl.bind("SUPER + SHIFT + P", hl.dsp.exec_cmd("/home/shogun/.config/hypr/scripts/carbon-ipc.sh power"))
-hl.bind("SUPER + Left", hl.dsp.window.move({ direction = "l" }))
-hl.bind("SUPER + Right", hl.dsp.window.move({ direction = "r" }))
-hl.bind("SUPER + Up", hl.dsp.window.move({ direction = "u" }))
-hl.bind("SUPER + Down", hl.dsp.window.move({ direction = "d" }))
+hl.bind("SUPER + SHIFT + B", hl.dsp.exec_cmd("{home}/.config/hypr/scripts/carbon-ipc.sh controls"))
+hl.bind("SUPER + SHIFT + P", hl.dsp.exec_cmd("{home}/.config/hypr/scripts/carbon-ipc.sh power"))
+hl.bind("SUPER + Left", hl.dsp.window.move({{ direction = "l" }}))
+hl.bind("SUPER + Right", hl.dsp.window.move({{ direction = "r" }}))
+hl.bind("SUPER + Up", hl.dsp.window.move({{ direction = "u" }}))
+hl.bind("SUPER + Down", hl.dsp.window.move({{ direction = "d" }}))
 """,
-    "pill": """-- Active Mode: Pill / Waybar
+    "pill": f"""-- Active Mode: Pill / Waybar
 hl.bind("SUPER + C", hl.dsp.exec_cmd("hyprpicker -a"))
-hl.bind("SUPER + B", hl.dsp.exec_cmd("/home/shogun/.config/hypr/scripts/carbon-ipc.sh controls"))
-hl.bind("SUPER + Left", hl.dsp.window.move({ direction = "l" }))
-hl.bind("SUPER + Right", hl.dsp.window.move({ direction = "r" }))
-hl.bind("SUPER + Up", hl.dsp.window.move({ direction = "u" }))
-hl.bind("SUPER + Down", hl.dsp.window.move({ direction = "d" }))
+hl.bind("SUPER + B", hl.dsp.exec_cmd("{home}/.config/hypr/scripts/carbon-ipc.sh controls"))
+hl.bind("SUPER + Left", hl.dsp.window.move({{ direction = "l" }}))
+hl.bind("SUPER + Right", hl.dsp.window.move({{ direction = "r" }}))
+hl.bind("SUPER + Up", hl.dsp.window.move({{ direction = "u" }}))
+hl.bind("SUPER + Down", hl.dsp.window.move({{ direction = "d" }}))
 """
 ,
-    "vanish": """-- Active Mode: Vanish / Nucleus
-hl.bind("SUPER + Super_L", hl.dsp.exec_cmd("sh /home/shogun/.config/carbon/scripts/carbon-vanish-dispatch.sh toggle-hub"), { release = true })
-hl.bind("SUPER + Super_R", hl.dsp.exec_cmd("sh /home/shogun/.config/carbon/scripts/carbon-vanish-dispatch.sh toggle-hub"), { release = true })
-hl.bind("SUPER + S", hl.dsp.exec_cmd("sh /home/shogun/.config/carbon/scripts/carbon-vanish-dispatch.sh launcher"))
-hl.bind("SUPER + M", hl.dsp.exec_cmd("sh /home/shogun/.config/carbon/scripts/carbon-vanish-dispatch.sh lyrics"))
-hl.bind("SUPER + W", hl.dsp.exec_cmd("sh /home/shogun/.config/carbon/scripts/carbon-ipc.sh wallpaper"))
-hl.bind("SUPER + A", hl.dsp.exec_cmd("sh /home/shogun/.config/carbon/scripts/carbon-vanish-dispatch.sh focus-alerts"))
-hl.bind("SUPER + B", hl.dsp.exec_cmd("sh /home/shogun/.config/carbon/scripts/carbon-vanish-dispatch.sh quick-toggles"))
+    "vanish": f"""-- Active Mode: Vanish / Nucleus
+hl.bind("SUPER + Super_L", hl.dsp.exec_cmd("sh {home}/.config/carbon/scripts/carbon-vanish-dispatch.sh toggle-hub"), {{ release = true }})
+hl.bind("SUPER + Super_R", hl.dsp.exec_cmd("sh {home}/.config/carbon/scripts/carbon-vanish-dispatch.sh toggle-hub"), {{ release = true }})
+hl.bind("SUPER + S", hl.dsp.exec_cmd("sh {home}/.config/carbon/scripts/carbon-vanish-dispatch.sh launcher"))
+hl.bind("SUPER + M", hl.dsp.exec_cmd("sh {home}/.config/carbon/scripts/carbon-vanish-dispatch.sh lyrics"))
+hl.bind("SUPER + W", hl.dsp.exec_cmd("sh {home}/.config/carbon/scripts/carbon-ipc.sh wallpaper"))
+hl.bind("SUPER + A", hl.dsp.exec_cmd("sh {home}/.config/carbon/scripts/carbon-vanish-dispatch.sh focus-alerts"))
+hl.bind("SUPER + B", hl.dsp.exec_cmd("sh {home}/.config/carbon/scripts/carbon-vanish-dispatch.sh quick-toggles"))
 hl.bind("SUPER + C", hl.dsp.exec_cmd("hyprpicker -a"))
-hl.bind("SUPER + Left", hl.dsp.window.move({ direction = "l" }))
-hl.bind("SUPER + Right", hl.dsp.window.move({ direction = "r" }))
-hl.bind("SUPER + Up", hl.dsp.window.move({ direction = "u" }))
-hl.bind("SUPER + Down", hl.dsp.window.move({ direction = "d" }))
+hl.bind("SUPER + Left", hl.dsp.window.move({{ direction = "l" }}))
+hl.bind("SUPER + Right", hl.dsp.window.move({{ direction = "r" }}))
+hl.bind("SUPER + Up", hl.dsp.window.move({{ direction = "u" }}))
+hl.bind("SUPER + Down", hl.dsp.window.move({{ direction = "d" }}))
 """
 }
 

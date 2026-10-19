@@ -20,11 +20,11 @@
     ],
     "clock": {
         "format": "{:%H}",
-        "on-click": "/home/shogun/.config/hypr/scripts/carbon-ipc.sh dashboard"
+        "on-click": "$HOME/.config/hypr/scripts/carbon-ipc.sh dashboard"
     },
     "clock#right": {
         "format": "{:%M}",
-        "on-click": "/home/shogun/.config/hypr/scripts/carbon-ipc.sh dashboard"
+        "on-click": "$HOME/.config/hypr/scripts/carbon-ipc.sh dashboard"
     },
     "hyprland/workspaces": {
         "format": "{icon}",
@@ -55,7 +55,7 @@
         "tooltip-format-ethernet": "{ifname} ",
         "tooltip-format-disconnected": "Disconnected",
         "max-length": 50,
-        "on-click": "/home/shogun/.config/hypr/scripts/carbon-ipc.sh wifi",
+        "on-click": "$HOME/.config/hypr/scripts/carbon-ipc.sh wifi",
         "on-click-right": "kitty -e nmtui"
     },
     "battery": {
@@ -89,7 +89,7 @@
                 "󰂅"
             ]
         },
-        "on-click": "/home/shogun/.config/hypr/scripts/carbon-ipc.sh battery"
+        "on-click": "$HOME/.config/hypr/scripts/carbon-ipc.sh battery"
     },
     "pulseaudio": {
         "format": "{icon} {volume}%",
@@ -109,7 +109,7 @@
             ]
         },
         "scroll-step": 1,
-        "on-click": "/home/shogun/.config/hypr/scripts/carbon-ipc.sh mixer",
+        "on-click": "$HOME/.config/hypr/scripts/carbon-ipc.sh mixer",
         "on-click-right": "pavucontrol"
     },
     "cava": {
@@ -159,6 +159,6 @@
         },
         "max-length": 30,
         "interval": 1,
-        "on-click": "/home/shogun/.config/hypr/scripts/carbon-ipc.sh small-music"
+        "on-click": "$HOME/.config/hypr/scripts/carbon-ipc.sh small-music"
     }
 }

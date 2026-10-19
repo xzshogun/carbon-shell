@@ -21,7 +21,7 @@ Item {
 
     Process {
         id: powerProfileGetProc
-        command: [(Quickshell.env("HOME") || "/home/shogun") + "/.config/hypr/scripts/carbon-power-profile.sh", "get"]
+        command: [(Quickshell.env("HOME") || "") + "/.config/hypr/scripts/carbon-power-profile.sh", "get"]
         stdout: StdioCollector {
             onTextChanged: {
                 if (text) {
@@ -40,7 +40,7 @@ Item {
 
     function setPowerProfile(modeName) {
         controlCenter.currentPowerProfile = modeName;
-        Quickshell.execDetached([(Quickshell.env("HOME") || "/home/shogun") + "/.config/hypr/scripts/carbon-power-profile.sh", "set", modeName]);
+        Quickshell.execDetached([(Quickshell.env("HOME") || "") + "/.config/hypr/scripts/carbon-power-profile.sh", "set", modeName]);
     }
 
     function powerProfileLabel(p) {

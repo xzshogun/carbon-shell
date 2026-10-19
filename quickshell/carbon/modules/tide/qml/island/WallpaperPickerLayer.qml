@@ -30,7 +30,7 @@ FocusScope {
     property bool transitionInvertY: userConfig.wallpaperTransitionInvertY
     property string wallpaperDir: (userConfig && userConfig.wallpaperLibraryPath && String(userConfig.wallpaperLibraryPath).trim() !== "")
         ? userConfig.wallpaperLibraryPath
-        : ((Quickshell.env("HOME") || "/home/shogun") + "/Pictures/Wallpapers")
+        : ((Quickshell.env("HOME") || "") + "/Pictures/Wallpapers")
     property string targetWallpaperPath: userConfig.wallpaperPath
     property int thumbnailWidth: 640
     property int thumbnailHeight: 360

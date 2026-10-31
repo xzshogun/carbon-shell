@@ -2210,8 +2210,8 @@ Item {
                 Item {
                     id: vanishBlueprintSection
                     Layout.fillWidth: true
-                    Layout.preferredHeight: root.vanishMediaPlaying ? 400 : 330
-                    Layout.minimumHeight: 280
+                    Layout.preferredHeight: root.vanishMediaPlaying ? Theme.px(420) : Theme.px(340)
+                    Layout.minimumHeight: Theme.px(300)
                     clip: true
 
                     Behavior on Layout.preferredHeight {
@@ -2222,8 +2222,8 @@ Item {
                     Rectangle {
                         id: vanishBlueprintCard
                         anchors.fill: parent
-                        anchors.margins: 14
-                        radius: 14
+                        anchors.margins: Theme.px(14)
+                        radius: Theme.px(14)
                         color: Qt.rgba(0, 0, 0, 0.40)
                         border.color: Qt.rgba(1, 1, 1, 0.12)
                         border.width: 1
@@ -2254,15 +2254,16 @@ Item {
                             anchors.top: parent.top
                             anchors.left: parent.left
                             anchors.right: parent.right
-                            height: 24
+                            height: Theme.px(26)
                             color: Qt.rgba(0, 0, 0, 0.35)
                             border.color: Qt.rgba(1, 1, 1, 0.06)
                             border.width: 1
+                            z: 20
 
                             RowLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 12
+                                anchors.leftMargin: Theme.px(12)
+                                anchors.rightMargin: Theme.px(12)
 
                                 Text {
                                     text: "BLUEPRINT // VANISH MODE (BARLESS SP³ HYBRID NUCLEUS)"
@@ -2276,9 +2277,9 @@ Item {
 
                                 // Interactive Music Preview Toggle Switch / Pill
                                 Rectangle {
-                                    Layout.preferredHeight: 18
-                                    Layout.preferredWidth: mediaToggleRow.implicitWidth + 14
-                                    radius: 999
+                                    Layout.preferredHeight: Theme.px(20)
+                                    Layout.preferredWidth: mediaToggleRow.implicitWidth + Theme.px(16)
+                                    radius: Theme.px(10)
                                     color: root.vanishMediaPlaying ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.22) : Qt.rgba(1, 1, 1, 0.06)
                                     border.color: root.vanishMediaPlaying ? Theme.primary : Qt.rgba(1, 1, 1, 0.14)
                                     border.width: 1
@@ -2286,7 +2287,7 @@ Item {
                                     RowLayout {
                                         id: mediaToggleRow
                                         anchors.centerIn: parent
-                                        spacing: 5
+                                        spacing: Theme.px(6)
 
                                         Text {
                                             text: root.vanishMediaPlaying ? "󰝚" : "󰝛"
@@ -2296,7 +2297,7 @@ Item {
                                         }
 
                                         Text {
-                                            text: root.vanishMediaPlaying ? "MUSIC PLAYING: ON" : "MUSIC: OFF (RESTING)"
+                                            text: root.vanishMediaPlaying ? "MUSIC PLAYING: ON" : "MUSIC: OFF (RESTING ATOM)"
                                             font.family: Theme.fontMono
                                             font.pixelSize: Theme.fontPx(8)
                                             font.weight: Font.Bold
@@ -2317,43 +2318,431 @@ Item {
                         Item {
                             id: vanishWorkspace
                             anchors.fill: parent
-                            anchors.topMargin: 24
+                            anchors.topMargin: Theme.px(26)
 
-                            // ── Center Vanish Hub System ──
+                            property string focusedLobe: ""
+                            property real continuousPhase: 0.0
+
+                            readonly property var lobeColors: ({
+                                "connect": Qt.rgba(78/255, 205/255, 196/255, 1.0), // Teal
+                                "alerts": Qt.rgba(255/255, 209/255, 102/255, 1.0),  // Amber
+                                "launch": Qt.rgba(179/255, 136/255, 255/255, 1.0),  // Purple
+                                "spaces": Qt.rgba(255/255, 107/255, 107/255, 1.0)   // Coral
+                            })
+
+                            Timer {
+                                interval: 16
+                                running: root.currentMode === 2
+                                repeat: true
+                                onTriggered: {
+                                    vanishWorkspace.continuousPhase = (vanishWorkspace.continuousPhase + 0.02) % 628.3
+                                }
+                            }
+
+                            // Dismiss focused lobe when clicking blank workspace
+                            MouseArea {
+                                anchors.fill: parent
+                                z: 0
+                                onClicked: vanishWorkspace.focusedLobe = ""
+                            }
+
+                            // Center coordinate calculation
+                            readonly property real cx: width / 2
+                            readonly property real cy: (height / 2) - (root.vanishMediaPlaying ? Theme.px(34) : 0)
+                            readonly property real orbitalDist: Theme.px(115)
+
+                            // ── 1. The Four sp³ Hybrid Orbital Teardrops & Contours Canvas ──
+                            Canvas {
+                                id: sp3LobesCanvas
+                                anchors.fill: parent
+                                z: 1
+
+                                Connections {
+                                    target: vanishWorkspace
+                                    function onContinuousPhaseChanged() { sp3LobesCanvas.requestPaint() }
+                                    function onFocusedLobeChanged() { sp3LobesCanvas.requestPaint() }
+                                }
+                                Connections {
+                                    target: root
+                                    function onVanishMediaPlayingChanged() { sp3LobesCanvas.requestPaint() }
+                                }
+
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.clearRect(0, 0, width, height)
+                                    var cx = vanishWorkspace.cx
+                                    var cy = vanishWorkspace.cy
+                                    var dist = vanishWorkspace.orbitalDist
+                                    var focused = vanishWorkspace.focusedLobe
+                                    var phase = vanishWorkspace.continuousPhase
+
+                                    // 4 Lobes exact definitions from NucleusHub:
+                                    // Connect (235°), Alerts (305°), Utilities (345°), Apps (195°)
+                                    var lobes = [
+                                        { id: "connect", deg: 235, col: vanishWorkspace.lobeColors.connect },
+                                        { id: "alerts",  deg: 305, col: vanishWorkspace.lobeColors.alerts },
+                                        { id: "launch",  deg: 345, col: vanishWorkspace.lobeColors.launch },
+                                        { id: "spaces",  deg: 195, col: vanishWorkspace.lobeColors.spaces }
+                                    ]
+
+                                    for (var i = 0; i < lobes.length; i++) {
+                                        var l = lobes[i]
+                                        var rad = l.deg * (Math.PI / 180.0)
+                                        var isFoc = (focused === l.id)
+                                        var isDim = (focused !== "" && !isFoc)
+
+                                        var tx = cx + dist * Math.cos(rad)
+                                        var ty = cy + dist * Math.sin(rad)
+
+                                        // Subtle organic idle float offset
+                                        var floatOffset = 2.0 * Math.sin(phase * 0.75 + i * 1.57)
+                                        var curTx = tx + floatOffset * Math.cos(rad)
+                                        var curTy = ty + floatOffset * Math.sin(rad)
+
+                                        // Orthogonal vector for teardrop width
+                                        var perpX = -Math.sin(rad)
+                                        var perpY = Math.cos(rad)
+                                        var lobeWidth = isFoc ? 24 : 16
+
+                                        var midDist = dist * 0.55
+                                        var midX = cx + midDist * Math.cos(rad)
+                                        var midY = cy + midDist * Math.sin(rad)
+
+                                        var cp1X = midX + perpX * lobeWidth
+                                        var cp1Y = midY + perpY * lobeWidth
+                                        var cp2X = midX - perpX * lobeWidth
+                                        var cp2Y = midY - perpY * lobeWidth
+
+                                        ctx.save()
+
+                                        // Organic Teardrop Cubic Bezier Body
+                                        ctx.beginPath()
+                                        ctx.moveTo(cx, cy)
+                                        ctx.bezierCurveTo(cx + perpX * 8, cy + perpY * 8, cp1X, cp1Y, curTx, curTy)
+                                        ctx.bezierCurveTo(cp2X, cp2Y, cx - perpX * 8, cy - perpY * 8, cx, cy)
+                                        ctx.closePath()
+
+                                        // Translucent glass glow fill
+                                        var fillAlpha = isFoc ? 0.22 : (isDim ? 0.03 : 0.09)
+                                        ctx.fillStyle = Qt.rgba(l.col.r, l.col.g, l.col.b, fillAlpha)
+                                        ctx.fill()
+
+                                        // Contour Hairline Stroke
+                                        var strokeAlpha = isFoc ? 0.80 : (isDim ? 0.12 : 0.32)
+                                        ctx.strokeStyle = Qt.rgba(l.col.r, l.col.g, l.col.b, strokeAlpha)
+                                        ctx.lineWidth = isFoc ? 1.6 : 1.0
+                                        ctx.stroke()
+
+                                        // Dotted center guide ray
+                                        ctx.beginPath()
+                                        ctx.setLineDash([3, 4])
+                                        ctx.moveTo(cx, cy)
+                                        ctx.lineTo(curTx, curTy)
+                                        ctx.strokeStyle = Qt.rgba(1, 1, 1, isFoc ? 0.35 : 0.10)
+                                        ctx.lineWidth = 1.0
+                                        ctx.stroke()
+
+                                        ctx.restore()
+                                    }
+                                }
+                            }
+
+                            // ── 2. The Four Lobe Tip Nodes & Blooming Satellites ──
                             Item {
-                                id: vanishHubContainer
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                y: root.vanishMediaPlaying ? 24 : 50
-                                width: 360
-                                height: 200
+                                id: lobesClusterLayer
+                                anchors.fill: parent
+                                z: 5
+
+                                Repeater {
+                                    model: [
+                                        {
+                                            id: "connect",
+                                            deg: 235,
+                                            icon: "󰕾",
+                                            title: "Connect",
+                                            col: vanishWorkspace.lobeColors.connect,
+                                            satellites: [
+                                                { icon: "󰤨", name: "Wi-Fi" },
+                                                { icon: "󰂯", name: "Bluetooth" },
+                                                { icon: "󰕾", name: "Volume" },
+                                                { icon: "󰃠", name: "Brightness" }
+                                            ]
+                                        },
+                                        {
+                                            id: "alerts",
+                                            deg: 305,
+                                            icon: "󰂚",
+                                            title: "Alerts",
+                                            col: vanishWorkspace.lobeColors.alerts,
+                                            badge: "3",
+                                            satellites: [
+                                                { icon: "󰂛", name: "DND" },
+                                                { icon: "󰎟", name: "Clear" },
+                                                { icon: "󰋚", name: "History" },
+                                                { icon: "󰒓", name: "Settings" }
+                                            ]
+                                        },
+                                        {
+                                            id: "launch",
+                                            deg: 345,
+                                            icon: "󰘳",
+                                            title: "Utilities",
+                                            col: vanishWorkspace.lobeColors.launch,
+                                            satellites: [
+                                                { icon: "󰍉", name: "Search" },
+                                                { icon: "󰄄", name: "Screenshot" },
+                                                { icon: "󰠮", name: "Notes" },
+                                                { icon: "󰆍", name: "Terminal" }
+                                            ]
+                                        },
+                                        {
+                                            id: "spaces",
+                                            deg: 195,
+                                            icon: "󰍹",
+                                            title: "Apps",
+                                            col: vanishWorkspace.lobeColors.spaces,
+                                            satellites: [
+                                                { icon: "󰆍", name: "Terminal" },
+                                                { icon: "󰈹", name: "Browser" },
+                                                { icon: "󰨞", name: "Editor" },
+                                                { icon: "󰉋", name: "Files" }
+                                            ]
+                                        }
+                                    ]
+
+                                    delegate: Item {
+                                        id: lobeDelegate
+                                        required property var modelData
+
+                                        readonly property real rad: modelData.deg * (Math.PI / 180.0)
+                                        readonly property bool isFocused: vanishWorkspace.focusedLobe === modelData.id
+                                        readonly property bool isDimmed: vanishWorkspace.focusedLobe !== "" && !isFocused
+
+                                        x: vanishWorkspace.cx + vanishWorkspace.orbitalDist * Math.cos(rad) - (width / 2)
+                                        y: vanishWorkspace.cy + vanishWorkspace.orbitalDist * Math.sin(rad) - (height / 2)
+                                        width: Theme.px(42)
+                                        height: Theme.px(42)
+                                        z: isFocused ? 10 : 5
+
+                                        // Smooth hover & focus scale
+                                        scale: isFocused ? 1.12 : (lobeMouse.containsMouse ? 1.08 : 1.0)
+                                        opacity: isDimmed ? 0.35 : 1.0
+                                        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                                        Behavior on opacity { NumberAnimation { duration: 180 } }
+
+                                        // Blooming Satellites Container
+                                        Item {
+                                            anchors.centerIn: parent
+                                            width: 1
+                                            height: 1
+                                            z: -1
+
+                                            Repeater {
+                                                model: modelData.satellites
+                                                delegate: Item {
+                                                    id: satItem
+                                                    required property int index
+                                                    required property var modelData
+
+                                                    // Symmetrical 4-node arc: [-48°, -16°, 16°, 48°] relative to lobe angle
+                                                    readonly property var satAngles: [-48, -16, 16, 48]
+                                                    readonly property real relDeg: (index < satAngles.length) ? satAngles[index] : 0
+                                                    readonly property real relRad: (lobeDelegate.modelData.deg + relDeg) * (Math.PI / 180.0)
+                                                    readonly property real satDist: Theme.px(48)
+
+                                                    property real satPop: lobeDelegate.isFocused ? 1.0 : 0.0
+                                                    Behavior on satPop { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.15 } }
+
+                                                    x: satDist * Math.cos(relRad) * satPop - (width / 2)
+                                                    y: satDist * Math.sin(relRad) * satPop - (height / 2)
+                                                    width: Theme.px(28)
+                                                    height: Theme.px(28)
+                                                    visible: satPop > 0.02
+                                                    opacity: satPop
+
+                                                    Rectangle {
+                                                        anchors.fill: parent
+                                                        radius: width / 2
+                                                        color: satMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.18) : Qt.rgba(0.06, 0.08, 0.12, 0.90)
+                                                        border.color: satMouse.containsMouse ? lobeDelegate.modelData.col : Qt.rgba(lobeDelegate.modelData.col.r, lobeDelegate.modelData.col.g, lobeDelegate.modelData.col.b, 0.50)
+                                                        border.width: 1.2
+
+                                                        Text {
+                                                            anchors.centerIn: parent
+                                                            text: satItem.modelData.icon
+                                                            font.family: Theme.fontMono
+                                                            font.pixelSize: Theme.fontPx(11)
+                                                            color: satMouse.containsMouse ? "#FFFFFF" : lobeDelegate.modelData.col
+                                                        }
+
+                                                        MouseArea {
+                                                            id: satMouse
+                                                            anchors.fill: parent
+                                                            hoverEnabled: true
+                                                            cursorShape: Qt.PointingHandCursor
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // Main Lobe Tip Disc
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            radius: width / 2
+                                            color: lobeMouse.containsMouse ? Qt.rgba(modelData.col.r, modelData.col.g, modelData.col.b, 0.35) : (isFocused ? Qt.rgba(modelData.col.r, modelData.col.g, modelData.col.b, 0.25) : Qt.rgba(0.05, 0.07, 0.10, 0.92))
+                                            border.color: modelData.col
+                                            border.width: 1.8
+
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: modelData.icon
+                                                font.family: Theme.fontMono
+                                                font.pixelSize: Theme.fontPx(15)
+                                                color: (lobeMouse.containsMouse || isFocused) ? "#FFFFFF" : modelData.col
+                                            }
+
+                                            // Alerts Unread Badge
+                                            Rectangle {
+                                                visible: modelData.badge !== undefined && modelData.badge.length > 0
+                                                anchors.top: parent.top
+                                                anchors.right: parent.right
+                                                anchors.topMargin: -Theme.px(2)
+                                                anchors.rightMargin: -Theme.px(2)
+                                                width: Theme.px(16)
+                                                height: Theme.px(16)
+                                                radius: Theme.px(8)
+                                                color: Qt.rgba(255/255, 107/255, 107/255, 1.0)
+                                                border.color: Qt.rgba(0.05, 0.07, 0.10, 1.0)
+                                                border.width: 1.5
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: modelData.badge || ""
+                                                    font.family: Theme.fontMono
+                                                    font.pixelSize: Theme.fontPx(8)
+                                                    font.weight: Font.Bold
+                                                    color: "#FFFFFF"
+                                                }
+                                            }
+
+                                            MouseArea {
+                                                id: lobeMouse
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (vanishWorkspace.focusedLobe === modelData.id) {
+                                                        vanishWorkspace.focusedLobe = ""
+                                                    } else {
+                                                        vanishWorkspace.focusedLobe = modelData.id
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── 3. Central Nucleus & Multi-Track Orbit System ──
+                            Item {
+                                id: centerNucleusItem
+                                x: vanishWorkspace.cx
+                                y: vanishWorkspace.cy
+                                width: 1
+                                height: 1
+                                z: 8
 
                                 Behavior on y {
                                     NumberAnimation { duration: 320; easing.type: Easing.OutCubic }
                                 }
 
-                                // 60fps continuous phase accumulator for preview orbit spin
-                                property real previewPhase: 0.0
-                                Timer {
-                                    interval: 16
-                                    running: root.currentMode === 2
-                                    repeat: true
-                                    onTriggered: {
-                                        vanishHubContainer.previewPhase = (vanishHubContainer.previewPhase + 0.02) % 628.3
+                                // 3A. Resting Bohr Atom (Visible when media playing is OFF)
+                                Item {
+                                    id: restingBohrAtom
+                                    anchors.centerIn: parent
+                                    visible: !root.vanishMediaPlaying
+                                    opacity: root.vanishMediaPlaying ? 0.0 : 1.0
+                                    Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                                    // Inner Ring 1 (r = 24px, 48x48, 2 electrons)
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: Theme.px(48)
+                                        height: Theme.px(48)
+                                        radius: width / 2
+                                        color: "transparent"
+                                        border.color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.28)
+                                        border.width: 1
+
+                                        Item {
+                                            anchors.centerIn: parent
+                                            width: parent.width
+                                            height: parent.height
+                                            rotation: vanishWorkspace.continuousPhase * 24
+
+                                            Rectangle {
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                y: -Theme.px(3)
+                                                width: Theme.px(6); height: Theme.px(6); radius: Theme.px(3)
+                                                color: Theme.primary
+                                            }
+                                            Rectangle {
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                y: parent.height - Theme.px(3)
+                                                width: Theme.px(6); height: Theme.px(6); radius: Theme.px(3)
+                                                color: Theme.primary
+                                            }
+                                        }
+                                    }
+
+                                    // Outer Ring 2 (r = 48px, 96x96, 4 electrons)
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: Theme.px(96)
+                                        height: Theme.px(96)
+                                        radius: width / 2
+                                        color: "transparent"
+                                        border.color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.18)
+                                        border.width: 1
+
+                                        Item {
+                                            anchors.centerIn: parent
+                                            width: parent.width
+                                            height: parent.height
+                                            rotation: -vanishWorkspace.continuousPhase * 16
+
+                                            Repeater {
+                                                model: 4
+                                                delegate: Item {
+                                                    anchors.fill: parent
+                                                    rotation: index * 90
+                                                    Rectangle {
+                                                        anchors.horizontalCenter: parent.horizontalCenter
+                                                        y: -Theme.px(3)
+                                                        width: Theme.px(6); height: Theme.px(6); radius: Theme.px(3)
+                                                        color: Theme.primary
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
 
-                                // ── Orbital Guide Rings & Rotating Carbon Valence Electrons ──
+                                // 3B. Active Roaming Carbon Orbits & Comet Satellites Canvas (Visible when media playing is ON)
                                 Canvas {
-                                    id: vanishOrbitsCanvas
+                                    id: activeOrbitsCanvas
                                     anchors.centerIn: parent
-                                    width: 240
-                                    height: 240
-                                    z: 1
+                                    width: Theme.px(160)
+                                    height: Theme.px(160)
+                                    visible: root.vanishMediaPlaying
+                                    opacity: root.vanishMediaPlaying ? 1.0 : 0.0
+                                    Behavior on opacity { NumberAnimation { duration: 250 } }
 
                                     Connections {
-                                        target: vanishHubContainer
-                                        function onPreviewPhaseChanged() {
-                                            vanishOrbitsCanvas.requestPaint()
+                                        target: vanishWorkspace
+                                        function onContinuousPhaseChanged() {
+                                            if (activeOrbitsCanvas.visible) activeOrbitsCanvas.requestPaint()
                                         }
                                     }
 
@@ -2362,212 +2751,205 @@ Item {
                                         ctx.clearRect(0, 0, width, height)
                                         var cx = width / 2
                                         var cy = height / 2
-                                        var phase = vanishHubContainer.previewPhase
-                                        var primaryCol = Theme.primary
+                                        var phase = vanishWorkspace.continuousPhase
+                                        var col = Theme.primary
 
-                                        // Orbit Ring 1 (Inner, r = 46px)
+                                        ctx.lineCap = "round"
+
+                                        // Track 1 (Inner Arc, r = 36px): 3 pieces 120° apart
+                                        var r1 = 36.0
+                                        var a1 = -phase * 0.28
+                                        var arcSpan1 = (24.0 / r1) / 2.0
+                                        var step1 = (2.0 * Math.PI) / 3.0
                                         ctx.save()
-                                        ctx.lineWidth = 1
-                                        ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.08)
-                                        ctx.setLineDash([4, 4])
-                                        ctx.beginPath()
-                                        ctx.arc(cx, cy, 46, 0, Math.PI * 2)
-                                        ctx.stroke()
-                                        ctx.restore()
-
-                                        // 2 Inner Electrons (moving along Ring 1)
-                                        var e1_angle = phase * 0.4
-                                        for (var k = 0; k < 2; k++) {
-                                            var a = e1_angle + (k * Math.PI)
-                                            var ex = cx + 46 * Math.cos(a)
-                                            var ey = cy + 46 * Math.sin(a)
-                                            ctx.fillStyle = primaryCol
+                                        ctx.lineWidth = 2.6
+                                        ctx.strokeStyle = Qt.rgba(240/255, 242/255, 240/255, 0.35)
+                                        for (var k = 0; k < 3; k++) {
+                                            var ang1 = a1 + (k * step1)
                                             ctx.beginPath()
-                                            ctx.arc(ex, ey, 2.5, 0, Math.PI * 2)
-                                            ctx.fill()
-                                        }
-
-                                        // Orbit Ring 2 (Outer, r = 82px)
-                                        ctx.save()
-                                        ctx.lineWidth = 1
-                                        ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.06)
-                                        ctx.setLineDash([3, 5])
-                                        ctx.beginPath()
-                                        ctx.arc(cx, cy, 82, 0, Math.PI * 2)
-                                        ctx.stroke()
-                                        ctx.restore()
-
-                                        // 4 Outer Valence Electrons (moving counter-clockwise)
-                                        var e2_angle = -phase * 0.28
-                                        for (var j = 0; j < 4; j++) {
-                                            var a2 = e2_angle + (j * (Math.PI / 2))
-                                            var ex2 = cx + 82 * Math.cos(a2)
-                                            var ey2 = cy + 82 * Math.sin(a2)
-                                            ctx.fillStyle = primaryCol
-                                            ctx.beginPath()
-                                            ctx.arc(ex2, ey2, 2.5, 0, Math.PI * 2)
-                                            ctx.fill()
-                                        }
-
-                                        // Dotted Tracers connecting Center to the 4 Satellites (-65°, 25°, 135°, 205°)
-                                        var satAngles = [-65 * Math.PI / 180, 25 * Math.PI / 180, 135 * Math.PI / 180, 205 * Math.PI / 180]
-                                        ctx.save()
-                                        ctx.lineWidth = 1
-                                        ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.12)
-                                        ctx.setLineDash([2, 4])
-                                        for (var s = 0; s < 4; s++) {
-                                            ctx.beginPath()
-                                            ctx.moveTo(cx, cy)
-                                            ctx.lineTo(cx + 95 * Math.cos(satAngles[s]), cy + 95 * Math.sin(satAngles[s]))
+                                            ctx.arc(cx, cy, r1, ang1 - arcSpan1, ang1 + arcSpan1)
                                             ctx.stroke()
                                         }
                                         ctx.restore()
+
+                                        // Track 2 (Mid Arc, r = 50px): 3 pieces 120° apart
+                                        var r2 = 50.0
+                                        var a2 = phase * 0.24
+                                        var arcSpan2 = (32.0 / r2) / 2.0
+                                        var step2 = (2.0 * Math.PI) / 3.0
+                                        ctx.save()
+                                        ctx.lineWidth = 2.6
+                                        ctx.strokeStyle = Qt.rgba(240/255, 242/255, 240/255, 0.40)
+                                        for (var j = 0; j < 3; j++) {
+                                            var ang2 = a2 + (j * step2)
+                                            ctx.beginPath()
+                                            ctx.arc(cx, cy, r2, ang2 - arcSpan2, ang2 + arcSpan2)
+                                            ctx.stroke()
+                                        }
+                                        ctx.restore()
+
+                                        // Track 3 (Satellite Orbit & 2 Bullseye Comets, r = 62px)
+                                        var r3 = 62.0
+                                        var satAngle = -phase * 0.24
+                                        var tailAngle = 36.0 * (Math.PI / 180.0)
+
+                                        // Fading comet tails + nodes
+                                        function drawCometNode(ang) {
+                                            var steps = 18
+                                            var sAngle = tailAngle / steps
+                                            for (var t = 0; t < steps; t++) {
+                                                var st = ang + t * sAngle
+                                                var en = ang + (t + 1) * sAngle
+                                                var frac = 1.0 - (t / steps)
+                                                ctx.beginPath()
+                                                ctx.arc(cx, cy, r3, st, en)
+                                                ctx.lineWidth = 2.0 * (0.5 + 0.5 * frac)
+                                                ctx.strokeStyle = Qt.rgba(col.r, col.g, col.b, frac * 0.55)
+                                                ctx.stroke()
+                                            }
+
+                                            var sx = cx + r3 * Math.cos(ang)
+                                            var sy = cy + r3 * Math.sin(ang)
+
+                                            // Outer ring
+                                            ctx.beginPath()
+                                            ctx.arc(sx, sy, 4.8, 0, Math.PI * 2)
+                                            ctx.lineWidth = 1.2
+                                            ctx.strokeStyle = Qt.rgba(col.r, col.g, col.b, 0.75)
+                                            ctx.fillStyle = Qt.rgba(col.r, col.g, col.b, 0.15)
+                                            ctx.fill()
+                                            ctx.stroke()
+
+                                            // Inner core
+                                            ctx.beginPath()
+                                            ctx.arc(sx, sy, 2.4, 0, Math.PI * 2)
+                                            ctx.fillStyle = Qt.rgba(col.r, col.g, col.b, 0.95)
+                                            ctx.fill()
+                                        }
+
+                                        drawCometNode(satAngle)
+                                        drawCometNode(satAngle + Math.PI)
                                     }
                                 }
 
-                                // ── 4 Radial sp³ Satellites ──
-                                // 1. Top-Left (-65°): Connect / Mixer
-                                Rectangle {
-                                    x: (parent.width / 2) + 95 * Math.cos(-65 * Math.PI / 180) - (width / 2)
-                                    y: (parent.height / 2) + 95 * Math.sin(-65 * Math.PI / 180) - (height / 2)
-                                    width: 34
-                                    height: 34
-                                    radius: 17
-                                    z: 4
-                                    color: Qt.rgba(0.06, 0.07, 0.09, 0.90)
-                                    border.color: sat1Mouse.containsMouse ? Theme.primary : Qt.rgba(1, 1, 1, 0.18)
-                                    border.width: 1.2
-                                    scale: sat1Mouse.containsMouse ? 1.12 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: 140 } }
+                                // 3C. Siri-Style / Liquid Halo Audio Visualizer Waveform Bars (Arranged in a ring)
+                                Item {
+                                    id: visualizerHalo
+                                    anchors.centerIn: parent
+                                    width: Theme.px(150)
+                                    height: Theme.px(150)
+                                    visible: root.vanishMediaPlaying
+                                    opacity: root.vanishMediaPlaying ? 1.0 : 0.0
+                                    Behavior on opacity { NumberAnimation { duration: 250 } }
 
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "󰕾"
-                                        font.family: Theme.fontMono
-                                        font.pixelSize: Theme.fontPx(13)
-                                        color: sat1Mouse.containsMouse ? Theme.primary : Qt.rgba(1, 1, 1, 0.80)
-                                    }
+                                    Repeater {
+                                        model: 32
+                                        delegate: Item {
+                                            anchors.centerIn: parent
+                                            width: parent.width
+                                            height: parent.height
+                                            rotation: index * (360.0 / 32)
 
-                                    MouseArea {
-                                        id: sat1Mouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                    }
-                                }
+                                            readonly property real wave: Math.abs(Math.sin(vanishWorkspace.continuousPhase * 2.2 + index * 0.45) * Math.cos(vanishWorkspace.continuousPhase * 1.4 + index * 0.25))
+                                            readonly property real barLen: Theme.px(3) + Theme.px(10) * wave
 
-                                // 2. Top-Right (25°): Launcher
-                                Rectangle {
-                                    x: (parent.width / 2) + 95 * Math.cos(25 * Math.PI / 180) - (width / 2)
-                                    y: (parent.height / 2) + 95 * Math.sin(25 * Math.PI / 180) - (height / 2)
-                                    width: 34
-                                    height: 34
-                                    radius: 17
-                                    z: 4
-                                    color: Qt.rgba(0.06, 0.07, 0.09, 0.90)
-                                    border.color: sat2Mouse.containsMouse ? Theme.primary : Qt.rgba(1, 1, 1, 0.18)
-                                    border.width: 1.2
-                                    scale: sat2Mouse.containsMouse ? 1.12 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: 140 } }
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "󰀻"
-                                        font.family: Theme.fontMono
-                                        font.pixelSize: Theme.fontPx(13)
-                                        color: sat2Mouse.containsMouse ? Theme.primary : Qt.rgba(1, 1, 1, 0.80)
-                                    }
-
-                                    MouseArea {
-                                        id: sat2Mouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
+                                            Rectangle {
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                y: Theme.px(3) - barLen
+                                                width: Theme.px(2)
+                                                height: barLen
+                                                radius: Theme.px(1)
+                                                color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.40 + (0.50 * parent.wave))
+                                            }
+                                        }
                                     }
                                 }
 
-                                // 3. Bottom-Right (135°): Spaces / Workspaces
-                                Rectangle {
-                                    x: (parent.width / 2) + 95 * Math.cos(135 * Math.PI / 180) - (width / 2)
-                                    y: (parent.height / 2) + 95 * Math.sin(135 * Math.PI / 180) - (height / 2)
-                                    width: 34
-                                    height: 34
-                                    radius: 17
-                                    z: 4
-                                    color: Qt.rgba(0.06, 0.07, 0.09, 0.90)
-                                    border.color: sat3Mouse.containsMouse ? Theme.primary : Qt.rgba(1, 1, 1, 0.18)
-                                    border.width: 1.2
-                                    scale: sat3Mouse.containsMouse ? 1.12 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: 140 } }
+                                // 3D. Circular Neon Music Progress Arc & Leading Specular Glowing Dot
+                                Canvas {
+                                    id: circularProgressCanvas
+                                    anchors.centerIn: parent
+                                    width: Theme.px(150)
+                                    height: Theme.px(150)
+                                    visible: root.vanishMediaPlaying
+                                    opacity: root.vanishMediaPlaying ? 1.0 : 0.0
+                                    Behavior on opacity { NumberAnimation { duration: 250 } }
 
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "󰍹"
-                                        font.family: Theme.fontMono
-                                        font.pixelSize: Theme.fontPx(13)
-                                        color: sat3Mouse.containsMouse ? Theme.primary : Qt.rgba(1, 1, 1, 0.80)
+                                    Connections {
+                                        target: vanishWorkspace
+                                        function onContinuousPhaseChanged() {
+                                            if (circularProgressCanvas.visible) circularProgressCanvas.requestPaint()
+                                        }
                                     }
 
-                                    MouseArea {
-                                        id: sat3Mouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        ctx.clearRect(0, 0, width, height)
+                                        var cx = width / 2
+                                        var cy = height / 2
+                                        var trackR = Theme.px(66)
+                                        var col = Theme.primary
+
+                                        // Simulated track progress fraction: 42%
+                                        var frac = 0.42
+                                        var startAngle = -Math.PI / 2
+                                        var sweepAngle = frac * 2 * Math.PI
+                                        var endAngle = startAngle + sweepAngle
+
+                                        // Background track hairline
+                                        ctx.save()
+                                        ctx.beginPath()
+                                        ctx.arc(cx, cy, trackR, 0, Math.PI * 2)
+                                        ctx.lineWidth = 1.0
+                                        ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.08)
+                                        ctx.stroke()
+
+                                        // Active progress arc
+                                        ctx.beginPath()
+                                        ctx.arc(cx, cy, trackR, startAngle, endAngle)
+                                        ctx.lineWidth = 2.4
+                                        ctx.strokeStyle = col
+                                        ctx.lineCap = "round"
+                                        ctx.stroke()
+
+                                        // Leading Specular Glowing Dot
+                                        var headX = cx + trackR * Math.cos(endAngle)
+                                        var headY = cy + trackR * Math.sin(endAngle)
+
+                                        ctx.beginPath()
+                                        ctx.arc(headX, headY, 5.0, 0, Math.PI * 2)
+                                        ctx.fillStyle = Qt.rgba(col.r, col.g, col.b, 0.50)
+                                        ctx.fill()
+
+                                        ctx.beginPath()
+                                        ctx.arc(headX, headY, 2.5, 0, Math.PI * 2)
+                                        ctx.fillStyle = "#FFFFFF"
+                                        ctx.fill()
+
+                                        ctx.restore()
                                     }
                                 }
 
-                                // 4. Bottom-Left (205°): Alerts & System
-                                Rectangle {
-                                    x: (parent.width / 2) + 95 * Math.cos(205 * Math.PI / 180) - (width / 2)
-                                    y: (parent.height / 2) + 95 * Math.sin(205 * Math.PI / 180) - (height / 2)
-                                    width: 34
-                                    height: 34
-                                    radius: 17
-                                    z: 4
-                                    color: Qt.rgba(0.06, 0.07, 0.09, 0.90)
-                                    border.color: sat4Mouse.containsMouse ? Theme.primary : Qt.rgba(1, 1, 1, 0.18)
-                                    border.width: 1.2
-                                    scale: sat4Mouse.containsMouse ? 1.12 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: 140 } }
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "󰂚"
-                                        font.family: Theme.fontMono
-                                        font.pixelSize: Theme.fontPx(13)
-                                        color: sat4Mouse.containsMouse ? Theme.primary : Qt.rgba(1, 1, 1, 0.80)
-                                    }
-
-                                    MouseArea {
-                                        id: sat4Mouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                    }
-                                }
-
-                                // ── Center Core Disc ──
+                                // 3E. Central Core Disc
                                 Rectangle {
                                     id: vanishCoreDisc
                                     anchors.centerIn: parent
-                                    width: 58
-                                    height: 58
-                                    radius: 29
-                                    z: 5
-                                    color: Qt.rgba(0.04, 0.05, 0.07, 0.96)
-                                    border.color: root.vanishMediaPlaying ? Theme.primary : Qt.rgba(1, 1, 1, 0.22)
+                                    width: Theme.px(54)
+                                    height: Theme.px(54)
+                                    radius: width / 2
+                                    z: 10
+                                    color: Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, 0.96)
+                                    border.color: Theme.primary
                                     border.width: 1.5
 
-                                    // Pulsing Halo Glow when media is playing
+                                    // Pulsing Outer Neon Halo
                                     Rectangle {
                                         anchors.centerIn: parent
-                                        width: parent.width + 10
-                                        height: parent.height + 10
+                                        width: parent.width + Theme.px(12)
+                                        height: width
                                         radius: width / 2
-                                        color: "transparent"
-                                        border.color: Theme.primary
-                                        border.width: 1
-                                        opacity: root.vanishMediaPlaying ? 0.45 : 0.0
+                                        color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.22)
+                                        opacity: root.vanishMediaPlaying ? 0.65 : 0.35
                                         z: -1
                                         Behavior on opacity { NumberAnimation { duration: 250 } }
                                     }
@@ -2577,7 +2959,7 @@ Item {
                                         spacing: 1
 
                                         Text {
-                                            text: "13:42"
+                                            text: Qt.formatTime(new Date(), "hh:mm")
                                             font.family: Theme.font
                                             font.pixelSize: Theme.fontPx(11.5)
                                             font.weight: Font.Bold
@@ -2586,7 +2968,7 @@ Item {
                                         }
 
                                         Text {
-                                            text: "OCT 31"
+                                            text: Qt.formatDate(new Date(), "MMM d").toUpperCase()
                                             font.family: Theme.fontMono
                                             font.pixelSize: Theme.fontPx(7.5)
                                             color: Qt.rgba(1, 1, 1, 0.55)
@@ -2596,55 +2978,65 @@ Item {
                                 }
                             }
 
-                            // ── Organic Music Player & Synced Lyrics Overlay (Appears below Nucleus when Media is Playing) ──
+                            // ── 4. Organic Music & Synced Lyrics Overlay (Matches nucleusMusicOverlay) ──
                             Item {
-                                id: vanishMediaCard
+                                id: vanishMusicOverlay
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.top: vanishHubContainer.bottom
-                                anchors.topMargin: 12
-                                width: Math.min(parent.width - 32, 420)
-                                height: 74
+                                y: vanishWorkspace.cy + Theme.px(74)
+                                width: Math.min(parent.width - Theme.px(32), Theme.px(420))
+                                height: Theme.px(74)
+                                z: 15
                                 visible: opacity > 0.01
                                 opacity: root.vanishMediaPlaying ? 1.0 : 0.0
                                 scale: root.vanishMediaPlaying ? 1.0 : 0.92
 
                                 Behavior on opacity { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
                                 Behavior on scale { NumberAnimation { duration: 260; easing.type: Easing.OutBack; easing.overshoot: 1.08 } }
+                                Behavior on y { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    radius: 12
-                                    color: Qt.rgba(0.04, 0.05, 0.08, 0.85)
+                                    radius: Theme.px(12)
+                                    color: Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, 0.88)
                                     border.color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.35)
                                     border.width: 1
                                     clip: true
 
                                     ColumnLayout {
                                         anchors.fill: parent
-                                        anchors.margins: 8
-                                        spacing: 4
+                                        anchors.margins: Theme.px(8)
+                                        spacing: Theme.px(4)
 
-                                        // Top Row: Album Art + Track Info + Transport Controls
+                                        // Top Row: Rotating Album Art Micro-Orb + Track Info + Transport Buttons
                                         RowLayout {
                                             Layout.fillWidth: true
-                                            spacing: 10
+                                            spacing: Theme.px(10)
 
                                             // Rotating Vinyl / Album Art Micro-Orb
                                             Rectangle {
-                                                Layout.preferredWidth: 28
-                                                Layout.preferredHeight: 28
-                                                radius: 14
+                                                Layout.preferredWidth: Theme.px(28)
+                                                Layout.preferredHeight: Theme.px(28)
+                                                radius: width / 2
                                                 color: Qt.rgba(0, 0, 0, 0.50)
                                                 border.color: Theme.primary
                                                 border.width: 1.2
                                                 clip: true
 
+                                                Image {
+                                                    anchors.fill: parent
+                                                    source: (typeof LyricsService !== "undefined" && LyricsService.artUrl) ? LyricsService.artUrl : ""
+                                                    sourceSize: Qt.size(56, 56)
+                                                    fillMode: Image.PreserveAspectCrop
+                                                    visible: status === Image.Ready
+                                                }
+
                                                 Text {
                                                     anchors.centerIn: parent
                                                     text: "󰝚"
                                                     font.family: Theme.fontMono
-                                                    font.pixelSize: 13
+                                                    font.pixelSize: Theme.fontPx(13)
                                                     color: Theme.primary
+                                                    visible: parent.children[0].status !== Image.Ready
                                                 }
 
                                                 RotationAnimation on rotation {
@@ -2656,13 +3048,13 @@ Item {
                                                 }
                                             }
 
-                                            // Track & Artist Title
+                                            // Track Title & Artist
                                             ColumnLayout {
                                                 Layout.fillWidth: true
                                                 spacing: 1
 
                                                 Text {
-                                                    text: "Do I Wanna Know?"
+                                                    text: (typeof LyricsService !== "undefined" && LyricsService.songTitle) ? LyricsService.songTitle : "Do I Wanna Know?"
                                                     font.family: Theme.font
                                                     font.pixelSize: Theme.fontPx(11.5)
                                                     font.weight: Font.Bold
@@ -2672,7 +3064,7 @@ Item {
                                                 }
 
                                                 Text {
-                                                    text: "Arctic Monkeys • AM"
+                                                    text: (typeof LyricsService !== "undefined" && LyricsService.artist) ? LyricsService.artist : "Arctic Monkeys • AM"
                                                     font.family: Theme.font
                                                     font.pixelSize: Theme.fontPx(9.5)
                                                     color: Qt.rgba(1, 1, 1, 0.55)
@@ -2681,30 +3073,30 @@ Item {
                                                 }
                                             }
 
-                                            // Valence Circular Transport Buttons
+                                            // Transport Controls
                                             RowLayout {
-                                                spacing: 6
+                                                spacing: Theme.px(6)
 
                                                 // Skip Previous
                                                 Rectangle {
-                                                    Layout.preferredWidth: 22
-                                                    Layout.preferredHeight: 22
-                                                    radius: 11
+                                                    Layout.preferredWidth: Theme.px(22)
+                                                    Layout.preferredHeight: Theme.px(22)
+                                                    radius: width / 2
                                                     color: Qt.rgba(1, 1, 1, 0.08)
                                                     Text {
                                                         anchors.centerIn: parent
                                                         text: "󰒮"
                                                         font.family: Theme.fontMono
-                                                        font.pixelSize: 11
+                                                        font.pixelSize: Theme.fontPx(11)
                                                         color: Qt.rgba(1, 1, 1, 0.75)
                                                     }
                                                 }
 
-                                                // Play / Pause (Accent)
+                                                // Play / Pause (Accent Pill)
                                                 Rectangle {
-                                                    Layout.preferredWidth: 24
-                                                    Layout.preferredHeight: 24
-                                                    radius: 12
+                                                    Layout.preferredWidth: Theme.px(24)
+                                                    Layout.preferredHeight: Theme.px(24)
+                                                    radius: width / 2
                                                     color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.25)
                                                     border.color: Theme.primary
                                                     border.width: 1
@@ -2712,38 +3104,38 @@ Item {
                                                         anchors.centerIn: parent
                                                         text: "󰏤"
                                                         font.family: Theme.fontMono
-                                                        font.pixelSize: 12
+                                                        font.pixelSize: Theme.fontPx(12)
                                                         color: Theme.primary
                                                     }
                                                 }
 
                                                 // Skip Next
                                                 Rectangle {
-                                                    Layout.preferredWidth: 22
-                                                    Layout.preferredHeight: 22
-                                                    radius: 11
+                                                    Layout.preferredWidth: Theme.px(22)
+                                                    Layout.preferredHeight: Theme.px(22)
+                                                    radius: width / 2
                                                     color: Qt.rgba(1, 1, 1, 0.08)
                                                     Text {
                                                         anchors.centerIn: parent
                                                         text: "󰒭"
                                                         font.family: Theme.fontMono
-                                                        font.pixelSize: 11
+                                                        font.pixelSize: Theme.fontPx(11)
                                                         color: Qt.rgba(1, 1, 1, 0.75)
                                                     }
                                                 }
                                             }
                                         }
 
-                                        // Bottom Row: Scrubber Bar + Live Lyric Line
+                                        // Bottom Row: Scrubber Bar + Live Synced Lyric Line
                                         RowLayout {
                                             Layout.fillWidth: true
-                                            spacing: 8
+                                            spacing: Theme.px(8)
 
                                             // Scrubber Bar
                                             Rectangle {
-                                                Layout.preferredWidth: 100
-                                                Layout.preferredHeight: 3
-                                                radius: 1.5
+                                                Layout.preferredWidth: Theme.px(100)
+                                                Layout.preferredHeight: Theme.px(3)
+                                                radius: Theme.px(1.5)
                                                 color: Qt.rgba(1, 1, 1, 0.12)
 
                                                 Rectangle {
@@ -2763,9 +3155,9 @@ Item {
 
                                             Item { Layout.fillWidth: true }
 
-                                            // Floating Synced Lyric Line
+                                            // Floating Live Synced Lyric Line
                                             RowLayout {
-                                                spacing: 4
+                                                spacing: Theme.px(4)
                                                 Text {
                                                     text: "󰎈"
                                                     font.family: Theme.fontMono
@@ -2773,7 +3165,7 @@ Item {
                                                     color: Theme.primary
                                                 }
                                                 Text {
-                                                    text: "\"Crawlin' back to you...\""
+                                                    text: (typeof LyricsService !== "undefined" && LyricsService.currentLine && LyricsService.currentLine.trim().length > 0) ? LyricsService.currentLine : "\"Crawlin' back to you...\""
                                                     font.family: Theme.font
                                                     font.pixelSize: Theme.fontPx(10)
                                                     font.italic: true
@@ -2798,18 +3190,23 @@ Item {
                 // ── 3. Sub-Section Switcher: "Designs" vs "Settings" ───────
                 Item {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 44
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
+                    Layout.preferredHeight: Theme.px(44)
+
+                    Layout.leftMargin: Theme.px(16)
+
+                    Layout.rightMargin: Theme.px(16)
 
                     RowLayout {
                         anchors.fill: parent
 
                         // Segmented Tab Switcher
                         Rectangle {
-                            height: 30
-                            width: 180
-                            radius: 8
+                            height: Theme.px(30)
+
+                            width: Theme.px(180)
+
+                            radius: Theme.px(8)
+
                             color: Qt.rgba(0, 0, 0, 0.25)
                             border.color: Qt.rgba(1, 1, 1, 0.08)
                             border.width: 1
@@ -2821,7 +3218,8 @@ Item {
                                 Rectangle {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    radius: 7
+                                    radius: Theme.px(7)
+
                                     color: root.vanishSubSection === "Designs" ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.20) : "transparent"
                                     border.color: root.vanishSubSection === "Designs" ? Theme.primary : "transparent"
                                     border.width: 1
@@ -2845,7 +3243,8 @@ Item {
                                 Rectangle {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    radius: 7
+                                    radius: Theme.px(7)
+
                                     color: root.vanishSubSection === "Settings" ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.20) : "transparent"
                                     border.color: root.vanishSubSection === "Settings" ? Theme.primary : "transparent"
                                     border.width: 1
@@ -2872,9 +3271,11 @@ Item {
 
                         // Quick Toggle Media Preview Button in sub-header
                         Rectangle {
-                            height: 28
+                            height: Theme.px(28)
+
                             width: vanishPreviewBtnText.implicitWidth + 20
-                            radius: 6
+                            radius: Theme.px(6)
+
                             color: vanishPreviewBtnMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.20)
                             border.color: vanishPreviewBtnMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.25) : Qt.rgba(1, 1, 1, 0.10)
                             border.width: 1
@@ -2899,9 +3300,11 @@ Item {
                         // Mode Enable / Disable Toggle Button
                         Rectangle {
                             readonly property bool isEnabled: root.activeSystemMode === "nucleus" || root.activeSystemMode === "vanish"
-                            height: 28
+                            height: Theme.px(28)
+
                             width: vanishToggleRow.implicitWidth + 24
-                            radius: 6
+                            radius: Theme.px(6)
+
                             color: isEnabled 
                                 ? (vanishToggleMouse.containsMouse ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.28) : Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.18))
                                 : (vanishToggleMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.25))
@@ -2911,7 +3314,7 @@ Item {
                             RowLayout {
                                 id: vanishToggleRow
                                 anchors.centerIn: parent
-                                spacing: 6
+                                spacing: Theme.px(6)
 
                                 Text {
                                     text: parent.parent.isEnabled ? "󰄬" : "󰄱"
@@ -2964,7 +3367,7 @@ Item {
                             width: vanishControlsFlickable.width - 32
                             x: 16
                             y: 8
-                            spacing: 14
+                            spacing: Theme.px(14)
 
                             // ===============================================
                             // SUB-SECTION 1: DESIGNS (Empty placeholder slots)
@@ -2972,7 +3375,7 @@ Item {
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 visible: root.vanishSubSection === "Designs"
-                                spacing: 14
+                                spacing: Theme.px(14)
 
                                 // Section Heading
                                 RowLayout {
@@ -2996,13 +3399,16 @@ Item {
                                 // Grid of Variations: 1 active default + empty coming-soon cards
                                 Flow {
                                     Layout.fillWidth: true
-                                    spacing: 12
+                                    spacing: Theme.px(12)
 
                                     // Active Card: sp3 Hybrid Orbital
                                     Rectangle {
-                                        width: 260
-                                        height: 120
-                                        radius: 10
+                                        width: Theme.px(260)
+
+                                        height: Theme.px(120)
+
+                                        radius: Theme.px(10)
+
                                         color: Qt.rgba(0.05, 0.06, 0.08, 0.80)
                                         border.color: Theme.primary
                                         border.width: 1.5
@@ -3010,7 +3416,7 @@ Item {
                                         ColumnLayout {
                                             anchors.fill: parent
                                             anchors.margins: 12
-                                            spacing: 6
+                                            spacing: Theme.px(6)
 
                                             RowLayout {
                                                 Layout.fillWidth: true
@@ -3029,9 +3435,12 @@ Item {
                                                 }
                                                 Item { Layout.fillWidth: true }
                                                 Rectangle {
-                                                    Layout.preferredWidth: 50
-                                                    Layout.preferredHeight: 18
-                                                    radius: 4
+                                                    Layout.preferredWidth: Theme.px(50)
+
+                                                    Layout.preferredHeight: Theme.px(18)
+
+                                                    radius: Theme.px(4)
+
                                                     color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.20)
                                                     Text {
                                                         anchors.centerIn: parent
@@ -3057,16 +3466,19 @@ Item {
 
                                     // Empty Slot 1: Coming Soon
                                     Rectangle {
-                                        width: 260
-                                        height: 120
-                                        radius: 10
+                                        width: Theme.px(260)
+
+                                        height: Theme.px(120)
+
+                                        radius: Theme.px(10)
+
                                         color: Qt.rgba(0, 0, 0, 0.15)
                                         border.color: Qt.rgba(1, 1, 1, 0.10)
                                         border.width: 1
 
                                         ColumnLayout {
                                             anchors.centerIn: parent
-                                            spacing: 6
+                                            spacing: Theme.px(6)
 
                                             Text {
                                                 text: "󰐕"
@@ -3097,16 +3509,19 @@ Item {
 
                                     // Empty Slot 2: Coming Soon
                                     Rectangle {
-                                        width: 260
-                                        height: 120
-                                        radius: 10
+                                        width: Theme.px(260)
+
+                                        height: Theme.px(120)
+
+                                        radius: Theme.px(10)
+
                                         color: Qt.rgba(0, 0, 0, 0.15)
                                         border.color: Qt.rgba(1, 1, 1, 0.10)
                                         border.width: 1
 
                                         ColumnLayout {
                                             anchors.centerIn: parent
-                                            spacing: 6
+                                            spacing: Theme.px(6)
 
                                             Text {
                                                 text: "󰐕"
@@ -3137,16 +3552,19 @@ Item {
 
                                     // Create Custom Variation Slot
                                     Rectangle {
-                                        width: 260
-                                        height: 120
-                                        radius: 10
+                                        width: Theme.px(260)
+
+                                        height: Theme.px(120)
+
+                                        radius: Theme.px(10)
+
                                         color: createVarMouse.containsMouse ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.08) : Qt.rgba(0, 0, 0, 0.12)
                                         border.color: createVarMouse.containsMouse ? Theme.primary : Qt.rgba(1, 1, 1, 0.10)
                                         border.width: 1
 
                                         ColumnLayout {
                                             anchors.centerIn: parent
-                                            spacing: 6
+                                            spacing: Theme.px(6)
 
                                             Text {
                                                 text: "󰐕"
@@ -3190,13 +3608,14 @@ Item {
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 visible: root.vanishSubSection === "Settings"
-                                spacing: 14
+                                spacing: Theme.px(14)
 
                                 // ── Card 1: Transition Dynamics ───────────
                                 Rectangle {
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: transCol.implicitHeight + 28
-                                    radius: 12
+                                    radius: Theme.px(12)
+
                                     color: Qt.rgba(0, 0, 0, 0.22)
                                     border.color: Qt.rgba(1, 1, 1, 0.08)
                                     border.width: 1
@@ -3205,7 +3624,7 @@ Item {
                                         id: transCol
                                         anchors.fill: parent
                                         anchors.margins: 14
-                                        spacing: 12
+                                        spacing: Theme.px(12)
 
                                         RowLayout {
                                             Layout.fillWidth: true
@@ -3230,7 +3649,8 @@ Item {
                                             Layout.fillWidth: true
                                             ColumnLayout {
                                                 Layout.fillWidth: true
-                                                spacing: 2
+                                                spacing: Theme.px(2)
+
                                                 Text {
                                                     text: "Cinematic Transition Overlay"
                                                     font.family: Theme.font
@@ -3247,17 +3667,23 @@ Item {
                                             }
 
                                             Rectangle {
-                                                Layout.preferredWidth: 38
-                                                Layout.preferredHeight: 20
-                                                radius: 10
+                                                Layout.preferredWidth: Theme.px(38)
+
+                                                Layout.preferredHeight: Theme.px(20)
+
+                                                radius: Theme.px(10)
+
                                                 color: root.vanishTransitionEnabled ? Theme.primary : Qt.rgba(1, 1, 1, 0.15)
 
                                                 Rectangle {
                                                     x: root.vanishTransitionEnabled ? parent.width - width - 2 : 2
                                                     y: 2
-                                                    width: 16
-                                                    height: 16
-                                                    radius: 8
+                                                    width: Theme.px(16)
+
+                                                    height: Theme.px(16)
+
+                                                    radius: Theme.px(8)
+
                                                     color: root.vanishTransitionEnabled ? (Theme.m3onPrimary || "#000000") : "#FFFFFF"
 
                                                     Behavior on x {
@@ -3279,11 +3705,12 @@ Item {
                                         // Slider: Transition Duration
                                         RowLayout {
                                             Layout.fillWidth: true
-                                            spacing: 12
+                                            spacing: Theme.px(12)
 
                                             ColumnLayout {
                                                 Layout.fillWidth: true
-                                                spacing: 2
+                                                spacing: Theme.px(2)
+
                                                 Text {
                                                     text: "Transition Duration"
                                                     font.family: Theme.font
@@ -3300,7 +3727,8 @@ Item {
                                             }
 
                                             Slider {
-                                                Layout.preferredWidth: 160
+                                                Layout.preferredWidth: Theme.px(160)
+
                                                 from: 300
                                                 to: 1500
                                                 stepSize: 50
@@ -3312,9 +3740,12 @@ Item {
                                             }
 
                                             Rectangle {
-                                                Layout.preferredWidth: 54
-                                                Layout.preferredHeight: 22
-                                                radius: 4
+                                                Layout.preferredWidth: Theme.px(54)
+
+                                                Layout.preferredHeight: Theme.px(22)
+
+                                                radius: Theme.px(4)
+
                                                 color: Qt.rgba(1, 1, 1, 0.08)
                                                 Text {
                                                     anchors.centerIn: parent
@@ -3329,11 +3760,13 @@ Item {
                                         // Option Selector: Transition Wordmark
                                         RowLayout {
                                             Layout.fillWidth: true
-                                            spacing: 10
+                                            spacing: Theme.px(10)
 
                                             ColumnLayout {
-                                                Layout.preferredWidth: 150
-                                                spacing: 2
+                                                Layout.preferredWidth: Theme.px(150)
+
+                                                spacing: Theme.px(2)
+
                                                 Text {
                                                     text: "Transition Wordmark"
                                                     font.family: Theme.font
@@ -3351,7 +3784,7 @@ Item {
 
                                             RowLayout {
                                                 Layout.fillWidth: true
-                                                spacing: 6
+                                                spacing: Theme.px(6)
 
                                                 Repeater {
                                                     model: ["Wooshh!!", "Vanish", "Hyperdrive", "Quantum", "Zero"]
@@ -3360,8 +3793,10 @@ Item {
                                                         readonly property bool isSelected: root.vanishTransitionWord === modelData
 
                                                         Layout.fillWidth: true
-                                                        Layout.preferredHeight: 24
-                                                        radius: 6
+                                                        Layout.preferredHeight: Theme.px(24)
+
+                                                        radius: Theme.px(6)
+
                                                         color: isSelected ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.22) : (wordMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.08) : "transparent")
                                                         border.color: isSelected ? Theme.primary : Qt.rgba(1, 1, 1, 0.12)
                                                         border.width: 1
@@ -3396,7 +3831,8 @@ Item {
                                 Rectangle {
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: restingCol.implicitHeight + 28
-                                    radius: 12
+                                    radius: Theme.px(12)
+
                                     color: Qt.rgba(0, 0, 0, 0.22)
                                     border.color: Qt.rgba(1, 1, 1, 0.08)
                                     border.width: 1
@@ -3405,7 +3841,7 @@ Item {
                                         id: restingCol
                                         anchors.fill: parent
                                         anchors.margins: 14
-                                        spacing: 12
+                                        spacing: Theme.px(12)
 
                                         RowLayout {
                                             Layout.fillWidth: true
@@ -3430,7 +3866,8 @@ Item {
                                             Layout.fillWidth: true
                                             ColumnLayout {
                                                 Layout.fillWidth: true
-                                                spacing: 2
+                                                spacing: Theme.px(2)
+
                                                 Text {
                                                     text: "Show Resting Atom on Desktop"
                                                     font.family: Theme.font
@@ -3447,17 +3884,23 @@ Item {
                                             }
 
                                             Rectangle {
-                                                Layout.preferredWidth: 38
-                                                Layout.preferredHeight: 20
-                                                radius: 10
+                                                Layout.preferredWidth: Theme.px(38)
+
+                                                Layout.preferredHeight: Theme.px(20)
+
+                                                radius: Theme.px(10)
+
                                                 color: root.vanishShowRestingAtom ? Theme.primary : Qt.rgba(1, 1, 1, 0.15)
 
                                                 Rectangle {
                                                     x: root.vanishShowRestingAtom ? parent.width - width - 2 : 2
                                                     y: 2
-                                                    width: 16
-                                                    height: 16
-                                                    radius: 8
+                                                    width: Theme.px(16)
+
+                                                    height: Theme.px(16)
+
+                                                    radius: Theme.px(8)
+
                                                     color: root.vanishShowRestingAtom ? (Theme.m3onPrimary || "#000000") : "#FFFFFF"
 
                                                     Behavior on x {
@@ -3479,11 +3922,13 @@ Item {
                                         // Option Selector: Resting Spin Behavior
                                         RowLayout {
                                             Layout.fillWidth: true
-                                            spacing: 10
+                                            spacing: Theme.px(10)
 
                                             ColumnLayout {
-                                                Layout.preferredWidth: 150
-                                                spacing: 2
+                                                Layout.preferredWidth: Theme.px(150)
+
+                                                spacing: Theme.px(2)
+
                                                 Text {
                                                     text: "Resting Spin Behavior"
                                                     font.family: Theme.font
@@ -3501,7 +3946,7 @@ Item {
 
                                             RowLayout {
                                                 Layout.fillWidth: true
-                                                spacing: 6
+                                                spacing: Theme.px(6)
 
                                                 Repeater {
                                                     model: [
@@ -3514,8 +3959,10 @@ Item {
                                                         readonly property bool isSelected: root.vanishRestingSpin === modelData.id
 
                                                         Layout.fillWidth: true
-                                                        Layout.preferredHeight: 24
-                                                        radius: 6
+                                                        Layout.preferredHeight: Theme.px(24)
+
+                                                        radius: Theme.px(6)
+
                                                         color: isSelected ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.22) : (spinMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.08) : "transparent")
                                                         border.color: isSelected ? Theme.primary : Qt.rgba(1, 1, 1, 0.12)
                                                         border.width: 1
@@ -3550,7 +3997,8 @@ Item {
                                 Rectangle {
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: visCol.implicitHeight + 28
-                                    radius: 12
+                                    radius: Theme.px(12)
+
                                     color: Qt.rgba(0, 0, 0, 0.22)
                                     border.color: Qt.rgba(1, 1, 1, 0.08)
                                     border.width: 1
@@ -3559,7 +4007,7 @@ Item {
                                         id: visCol
                                         anchors.fill: parent
                                         anchors.margins: 14
-                                        spacing: 12
+                                        spacing: Theme.px(12)
 
                                         RowLayout {
                                             Layout.fillWidth: true
@@ -3582,11 +4030,13 @@ Item {
                                         // Music Visualizer Style
                                         RowLayout {
                                             Layout.fillWidth: true
-                                            spacing: 10
+                                            spacing: Theme.px(10)
 
                                             ColumnLayout {
-                                                Layout.preferredWidth: 150
-                                                spacing: 2
+                                                Layout.preferredWidth: Theme.px(150)
+
+                                                spacing: Theme.px(2)
+
                                                 Text {
                                                     text: "Music Visualizer Style"
                                                     font.family: Theme.font
@@ -3604,7 +4054,7 @@ Item {
 
                                             RowLayout {
                                                 Layout.fillWidth: true
-                                                spacing: 6
+                                                spacing: Theme.px(6)
 
                                                 Repeater {
                                                     model: [
@@ -3618,8 +4068,10 @@ Item {
                                                         readonly property bool isSelected: root.vanishMusicVisualizer === modelData.id
 
                                                         Layout.fillWidth: true
-                                                        Layout.preferredHeight: 24
-                                                        radius: 6
+                                                        Layout.preferredHeight: Theme.px(24)
+
+                                                        radius: Theme.px(6)
+
                                                         color: isSelected ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.22) : (visMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.08) : "transparent")
                                                         border.color: isSelected ? Theme.primary : Qt.rgba(1, 1, 1, 0.12)
                                                         border.width: 1
@@ -3651,11 +4103,13 @@ Item {
                                         // Wallpaper Transition Effect
                                         RowLayout {
                                             Layout.fillWidth: true
-                                            spacing: 10
+                                            spacing: Theme.px(10)
 
                                             ColumnLayout {
-                                                Layout.preferredWidth: 150
-                                                spacing: 2
+                                                Layout.preferredWidth: Theme.px(150)
+
+                                                spacing: Theme.px(2)
+
                                                 Text {
                                                     text: "Wallpaper Transition"
                                                     font.family: Theme.font
@@ -3673,7 +4127,7 @@ Item {
 
                                             RowLayout {
                                                 Layout.fillWidth: true
-                                                spacing: 6
+                                                spacing: Theme.px(6)
 
                                                 Repeater {
                                                     model: [
@@ -3687,8 +4141,10 @@ Item {
                                                         readonly property bool isSelected: root.vanishWallpaperAnimation === modelData.id
 
                                                         Layout.fillWidth: true
-                                                        Layout.preferredHeight: 24
-                                                        radius: 6
+                                                        Layout.preferredHeight: Theme.px(24)
+
+                                                        radius: Theme.px(6)
+
                                                         color: isSelected ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.22) : (wpMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.08) : "transparent")
                                                         border.color: isSelected ? Theme.primary : Qt.rgba(1, 1, 1, 0.12)
                                                         border.width: 1

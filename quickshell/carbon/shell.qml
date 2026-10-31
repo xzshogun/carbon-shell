@@ -1469,8 +1469,10 @@ ShellRoot {
                 parser: SplitParser {
                 splitMarker: "\n"
                 onRead: function (message) {
-                    var cmd = message.trim()
-                    console.log("[IPC RECEIVED] " + cmd)
+                    try {
+                        var cmd = (message || "").trim()
+                        if (!cmd) return
+                        console.log("[IPC RECEIVED] " + cmd)
                     if (cmd === "wallpaper" || cmd === "wallpaper-local") {
                         root.wallpaperSource = "local"
                         if (root.barMode === "nucleus" && root.nucleusHubItem && root.nucleusHubItem.hubOpen) {
@@ -1500,7 +1502,7 @@ ShellRoot {
                     }
                     else if (cmd.startsWith("settings-tab ")) {
                         var tabName = cmd.replace(/^settings-tab\s+/, "").trim()
-                        if (tabName.length > 0) root.settingsHubActiveTab = tabName
+                        if (tabName.length > 0) root.settingsHubActiveTab = tabName.toLowerCase()
                         root.openSettingsHub()
                     }
                     else if (cmd === "close-settings") {
@@ -2127,10 +2129,13 @@ ShellRoot {
                         else if (icmd === "show" || icmd === "open" || icmd === "reveal") root.showIslandAll()
                         else if (icmd === "hide") root.hideIslandAll()
                     }
+                } catch (e) {
+                    console.warn("[IPC ERROR] Exception in command handler:", e)
                 }
             }
         }
     }
+}
 }
 
     /* Tide Island IPC */

@@ -90,12 +90,19 @@ Item {
             height: parent.height + root.bottomRadius
             radius: root.bottomRadius
             color: root.notchBgColor
-            border.width: Theme.px(1)
+            border.width: 1
             border.color: root.borderColor
+
+            Behavior on border.width {
+                NumberAnimation {
+                    duration: 150
+                    easing.type: Easing.OutQuad
+                }
+            }
 
             Behavior on border.color {
                 ColorAnimation {
-                    duration: 250
+                    duration: 200
                     easing.type: Easing.OutQuad
                 }
             }
@@ -193,53 +200,66 @@ Item {
         id: notchDropArea
         anchors.fill: parent
         z: 5
+        keys: ["text/uri-list"] // Explicitly listen for file URIs
+
+        onEntered: (drag) => {
+            if (drag.hasUrls) {
+                drag.accept(Qt.CopyAction); // Wayland requires this to allow the drop
+                notchBackground.border.color = "#8ee8a8"
+                notchBackground.border.width = 2
+                notchRoot.height = 48
+            }
+        }
+
+        onExited: {
+            notchBackground.border.color = "rgba(255,255,255,0.15)"
+            notchBackground.border.width = 1
+            notchRoot.height = 28
+        }
 
         onDropped: (drop) => {
-            if (!drop.hasUrls || drop.urls.length === 0) return;
+            if (!drop.hasUrls) return;
+            drop.acceptProposedAction(); // Confirm the drop
 
-            // 1. Expand and change color to indicate processing
-            notchBackground.border.color = Theme.warn;
-            notchRoot.height = Theme.px(48);
+            notchBackground.border.color = "#f5b86e" // Amber processing state
 
-            try {
-                let uploadProcess = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process {}', root);
-                uploadProcess.command = [root.dropEngineBin, "Buzzheavier (10GB+)", drop.urls[0]];
+            let engineCmd = [
+                root.dropEngineBin || "/home/shogun/carbon-shell/apps/carbon-drop/target/release/carbon-drop-engine",
+                "Buzzheavier (10GB+)",
+                drop.urls[0]
+            ];
 
-                let uploadedUrl = "";
-                let parser = Qt.createQmlObject('import Quickshell.Io; SplitParser { splitMarker: "\\n" }', uploadProcess);
-                parser.read.connect(function(line) {
-                    let raw = (line || "").trim();
-                    if (!raw) return;
-                    try {
-                        let msg = JSON.parse(raw);
-                        if (msg && msg.type === "complete" && msg.url) {
-                            uploadedUrl = msg.url;
-                            Quickshell.execDetached(["wl-copy", uploadedUrl]);
-                        }
-                    } catch (e) {
-                        if (raw.startsWith("http://") || raw.startsWith("https://")) {
-                            uploadedUrl = raw;
-                            Quickshell.execDetached(["wl-copy", uploadedUrl]);
+            let uploadProcess = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process { id: proc; property alias outputText: collector.text; readonly property var stdout: ({ trim: function() { return proc.outputText.trim(); }, toString: function() { return proc.outputText; } }); stdout: StdioCollector { id: collector; waitForEnd: true } }', root);
+            uploadProcess.command = engineCmd;
+
+            uploadProcess.exited.connect(function() {
+                let url = uploadProcess.stdout.trim();
+                try {
+                    let lines = url.split("\n");
+                    for (let i = lines.length - 1; i >= 0; i--) {
+                        let l = lines[i].trim();
+                        if (!l) continue;
+                        try {
+                            let msg = JSON.parse(l);
+                            if (msg && msg.url) { url = msg.url; break; }
+                        } catch(e) {}
+                        if (l.startsWith("http://") || l.startsWith("https://")) {
+                            url = l;
+                            break;
                         }
                     }
-                });
-                uploadProcess.stdout = parser;
+                } catch(e) {}
 
-                uploadProcess.exited.connect(function(code) {
-                    if (uploadedUrl.length > 0) {
-                        Quickshell.execDetached(["wl-copy", uploadedUrl]);
-                    }
-                    notchRoot.height = Qt.binding(function() { return notchRoot.implicitHeight; });
-                    notchBackground.border.color = root.defaultBorderColor;
-                    uploadProcess.destroy(100);
-                });
+                let clipProcess = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process {}', root);
+                clipProcess.command = ["wl-copy", url];
+                clipProcess.running = true;
 
-                uploadProcess.running = true;
-            } catch (err) {
-                console.log("[NotchContainer] DropArea process error:", err);
-                notchRoot.height = Qt.binding(function() { return notchRoot.implicitHeight; });
-                notchBackground.border.color = root.defaultBorderColor;
-            }
+                notchBackground.border.color = "rgba(255,255,255,0.15)"
+                notchBackground.border.width = 1
+                notchRoot.height = 28
+                uploadProcess.destroy();
+            });
+            uploadProcess.running = true;
         }
     }
 }

@@ -95,7 +95,7 @@ Item {
         preferredHighlightBegin: height / 2 - Theme.px(30)
         preferredHighlightEnd: height / 2 + Theme.px(30)
         highlightRangeMode: root.isSynced ? ListView.StrictlyEnforceRange : ListView.NoHighlightRange
-        highlightMoveDuration: 450 // Smooth vertical glide
+        highlightMoveDuration: 200 // Dropped from 450ms so the vertical scroll keeps pace
 
         // Dynamically update currentIndex based on hardware clock + pre-fire calibration
         property int currentAudioMs: root.currentAudioMs
@@ -159,17 +159,24 @@ Item {
                 border.width: Theme.px(1)
                 border.color: lineDelegate.isActive ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.40) : "transparent"
                 opacity: lineDelegate.isActive ? 1.0 : 0.0
+                scale: lineDelegate.isActive ? 1.0 : 0.9
 
                 Behavior on width {
                     NumberAnimation {
-                        duration: 400
-                        easing.type: Easing.OutElastic // Springy Elastic bounce for the pill!
-                        easing.amplitude: 1.2
+                        duration: 150 // Dropped from 400ms for rapid-fire vocals
+                        easing.type: Easing.OutBack
+                        easing.overshoot: 1.2
                     }
                 }
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: 200
+                        duration: 100
+                    }
+                }
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: 150
+                        easing.type: Easing.OutBack
                     }
                 }
             }
@@ -192,18 +199,18 @@ Item {
 
                 Behavior on font.pixelSize {
                     NumberAnimation {
-                        duration: 300
+                        duration: 150
                         easing.type: Easing.OutBack
                     }
                 }
                 Behavior on color {
                     ColorAnimation {
-                        duration: 250
+                        duration: 100
                     }
                 }
                 Behavior on scale {
                     NumberAnimation {
-                        duration: 300
+                        duration: 150
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -214,7 +221,7 @@ Item {
                     radius: lineDelegate.blurAmount
                     Behavior on radius {
                         NumberAnimation {
-                            duration: 300
+                            duration: 150
                         }
                     }
                 }

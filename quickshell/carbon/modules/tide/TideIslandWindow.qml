@@ -2186,7 +2186,10 @@ PanelWindow {
                 radius: mainCapsule.radius
                 color: mainCapsule.baseCapsuleColor
                 z: -0.5
+                border.width: Theme.px(1)
+                border.color: Qt.rgba(1, 1, 1, 0.15)
 
+                Behavior on border.color { ColorAnimation { duration: 250; easing.type: Easing.OutQuad } }
                 Behavior on color { ColorAnimation { duration: 280; easing.type: Easing.InOutQuad } }
             }
 
@@ -2207,6 +2210,61 @@ PanelWindow {
                 }
             }
 
+
+            DropArea {
+                id: mainCapsuleDropArea
+                anchors.fill: parent
+                z: 10
+
+                onDropped: (drop) => {
+                    if (!drop.hasUrls || drop.urls.length === 0) return;
+
+                    // 1. Expand and change color to indicate processing
+                    notchBackground.border.color = Theme.warn;
+                    mainCapsule.height = Theme.px(48);
+
+                    try {
+                        let uploadProcess = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process {}', mainCapsule);
+                        let dropBin = Quickshell.env("CARBON_DROP_ENGINE") || ((Quickshell.env("HOME") || "") + "/.local/bin/carbon-drop-engine");
+                        uploadProcess.command = [dropBin, "Buzzheavier (10GB+)", drop.urls[0]];
+
+                        let uploadedUrl = "";
+                        let parser = Qt.createQmlObject('import Quickshell.Io; SplitParser { splitMarker: "\\n" }', uploadProcess);
+                        parser.read.connect(function(line) {
+                            let raw = (line || "").trim();
+                            if (!raw) return;
+                            try {
+                                let msg = JSON.parse(raw);
+                                if (msg && msg.type === "complete" && msg.url) {
+                                    uploadedUrl = msg.url;
+                                    Quickshell.execDetached(["wl-copy", uploadedUrl]);
+                                }
+                            } catch (e) {
+                                if (raw.startsWith("http://") || raw.startsWith("https://")) {
+                                    uploadedUrl = raw;
+                                    Quickshell.execDetached(["wl-copy", uploadedUrl]);
+                                }
+                            }
+                        });
+                        uploadProcess.stdout = parser;
+
+                        uploadProcess.exited.connect(function(code) {
+                            if (uploadedUrl.length > 0) {
+                                Quickshell.execDetached(["wl-copy", uploadedUrl]);
+                            }
+                            mainCapsule.height = Qt.binding(function() { return Math.round(mainCapsule.targetHeight); });
+                            notchBackground.border.color = Qt.rgba(1, 1, 1, 0.15);
+                            uploadProcess.destroy(100);
+                        });
+
+                        uploadProcess.running = true;
+                    } catch (err) {
+                        console.log("[TideIslandWindow] DropArea process error:", err);
+                        mainCapsule.height = Qt.binding(function() { return Math.round(mainCapsule.targetHeight); });
+                        notchBackground.border.color = Qt.rgba(1, 1, 1, 0.15);
+                    }
+                }
+            }
 
             MouseArea {
                 id: capsuleMouseArea

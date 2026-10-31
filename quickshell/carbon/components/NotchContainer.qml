@@ -1,5 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
+import Quickshell
+import Quickshell.Io
 import "../Singletons"
 
 /**
@@ -47,6 +49,21 @@ Item {
     property bool hasAttachedPopup: false
     property real notchOpacity: 0.96
 
+    property var notchRoot: root
+    readonly property color defaultBorderColor: Qt.rgba(1, 1, 1, 0.15)
+    property color borderColor: defaultBorderColor
+    property bool isUploading: false
+
+    readonly property string dropEngineBin: {
+        var envPath = Quickshell.env("CARBON_DROP_ENGINE")
+        if (envPath && envPath.length > 0) return envPath
+        var home = Quickshell.env("HOME") || ""
+        if (home.length > 0) {
+            return home + "/.local/bin/carbon-drop-engine"
+        }
+        return "carbon-drop-engine"
+    }
+
     // SaneAspect deep dark OLED notch surface
     readonly property color notchBgColor: Theme.isDark 
         ? Qt.rgba(0.04, 0.04, 0.06, root.notchOpacity) 
@@ -64,6 +81,7 @@ Item {
         anchors.rightMargin: (root.rightFillet && root.filletRadius > 0) ? root.filletRadius : 0
 
         Rectangle {
+            id: notchBackground
             anchors.left: parent.left
             anchors.leftMargin: (!root.leftFillet && root.rightFillet) ? -root.bottomRadius : 0
             anchors.right: parent.right
@@ -72,6 +90,15 @@ Item {
             height: parent.height + root.bottomRadius
             radius: root.bottomRadius
             color: root.notchBgColor
+            border.width: Theme.px(1)
+            border.color: root.borderColor
+
+            Behavior on border.color {
+                ColorAnimation {
+                    duration: 250
+                    easing.type: Easing.OutQuad
+                }
+            }
         }
     }
 
@@ -160,5 +187,59 @@ Item {
         anchors.rightMargin: (!root.rightFillet && root.leftFillet) ? root.horizontalPadding : undefined
         anchors.horizontalCenter: (root.leftFillet && root.rightFillet) ? parent.horizontalCenter : undefined
         spacing: root.contentSpacing
+    }
+
+    DropArea {
+        id: notchDropArea
+        anchors.fill: parent
+        z: 5
+
+        onDropped: (drop) => {
+            if (!drop.hasUrls || drop.urls.length === 0) return;
+
+            // 1. Expand and change color to indicate processing
+            notchBackground.border.color = Theme.warn;
+            notchRoot.height = Theme.px(48);
+
+            try {
+                let uploadProcess = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process {}', root);
+                uploadProcess.command = [root.dropEngineBin, "Buzzheavier (10GB+)", drop.urls[0]];
+
+                let uploadedUrl = "";
+                let parser = Qt.createQmlObject('import Quickshell.Io; SplitParser { splitMarker: "\\n" }', uploadProcess);
+                parser.read.connect(function(line) {
+                    let raw = (line || "").trim();
+                    if (!raw) return;
+                    try {
+                        let msg = JSON.parse(raw);
+                        if (msg && msg.type === "complete" && msg.url) {
+                            uploadedUrl = msg.url;
+                            Quickshell.execDetached(["wl-copy", uploadedUrl]);
+                        }
+                    } catch (e) {
+                        if (raw.startsWith("http://") || raw.startsWith("https://")) {
+                            uploadedUrl = raw;
+                            Quickshell.execDetached(["wl-copy", uploadedUrl]);
+                        }
+                    }
+                });
+                uploadProcess.stdout = parser;
+
+                uploadProcess.exited.connect(function(code) {
+                    if (uploadedUrl.length > 0) {
+                        Quickshell.execDetached(["wl-copy", uploadedUrl]);
+                    }
+                    notchRoot.height = Qt.binding(function() { return notchRoot.implicitHeight; });
+                    notchBackground.border.color = root.defaultBorderColor;
+                    uploadProcess.destroy(100);
+                });
+
+                uploadProcess.running = true;
+            } catch (err) {
+                console.log("[NotchContainer] DropArea process error:", err);
+                notchRoot.height = Qt.binding(function() { return notchRoot.implicitHeight; });
+                notchBackground.border.color = root.defaultBorderColor;
+            }
+        }
     }
 }

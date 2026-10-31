@@ -42,6 +42,20 @@ ShellRoot {
     property var notifItem: null
     property var calendarItem: null
     property var centerDashboardItem: null
+    property var focusHudItem: null
+
+    property bool focusHudOpen: false
+    function openFocusHud() {
+        root.closeAllPopupsExcept("focus")
+        root.focusHudOpen = true
+    }
+    function closeFocusHud() {
+        root.focusHudOpen = false
+    }
+    function toggleFocusHud() {
+        if (root.focusHudOpen) root.closeFocusHud()
+        else root.openFocusHud()
+    }
 
     property bool spotlightOpen: false
     function openSpotlight() {
@@ -117,6 +131,7 @@ ShellRoot {
         if (keep !== "notif") { root.notifOpen = false; root.notifPinned = false }
         if (keep !== "centerDashboard") { root.centerDashboardOpen = false; root.centerDashboardPinned = false }
         if (keep !== "controls") { root.controlsVisible = false; root.controlsPinned = false }
+        if (keep !== "focus") { root.focusHudOpen = false }
     }
 
     property bool smallMusicOpen: false
@@ -2311,6 +2326,39 @@ ShellRoot {
         }
     }
 
+    /* Focus HUD (Hyper-Tunnel) IPC */
+    IpcHandler {
+        target: "focus"
+
+        function toggle() {
+            root.toggleFocusHud();
+        }
+
+        function open() {
+            root.openFocusHud();
+        }
+
+        function close() {
+            root.closeFocusHud();
+        }
+    }
+
+    IpcHandler {
+        target: "focus-hud"
+
+        function toggle() {
+            root.toggleFocusHud();
+        }
+
+        function open() {
+            root.openFocusHud();
+        }
+
+        function close() {
+            root.closeFocusHud();
+        }
+    }
+
     /* Lock Screen */
     LockScreen {
         id: sessionLock
@@ -3961,6 +4009,47 @@ ShellRoot {
                     }
                 }
                 onCloseRequested: root.closeSettingsHub()
+            }
+        }
+    }
+
+    /* Focus HUD (Hyper-Tunnel) Overlay */
+    Variants {
+        model: root.focusHudOpen ? Quickshell.screens : []
+
+        PanelWindow {
+            id: focusHudWindow
+            required property var modelData
+
+            screen: modelData
+            color: "transparent"
+            WlrLayershell.namespace: "carbon-focus-hud"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: root.focusHudOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            exclusionMode: ExclusionMode.Ignore
+            anchors { top: true; left: true; right: true; bottom: true }
+
+            aboveWindows: true
+            visible: root.focusHudOpen
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: (mouse) => {
+                    var fx = focusHudInst.x
+                    var fy = focusHudInst.y
+                    var fw = focusHudInst.width
+                    var fh = focusHudInst.height
+                    if (mouse.x < fx || mouse.x > fx + fw || mouse.y < fy || mouse.y > fy + fh) {
+                        root.closeFocusHud()
+                    }
+                }
+            }
+
+            FocusHUD {
+                id: focusHudInst
+                anchors.centerIn: parent
+                open: root.focusHudOpen
+                onCloseRequested: root.closeFocusHud()
             }
         }
     }

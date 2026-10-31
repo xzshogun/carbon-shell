@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
@@ -9,12 +10,16 @@ import "../Singletons"
  * Cairo.qml:
  * High-performance Hybrid Kinetic Lyric Engine for Carbon Shell.
  * Powered by the Rust cairo-engine backend (dual LRCLIB/Netease waterfall),
- * native hardware MPRIS clock sync, and buttery fluid scrolling physics.
+ * native hardware MPRIS clock sync with pre-fire calibration, buttery fluid
+ * vertical scrolling, and depth-of-field 3D blur aesthetics.
  */
 Item {
     id: root
 
     property bool isSynced: false
+
+    // Negative values trigger the animation early (e.g., -250 means trigger 250ms before the actual timestamp)
+    property int syncOffsetMs: -250
 
     // Native MPRIS Player Resolution
     readonly property var playersList: (Mpris.players && Mpris.players.values !== undefined) ? Mpris.players.values : (Mpris.players || [])
@@ -92,17 +97,19 @@ Item {
         highlightRangeMode: root.isSynced ? ListView.StrictlyEnforceRange : ListView.NoHighlightRange
         highlightMoveDuration: 450 // Smooth vertical glide
 
-        // Dynamically update currentIndex based on hardware clock
+        // Dynamically update currentIndex based on hardware clock + pre-fire calibration
         property int currentAudioMs: root.currentAudioMs
         onCurrentAudioMsChanged: updateIndexFromClock()
         onCountChanged: updateIndexFromClock()
 
         function updateIndexFromClock() {
             if (!root.isSynced || count === 0) return
+            // Apply the offset to "look ahead" slightly to eliminate DBus & ramp-up latency
+            let adjustedTime = root.currentAudioMs - root.syncOffsetMs
             var target = -1
             for (let i = count - 1; i >= 0; i--) {
                 var item = model.get(i)
-                if (item && root.currentAudioMs >= item.time) {
+                if (item && adjustedTime >= item.time) {
                     target = i
                     break
                 }
@@ -121,6 +128,11 @@ Item {
                     lyricList.updateIndexFromClock()
                 }
             }
+            function onSyncOffsetMsChanged() {
+                if (root.isSynced) {
+                    lyricList.updateIndexFromClock()
+                }
+            }
         }
 
         delegate: Item {
@@ -129,37 +141,35 @@ Item {
             required property var model
 
             width: lyricList.width
-            height: lyricText.implicitHeight + Theme.px(24)
-            property bool isActive: ListView.isCurrentItem && root.isSynced && (root.currentAudioMs >= model.time)
+            height: lyricText.implicitHeight + Theme.px(28)
+            property bool isActive: ListView.isCurrentItem && root.isSynced && ((root.currentAudioMs - root.syncOffsetMs) >= model.time)
+
+            property real blurAmount: isActive ? 0.0 : (root.isSynced ? Theme.px(4.0) : 0.0)
+            property real textScale: isActive ? 1.0 : (root.isSynced ? 0.85 : 1.0)
 
             // The Highlight Pill Background
             Rectangle {
                 id: highlightPill
                 anchors.centerIn: lyricText
                 readonly property real textWidth: Math.min(lyricText.implicitWidth, lineDelegate.width - Theme.px(48))
-                width: lineDelegate.isActive ? (textWidth + Theme.px(32)) : textWidth
-                height: lyricText.implicitHeight + Theme.px(16)
+                width: lineDelegate.isActive ? (textWidth + Theme.px(40)) : textWidth
+                height: lyricText.implicitHeight + Theme.px(20)
                 radius: Theme.tokens.rounding.medium
-                color: Theme.accent
+                color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15) // Subtle Matugen glow instead of solid block
+                border.width: Theme.px(1)
+                border.color: lineDelegate.isActive ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.40) : "transparent"
                 opacity: lineDelegate.isActive ? 1.0 : 0.0
-                scale: lineDelegate.isActive ? 1.0 : 0.9
 
                 Behavior on width {
                     NumberAnimation {
-                        duration: 350
-                        easing.type: Easing.OutBack
-                        easing.overshoot: 1.2
+                        duration: 400
+                        easing.type: Easing.OutElastic // Springy Elastic bounce for the pill!
+                        easing.amplitude: 1.2
                     }
                 }
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: 250
-                    }
-                }
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: 350
-                        easing.type: Easing.OutBack
+                        duration: 200
                     }
                 }
             }
@@ -170,11 +180,12 @@ Item {
                 anchors.centerIn: parent
                 text: lineDelegate.model.text
                 font.family: Theme.font
-                font.pixelSize: lineDelegate.isActive ? Theme.fontPx(36) : (root.isSynced ? Theme.fontPx(28) : Theme.fontPx(24))
+                font.pixelSize: lineDelegate.isActive ? Theme.fontPx(38) : (root.isSynced ? Theme.fontPx(26) : Theme.fontPx(24))
                 font.weight: lineDelegate.isActive ? Font.Bold : Font.Medium
                 color: lineDelegate.isActive
                        ? (Theme.m3onPrimaryContainer || Theme.accentContrast || Theme.fg)
-                       : (root.isSynced ? Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.50) : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.85))
+                       : (root.isSynced ? Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.40) : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.85))
+                scale: lineDelegate.textScale
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
                 width: Math.min(implicitWidth, lineDelegate.width - Theme.px(48))
@@ -182,12 +193,29 @@ Item {
                 Behavior on font.pixelSize {
                     NumberAnimation {
                         duration: 300
-                        easing.type: Easing.OutCubic
+                        easing.type: Easing.OutBack
                     }
                 }
                 Behavior on color {
                     ColorAnimation {
                         duration: 250
+                    }
+                }
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: 300
+                        easing.type: Easing.OutCubic
+                    }
+                }
+
+                // Apply Blur to the text if inactive (3D depth-of-field)
+                layer.enabled: root.isSynced && !lineDelegate.isActive
+                layer.effect: FastBlur {
+                    radius: lineDelegate.blurAmount
+                    Behavior on radius {
+                        NumberAnimation {
+                            duration: 300
+                        }
                     }
                 }
             }

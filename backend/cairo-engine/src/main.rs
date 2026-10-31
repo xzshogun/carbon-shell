@@ -47,6 +47,37 @@ fn parse_timestamp(tag: &str) -> Option<u64> {
     Some(minutes * 60_000 + seconds * 1_000 + frac_ms)
 }
 
+fn condense_lines(parsed_lines: Vec<LyricLine>) -> Vec<LyricLine> {
+    let mut condensed_lines: Vec<LyricLine> = Vec::new();
+    let mut i = 0;
+
+    while i < parsed_lines.len() {
+        let mut count = 1;
+        let current_text = parsed_lines[i].text.trim().to_lowercase();
+
+        // Look ahead to find consecutive duplicates
+        while i + count < parsed_lines.len()
+            && parsed_lines[i + count].text.trim().to_lowercase() == current_text
+        {
+            count += 1;
+        }
+
+        let mut final_text = parsed_lines[i].text.clone();
+        if count > 1 {
+            final_text = format!("{} x{}", final_text, count);
+        }
+
+        condensed_lines.push(LyricLine {
+            time: parsed_lines[i].time, // Keep the timestamp of the first instance
+            text: final_text,
+        });
+
+        i += count; // Skip past the duplicates
+    }
+
+    condensed_lines
+}
+
 fn parse_lrc(lrc_text: &str) -> Vec<LyricLine> {
     let mut lines = Vec::new();
     for raw_line in lrc_text.lines() {
@@ -68,7 +99,7 @@ fn parse_lrc(lrc_text: &str) -> Vec<LyricLine> {
         }
     }
     lines.sort_by_key(|l| l.time);
-    lines
+    condense_lines(lines)
 }
 
 fn fetch_lyrics_waterfall(title: &str, artist: &str) -> LyricsPayload {
@@ -203,10 +234,11 @@ fn fetch_lyrics_waterfall(title: &str, artist: &str) -> LyricsPayload {
                 text: l.to_string(),
             })
             .collect();
-        if !lines.is_empty() {
+        let condensed = condense_lines(lines);
+        if !condensed.is_empty() {
             return LyricsPayload {
                 synced: false,
-                lines,
+                lines: condensed,
             };
         }
     }
@@ -340,5 +372,33 @@ mod tests {
         assert_eq!(empty.lines.len(), 1);
         assert_eq!(empty.lines[0].time, 0);
         assert_eq!(empty.lines[0].text, "No lyrics available.");
+    }
+
+    #[test]
+    fn test_condense_lines() {
+        let input = vec![
+            LyricLine {
+                time: 1000,
+                text: "Guess who's back".to_string(),
+            },
+            LyricLine {
+                time: 3000,
+                text: "guess who's back".to_string(),
+            },
+            LyricLine {
+                time: 5000,
+                text: "  GUESS WHO'S BACK  ".to_string(),
+            },
+            LyricLine {
+                time: 7000,
+                text: "Back again".to_string(),
+            },
+        ];
+        let condensed = condense_lines(input);
+        assert_eq!(condensed.len(), 2);
+        assert_eq!(condensed[0].time, 1000);
+        assert_eq!(condensed[0].text, "Guess who's back x3");
+        assert_eq!(condensed[1].time, 7000);
+        assert_eq!(condensed[1].text, "Back again");
     }
 }

@@ -3260,8 +3260,8 @@ ShellRoot {
                 showEqualizer: root.showEqualizer
                 attachedBottom: root.mainBarEdge === "bottom"
                 hasAttachedPopup: (root.calendarOpen || root.smallMusicOpen) && !root.centerDashboardOpen
-                height: isExpanded ? 270 : root.notchHeight
-                implicitHeight: isExpanded ? 270 : root.notchHeight
+                height: isExpanded ? 270 : ((notchCenterItem.dragActive || notchCenterItem.isUploading) ? Math.round(48 * root.shellScale) : root.notchHeight)
+                implicitHeight: isExpanded ? 270 : ((notchCenterItem.dragActive || notchCenterItem.isUploading) ? Math.round(48 * root.shellScale) : root.notchHeight)
                 y: root.mainBarEdge === "bottom" ? (notchBarWindow.height - height) : 0
                 anchors.horizontalCenter: parent.horizontalCenter
                 leftFillet: true
@@ -3815,7 +3815,7 @@ ShellRoot {
                 top: root.musicBarEdge !== "bottom"
                 bottom: root.musicBarEdge === "bottom"
             }
-            implicitHeight: 34
+            implicitHeight: (separateNotchCenter.dragActive || separateNotchCenter.isUploading) ? Math.round(48 * root.shellScale) : 34
             implicitWidth: separateNotchCenter.implicitWidth
             visible: root.barMode === "notch" && (root.musicBarEdge !== root.mainBarEdge || root.mainBarEdge === "left" || root.mainBarEdge === "right")
 

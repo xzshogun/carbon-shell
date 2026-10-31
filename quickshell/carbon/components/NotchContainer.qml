@@ -52,6 +52,7 @@ Item {
     property var notchRoot: root
     readonly property color defaultBorderColor: Qt.rgba(1, 1, 1, 0.15)
     property color borderColor: defaultBorderColor
+    property bool dragActive: false
     property bool isUploading: false
 
     readonly property string dropEngineBin: {
@@ -90,8 +91,8 @@ Item {
             height: parent.height + root.bottomRadius
             radius: root.bottomRadius
             color: root.notchBgColor
-            border.width: 1
-            border.color: root.borderColor
+            border.width: (root.dragActive || root.isUploading) ? 2 : 1
+            border.color: root.isUploading ? "#f5b86e" : (root.dragActive ? "#8ee8a8" : root.borderColor)
 
             Behavior on border.width {
                 NumberAnimation {
@@ -196,69 +197,99 @@ Item {
         spacing: root.contentSpacing
     }
 
+    Process {
+        id: uploadProcess
+        running: false
+        command: []
+        stdout: StdioCollector {
+            id: uploadStdout
+            waitForEnd: true
+        }
+        onExited: (exitCode) => {
+            let out = uploadStdout.text ? uploadStdout.text.trim() : "";
+            let url = "";
+            try {
+                let lines = out.split("\n");
+                for (let i = lines.length - 1; i >= 0; i--) {
+                    let l = lines[i].trim();
+                    if (!l) continue;
+                    try {
+                        let msg = JSON.parse(l);
+                        if (msg && msg.url) { url = msg.url; break; }
+                    } catch(e) {}
+                    if (l.startsWith("http://") || l.startsWith("https://")) {
+                        url = l;
+                        break;
+                    }
+                }
+            } catch(e) {}
+
+            if (url && url.length > 0) {
+                Quickshell.execDetached(["wl-copy", url]);
+            }
+
+            notchBackground.border.color = root.defaultBorderColor;
+            notchBackground.border.width = 1;
+            notchRoot.height = 28;
+            root.isUploading = false;
+        }
+    }
+
     DropArea {
         id: notchDropArea
         anchors.fill: parent
-        z: 5
-        keys: ["text/uri-list"] // Explicitly listen for file URIs
+        z: 99
 
         onEntered: (drag) => {
             if (drag.hasUrls) {
-                drag.accept(Qt.CopyAction); // Wayland requires this to allow the drop
-                notchBackground.border.color = "#8ee8a8"
-                notchBackground.border.width = 2
-                notchRoot.height = 48
+                drag.accept(Qt.CopyAction);
+                notchBackground.border.color = "#8ee8a8";
+                notchBackground.border.width = 2;
+                notchRoot.height = 48;
+                root.dragActive = true;
+            }
+        }
+
+        onPositionChanged: (drag) => {
+            if (drag.hasUrls) {
+                drag.accept(Qt.CopyAction);
             }
         }
 
         onExited: {
-            notchBackground.border.color = "rgba(255,255,255,0.15)"
-            notchBackground.border.width = 1
-            notchRoot.height = 28
+            root.dragActive = false;
+            notchBackground.border.color = root.defaultBorderColor;
+            notchBackground.border.width = 1;
+            notchRoot.height = 28;
         }
 
         onDropped: (drop) => {
-            if (!drop.hasUrls) return;
-            drop.acceptProposedAction(); // Confirm the drop
+            root.dragActive = false;
+            if (!drop.hasUrls || drop.urls.length === 0) return;
+            drop.acceptProposedAction();
 
-            notchBackground.border.color = "#f5b86e" // Amber processing state
+            notchBackground.border.color = "#f5b86e"; // Amber processing state
+            notchBackground.border.width = 2;
+            notchRoot.height = 48;
+
+            let rawUrl = drop.urls[0].toString();
+            let cleanPath = decodeURIComponent(rawUrl.replace(/^file:\/\//, ""));
+            if (!cleanPath || cleanPath.length === 0) {
+                notchBackground.border.color = root.defaultBorderColor;
+                notchBackground.border.width = 1;
+                notchRoot.height = 28;
+                return;
+            }
+
+            root.isUploading = true;
 
             let engineCmd = [
-                root.dropEngineBin || "/home/shogun/carbon-shell/apps/carbon-drop/target/release/carbon-drop-engine",
+                root.dropEngineBin || "/home/shogun/.local/bin/carbon-drop-engine",
                 "Buzzheavier (10GB+)",
-                drop.urls[0]
+                cleanPath
             ];
 
-            let uploadProcess = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process { id: proc; property alias outputText: collector.text; readonly property var stdout: ({ trim: function() { return proc.outputText.trim(); }, toString: function() { return proc.outputText; } }); stdout: StdioCollector { id: collector; waitForEnd: true } }', root);
             uploadProcess.command = engineCmd;
-
-            uploadProcess.exited.connect(function() {
-                let url = uploadProcess.stdout.trim();
-                try {
-                    let lines = url.split("\n");
-                    for (let i = lines.length - 1; i >= 0; i--) {
-                        let l = lines[i].trim();
-                        if (!l) continue;
-                        try {
-                            let msg = JSON.parse(l);
-                            if (msg && msg.url) { url = msg.url; break; }
-                        } catch(e) {}
-                        if (l.startsWith("http://") || l.startsWith("https://")) {
-                            url = l;
-                            break;
-                        }
-                    }
-                } catch(e) {}
-
-                let clipProcess = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process {}', root);
-                clipProcess.command = ["wl-copy", url];
-                clipProcess.running = true;
-
-                notchBackground.border.color = "rgba(255,255,255,0.15)"
-                notchBackground.border.width = 1
-                notchRoot.height = 28
-                uploadProcess.destroy();
-            });
             uploadProcess.running = true;
         }
     }

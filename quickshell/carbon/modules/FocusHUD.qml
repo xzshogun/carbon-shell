@@ -78,7 +78,7 @@ Item {
             "if command -v carbon-focus-engine >/dev/null 2>&1; then exec carbon-focus-engine; elif [ -x \"$HOME/.local/bin/carbon-focus-engine\" ]; then exec \"$HOME/.local/bin/carbon-focus-engine\"; else exec carbon-focus-engine; fi"
         ]
         running: true
-        stdin: StdioStream {}
+        stdinEnabled: true
 
         stdout: SplitParser {
             splitMarker: "\n"
@@ -100,8 +100,8 @@ Item {
     }
 
     function sendCmd(cmd) {
-        if (focusEngineProc.stdin) {
-            focusEngineProc.stdin.write(cmd + "\n")
+        if (focusEngineProc.running) {
+            focusEngineProc.write(cmd + "\n")
         }
     }
 

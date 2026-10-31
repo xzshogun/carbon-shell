@@ -8,15 +8,15 @@ import "../Singletons"
 /**
  * Cairo.qml:
  * High-performance Hybrid Kinetic Lyric Engine for Carbon Shell.
- * Powered by the Rust cairo-engine backend (dual LRCLIB/Netease waterfall)
- * and native hardware MPRIS clock sync. Zero manual timer drift.
+ * Powered by the Rust cairo-engine backend (dual LRCLIB/Netease waterfall),
+ * native hardware MPRIS clock sync, and buttery fluid scrolling physics.
  */
 Item {
     id: root
 
     property bool isSynced: false
 
-    // Native MPRIS Player Resolution (Mpris.players[0] with fallback to values[0])
+    // Native MPRIS Player Resolution
     readonly property var playersList: (Mpris.players && Mpris.players.values !== undefined) ? Mpris.players.values : (Mpris.players || [])
     readonly property var primaryPlayer: (playersList && playersList.length > 0) ? playersList[0] : null
 
@@ -24,7 +24,6 @@ Item {
     property int currentAudioMs: {
         if (!primaryPlayer || primaryPlayer.position === undefined) return 0
         var pos = primaryPlayer.position
-        // MPRIS position is reported in microseconds; divide by 1000 to obtain milliseconds
         if (pos > 100000) return Math.floor(pos / 1000)
         if (pos > 5000) return Math.floor(pos)
         return Math.floor(pos * 1000)
@@ -62,6 +61,7 @@ Item {
                             })
                         }
                     }
+                    lyricList.updateIndexFromClock()
                 } catch (e) {
                     console.warn("[Cairo.qml] Error parsing cairo-engine JSON output:", e)
                 }
@@ -76,27 +76,52 @@ Item {
         }
     }
 
-    // ── 2. Visual Stage & ListView ──────────────────────────────────────────
-    MouseArea {
-        id: listMouse
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.NoButton
-    }
-
+    // ── 2. The Fluid ListView: Buttery Physics & Hardware Sync ──────────────
     ListView {
         id: lyricList
         anchors.fill: parent
         clip: true
         model: cairoModel
-        spacing: Theme.px(12)
-        interactive: !root.isSynced || listMouse.containsMouse
+        spacing: Theme.px(16)
+        interactive: true
         boundsBehavior: Flickable.StopAtBounds
 
-        preferredHighlightBegin: height * 0.40
-        preferredHighlightEnd: height * 0.60
-        highlightRangeMode: root.isSynced ? ListView.ApplyRange : ListView.NoHighlightRange
-        highlightMoveDuration: 220
+        // Buttery "up and down" scrolling: lock active item to vertical center
+        preferredHighlightBegin: height / 2 - Theme.px(30)
+        preferredHighlightEnd: height / 2 + Theme.px(30)
+        highlightRangeMode: root.isSynced ? ListView.StrictlyEnforceRange : ListView.NoHighlightRange
+        highlightMoveDuration: 450 // Smooth vertical glide
+
+        // Dynamically update currentIndex based on hardware clock
+        property int currentAudioMs: root.currentAudioMs
+        onCurrentAudioMsChanged: updateIndexFromClock()
+        onCountChanged: updateIndexFromClock()
+
+        function updateIndexFromClock() {
+            if (!root.isSynced || count === 0) return
+            var target = -1
+            for (let i = count - 1; i >= 0; i--) {
+                var item = model.get(i)
+                if (item && root.currentAudioMs >= item.time) {
+                    target = i
+                    break
+                }
+            }
+            if (target >= 0) {
+                if (currentIndex !== target) currentIndex = target
+            } else {
+                if (currentIndex !== 0) currentIndex = 0
+            }
+        }
+
+        Connections {
+            target: root
+            function onIsSyncedChanged() {
+                if (root.isSynced) {
+                    lyricList.updateIndexFromClock()
+                }
+            }
+        }
 
         delegate: Item {
             id: lineDelegate
@@ -104,74 +129,71 @@ Item {
             required property var model
 
             width: lyricList.width
-            height: lineLayout.implicitHeight + Theme.px(14)
+            height: lyricText.implicitHeight + Theme.px(24)
+            property bool isActive: ListView.isCurrentItem && root.isSynced && (root.currentAudioMs >= model.time)
 
-            // Pure native hardware clock evaluation (no timers!):
-            // A line is active if song is past this line's timestamp, but hasn't reached the next line's timestamp yet.
-            property bool isActive: root.isSynced
-                                    ? (root.currentAudioMs >= model.time &&
-                                       (index === lyricList.count - 1 || root.currentAudioMs < lyricList.model.get(index + 1).time))
-                                    : false
-
-            onIsActiveChanged: {
-                if (isActive && root.isSynced) {
-                    lyricList.positionViewAtIndex(index, ListView.Center)
-                }
-            }
-
-            // Signature Cairo Translucent Glass Tape Block
+            // The Highlight Pill Background
             Rectangle {
-                id: highlightTape
-                anchors.centerIn: parent
-                width: lineText.implicitWidth + Theme.px(36)
-                height: lineText.implicitHeight + Theme.px(12)
-                radius: Theme.tokens.rounding.small
-                color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.35)
-                border.color: Theme.primary
-                border.width: Theme.px(1.5)
-                opacity: (lineDelegate.isActive && root.isSynced) ? 1.0 : 0.0
-                visible: opacity > 0.01
+                id: highlightPill
+                anchors.centerIn: lyricText
+                readonly property real textWidth: Math.min(lyricText.implicitWidth, lineDelegate.width - Theme.px(48))
+                width: lineDelegate.isActive ? (textWidth + Theme.px(32)) : textWidth
+                height: lyricText.implicitHeight + Theme.px(16)
+                radius: Theme.tokens.rounding.medium
+                color: Theme.accent
+                opacity: lineDelegate.isActive ? 1.0 : 0.0
+                scale: lineDelegate.isActive ? 1.0 : 0.9
 
+                Behavior on width {
+                    NumberAnimation {
+                        duration: 350
+                        easing.type: Easing.OutBack
+                        easing.overshoot: 1.2
+                    }
+                }
                 Behavior on opacity {
-                    NumberAnimation { duration: 180; easing.type: Easing.OutQuad }
+                    NumberAnimation {
+                        duration: 250
+                    }
+                }
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: 350
+                        easing.type: Easing.OutBack
+                    }
                 }
             }
 
-            RowLayout {
-                id: lineLayout
+            // The Lyric Text
+            Text {
+                id: lyricText
                 anchors.centerIn: parent
-                spacing: Theme.px(8)
+                text: lineDelegate.model.text
+                font.family: Theme.font
+                font.pixelSize: lineDelegate.isActive ? Theme.fontPx(36) : (root.isSynced ? Theme.fontPx(28) : Theme.fontPx(24))
+                font.weight: lineDelegate.isActive ? Font.Bold : Font.Medium
+                color: lineDelegate.isActive
+                       ? (Theme.m3onPrimaryContainer || Theme.accentContrast || Theme.fg)
+                       : (root.isSynced ? Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.50) : Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.85))
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                width: Math.min(implicitWidth, lineDelegate.width - Theme.px(48))
 
-                Text {
-                    id: lineText
-                    text: lineDelegate.model.text
-                    font.family: Theme.font
-                    font.weight: lineDelegate.isActive ? Font.Bold : Font.Normal
-                    font.pixelSize: lineDelegate.isActive ? Theme.fontPx(18) : Theme.fontPx(15)
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                    Layout.maximumWidth: lineDelegate.width - Theme.px(48)
-                    color: lineDelegate.isActive
-                           ? Theme.m3onPrimaryContainer
-                           : (root.isSynced ? Qt.rgba(Theme.fg.r, Theme.fg.g, Theme.fg.b, 0.40) : Theme.fg)
-                    scale: lineDelegate.isActive ? 1.04 : 0.96
-                    opacity: root.isSynced ? (lineDelegate.isActive ? 1.0 : 0.40) : 1.0
-
-                    // Preserved Cairo Animation Physics
-                    Behavior on opacity {
-                        NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+                Behavior on font.pixelSize {
+                    NumberAnimation {
+                        duration: 300
+                        easing.type: Easing.OutCubic
                     }
-                    Behavior on scale {
-                        NumberAnimation { duration: 220; easing.type: Easing.OutBack }
-                    }
-                    Behavior on color {
-                        ColorAnimation { duration: 150; easing.type: Easing.OutQuad }
+                }
+                Behavior on color {
+                    ColorAnimation {
+                        duration: 250
                     }
                 }
             }
         }
 
-        // Empty State Placeholder
+        // Empty State Placeholder (when no track or lyrics loaded)
         Rectangle {
             anchors.centerIn: parent
             width: Theme.px(240)

@@ -78,7 +78,10 @@ fn fetch_lyrics_waterfall(title: &str, artist: &str) -> LyricsPayload {
     if clean_title.is_empty() {
         return LyricsPayload {
             synced: false,
-            lines: vec![],
+            lines: vec![LyricLine {
+                time: 0,
+                text: "No lyrics available.".to_string(),
+            }],
         };
     }
 
@@ -211,7 +214,10 @@ fn fetch_lyrics_waterfall(title: &str, artist: &str) -> LyricsPayload {
     // --- STEP 4: EMPTY FALLBACK ---
     LyricsPayload {
         synced: false,
-        lines: vec![],
+        lines: vec![LyricLine {
+            time: 0,
+            text: "No lyrics available.".to_string(),
+        }],
     }
 }
 
@@ -299,5 +305,40 @@ fn main() {
 
         // Brief cooldown before reconnecting if playerctl exited
         thread::sleep(Duration::from_millis(1500));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_timestamp() {
+        assert_eq!(parse_timestamp("00:12.50"), Some(12500));
+        assert_eq!(parse_timestamp("01:05.123"), Some(65123));
+        assert_eq!(parse_timestamp("02:00.0"), Some(120000));
+        assert_eq!(parse_timestamp("invalid"), None);
+    }
+
+    #[test]
+    fn test_parse_lrc() {
+        let lrc = "[00:01.00] Line 1\n[00:05.50] Line 2\n[00:03.20] Line 1.5\n";
+        let parsed = parse_lrc(lrc);
+        assert_eq!(parsed.len(), 3);
+        assert_eq!(parsed[0].time, 1000);
+        assert_eq!(parsed[0].text, "Line 1");
+        assert_eq!(parsed[1].time, 3200);
+        assert_eq!(parsed[1].text, "Line 1.5");
+        assert_eq!(parsed[2].time, 5500);
+        assert_eq!(parsed[2].text, "Line 2");
+    }
+
+    #[test]
+    fn test_empty_fallback() {
+        let empty = fetch_lyrics_waterfall("", "");
+        assert!(!empty.synced);
+        assert_eq!(empty.lines.len(), 1);
+        assert_eq!(empty.lines[0].time, 0);
+        assert_eq!(empty.lines[0].text, "No lyrics available.");
     }
 }
